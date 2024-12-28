@@ -18,7 +18,6 @@ import { useAuth } from '../context/AuthContext';
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import type { DailyAssessment } from '../types';
-import appIcon from '/icons/icon-192x192.png';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -213,7 +212,7 @@ const Dashboard = () => {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box
                   component="img"
-                  src={appIcon}
+                  src="/icons/icon-192x192.png"
                   alt="Dr. Bread Logo"
                   sx={{
                     width: 60,
