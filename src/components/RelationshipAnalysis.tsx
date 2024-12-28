@@ -49,31 +49,31 @@ const RelationshipAnalysisContent: React.FC<Props> = ({ analysis, isLoading = fa
   try {
     // Extrai os dados relevantes dependendo do tipo
     const {
-      overallHealth = 0,
-      strengths = [],
-      challenges = [],
-      recommendations = [],
-      actionItems = [],
-      categoryAnalysis = {},
-      relationshipDynamics = null,
+      overallHealth,
+      categories,
+      strengthsAndChallenges,
+      communicationSuggestions,
+      actionItems
     } = isGPTAnalysis(analysis) 
       ? {
           overallHealth: analysis.analysis?.overallHealth ?? 0,
-          strengths: Array.isArray(analysis.analysis?.strengths) ? analysis.analysis.strengths : [],
-          challenges: Array.isArray(analysis.analysis?.challenges) ? analysis.analysis.challenges : [],
-          recommendations: Array.isArray(analysis.analysis?.recommendations) ? analysis.analysis.recommendations : [],
+          categories: analysis.analysis?.categoryAnalysis ?? {},
+          strengthsAndChallenges: {
+            strengths: Array.isArray(analysis.analysis?.strengths) ? analysis.analysis.strengths : [],
+            challenges: Array.isArray(analysis.analysis?.challenges) ? analysis.analysis.challenges : [],
+          },
+          communicationSuggestions: Array.isArray(analysis.analysis?.recommendations) ? analysis.analysis.recommendations : [],
           actionItems: Array.isArray(analysis.analysis?.actionItems) ? analysis.analysis.actionItems : [],
-          categoryAnalysis: analysis.analysis?.categoryAnalysis ?? {},
-          relationshipDynamics: analysis.analysis?.relationshipDynamics ?? null,
         }
       : {
           overallHealth: analysis.overallHealth?.score ?? 0,
-          strengths: Array.isArray(analysis.strengthsAndChallenges?.strengths) ? analysis.strengthsAndChallenges.strengths : [],
-          challenges: Array.isArray(analysis.strengthsAndChallenges?.challenges) ? analysis.strengthsAndChallenges.challenges : [],
-          recommendations: Array.isArray(analysis.communicationSuggestions) ? analysis.communicationSuggestions : [],
+          categories: analysis.categories ?? {},
+          strengthsAndChallenges: {
+            strengths: Array.isArray(analysis.strengthsAndChallenges?.strengths) ? analysis.strengthsAndChallenges.strengths : [],
+            challenges: Array.isArray(analysis.strengthsAndChallenges?.challenges) ? analysis.strengthsAndChallenges.challenges : [],
+          },
+          communicationSuggestions: Array.isArray(analysis.communicationSuggestions) ? analysis.communicationSuggestions : [],
           actionItems: Array.isArray(analysis.actionItems) ? analysis.actionItems : [],
-          categoryAnalysis: analysis.categories ?? {},
-          relationshipDynamics: analysis.relationshipDynamics ?? null,
         };
 
     const getTrendIcon = (trend?: string) => {
@@ -135,7 +135,7 @@ const RelationshipAnalysisContent: React.FC<Props> = ({ analysis, isLoading = fa
         </Box>
 
         <List sx={{ width: '100%' }}>
-          {Array.isArray(strengths) && strengths.length > 0 && (
+          {Array.isArray(strengthsAndChallenges.strengths) && strengthsAndChallenges.strengths.length > 0 && (
             <>
               <ListItem>
                 <ListItemIcon>
@@ -149,7 +149,7 @@ const RelationshipAnalysisContent: React.FC<Props> = ({ analysis, isLoading = fa
                   }
                   secondary={
                     <Box sx={{ mt: 1 }}>
-                      {strengths.map((strength, index) => (
+                      {strengthsAndChallenges.strengths.map((strength, index) => (
                         <Chip
                           key={index}
                           label={strength}
@@ -171,7 +171,7 @@ const RelationshipAnalysisContent: React.FC<Props> = ({ analysis, isLoading = fa
             </>
           )}
 
-          {Array.isArray(challenges) && challenges.length > 0 && (
+          {Array.isArray(strengthsAndChallenges.challenges) && strengthsAndChallenges.challenges.length > 0 && (
             <>
               <ListItem>
                 <ListItemIcon>
@@ -185,7 +185,7 @@ const RelationshipAnalysisContent: React.FC<Props> = ({ analysis, isLoading = fa
                   }
                   secondary={
                     <Box sx={{ mt: 1 }}>
-                      {challenges.map((challenge, index) => (
+                      {strengthsAndChallenges.challenges.map((challenge, index) => (
                         <Chip
                           key={index}
                           label={challenge}
@@ -207,7 +207,7 @@ const RelationshipAnalysisContent: React.FC<Props> = ({ analysis, isLoading = fa
             </>
           )}
 
-          {Array.isArray(recommendations) && recommendations.length > 0 && (
+          {Array.isArray(communicationSuggestions) && communicationSuggestions.length > 0 && (
             <>
               <ListItem>
                 <ListItemIcon>
@@ -221,7 +221,7 @@ const RelationshipAnalysisContent: React.FC<Props> = ({ analysis, isLoading = fa
                   }
                   secondary={
                     <Box sx={{ mt: 1 }}>
-                      {recommendations.map((rec, index) => (
+                      {communicationSuggestions.map((rec, index) => (
                         <Typography 
                           key={index} 
                           component="div" 
@@ -275,8 +275,8 @@ const RelationshipAnalysisContent: React.FC<Props> = ({ analysis, isLoading = fa
             </>
           )}
 
-          {categoryAnalysis && typeof categoryAnalysis === 'object' && Object.keys(categoryAnalysis).length > 0 && (
-            Object.entries(categoryAnalysis).map(([category, data]) => (
+          {categories && typeof categories === 'object' && Object.keys(categories).length > 0 && (
+            Object.entries(categories).map(([category, data]) => (
               <React.Fragment key={category}>
                 <ListItem>
                   <ListItemIcon>

@@ -18,6 +18,7 @@ import { useAuth } from '../context/AuthContext';
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import type { DailyAssessment } from '../types';
+import appIcon from '/icons/icon-192x192.png';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -209,13 +210,25 @@ const Dashboard = () => {
           {/* Welcome Section */}
           <Grid item xs={12}>
             <Paper sx={{ p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box>
-                <Typography variant="h4" gutterBottom>
-                  Bem Vindo de volta, {userData?.name}
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                  Acompanhe seu relacionamento diário
-                </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box
+                  component="img"
+                  src={appIcon}
+                  alt="Dr. Bread Logo"
+                  sx={{
+                    width: 60,
+                    height: 60,
+                    borderRadius: '20%'
+                  }}
+                />
+                <Box>
+                  <Typography variant="h4" gutterBottom>
+                    Bem Vindo de volta, {userData?.name}
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary">
+                    Acompanhe seu relacionamento diário
+                  </Typography>
+                </Box>
               </Box>
               <Button
                 variant="contained"

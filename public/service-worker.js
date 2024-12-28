@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wellness-monitor-v2';
+const CACHE_NAME = 'wellness-monitor-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -30,6 +30,8 @@ self.addEventListener('install', (event) => {
       return cache.addAll(STATIC_ASSETS);
     })
   );
+  // Force the waiting service worker to become the active service worker
+  self.skipWaiting();
 });
 
 // Activate service worker and clean up old caches
@@ -43,9 +45,11 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
+  // Take control of all pages immediately
+  event.waitUntil(clients.claim());
 });
 
-// Fetch resources: Try network first, then cache
+// Fetch resources: Network first, then cache
 self.addEventListener('fetch', (event) => {
   // Skip non-GET requests and requests to other origins
   if (

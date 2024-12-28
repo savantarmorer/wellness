@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { FirebaseError } from 'firebase/app';
+import appIcon from '/icons/icon-192x192.png';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -78,6 +79,17 @@ const Login = () => {
             width: '100%',
           }}
         >
+          <Box
+            component="img"
+            src={appIcon}
+            alt="Dr. Bread Logo"
+            sx={{
+              width: 80,
+              height: 80,
+              mb: 2,
+              borderRadius: '20%'
+            }}
+          />
           <Typography component="h1" variant="h5">
             Dr. Bread
           </Typography>

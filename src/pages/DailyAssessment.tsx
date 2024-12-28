@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Container,
-  Box,
-  Typography,
-  Slider,
-  TextField,
-  Button,
   Alert,
-  Paper,
+  Box,
+  Button,
   CircularProgress,
+  Container,
   Divider,
   LinearProgress,
-  Theme,
+  Paper,
+  Slider,
+  TextField,
+  Typography
 } from '@mui/material';
 import { Layout } from '../components/Layout';
 import { collection, addDoc, query, where, getDocs, orderBy, limit, doc } from 'firebase/firestore';
