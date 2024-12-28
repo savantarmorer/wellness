@@ -1,0 +1,41 @@
+{
+  "short_name": "Wellness Monitor",
+  "name": "Couple's Wellness Monitor",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#4A90E2",
+  "background_color": "#F5F7FA",
+  "orientation": "portrait",
+  "description": "Track and improve your relationship wellness daily",
+  "categories": ["lifestyle", "health", "relationships"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Daily Assessment",
+      "url": "/assessment",
+      "description": "Complete your daily assessment"
+    },
+    {
+      "name": "Statistics",
+      "url": "/statistics",
+      "description": "View your relationship statistics"
+    }
+  ]
+} 
