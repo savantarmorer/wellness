@@ -429,92 +429,157 @@ const DailyAssessment = () => {
   return (
     <Layout>
       <Container maxWidth="md">
-        <Typography variant="h4" component="h1" gutterBottom>
-          Avaliação Diária
-        </Typography>
-        <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
+        <Box sx={{ 
+          mt: { xs: 2, sm: 4 },
+          mb: { xs: 4, sm: 6 }
+        }}>
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {error}
             </Alert>
           )}
+
           {success && (
             <Alert severity="success" sx={{ mb: 2 }}>
               {success}
             </Alert>
           )}
-          <Box component="form" onSubmit={handleSubmit}>
-            {categories.map((category) => (
-              <Box key={category.id} sx={{ mb: 4 }}>
-                <Typography variant="h6" gutterBottom>
-                  {category.label}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  {category.description}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontStyle: 'italic' }}>
-                  {category.tip}
-                </Typography>
-                <Slider
-                  value={ratings[category.id] || 1}
-                  onChange={handleRatingChange(category.id)}
-                  min={1}
-                  max={10}
-                  step={1}
-                  marks
-                  valueLabelDisplay="auto"
-                />
-                <Divider sx={{ mt: 2 }} />
-              </Box>
-            ))}
 
-            <TextField
-              fullWidth
-              multiline
-              rows={4}
-              label="Comentários Adicionais"
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              sx={{
-                mb: 2,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: 2,
-                  backgroundColor: (theme: Theme) => alpha(theme.palette.background.paper, 0.8),
-                  backdropFilter: 'blur(20px)',
-                  WebkitBackdropFilter: 'blur(20px)',
-                },
+          {hasSubmittedToday ? (
+            <>
+              <Typography variant="h5" gutterBottom align="center">
+                Avaliação de Hoje
+              </Typography>
+              
+              {analysisLoading ? (
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 2,
+                  my: 4 
+                }}>
+                  <CircularProgress />
+                  <Typography>Gerando análise do relacionamento...</Typography>
+                </Box>
+              ) : analysis ? (
+                <RelationshipAnalysisComponent analysis={analysis} />
+              ) : (
+                <Typography align="center" color="text.secondary">
+                  Aguardando a avaliação do seu parceiro para gerar a análise.
+                </Typography>
+              )}
+            </>
+          ) : (
+            <Paper 
+              elevation={0}
+              sx={{ 
+                p: { xs: 2, sm: 3 },
+                borderRadius: 4,
+                background: (theme) => alpha(theme.palette.background.paper, 0.8),
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
               }}
-            />
-
-            <TextField
-              fullWidth
-              multiline
-              rows={4}
-              label="Gratidão e Reconhecimento"
-              value={gratitude}
-              onChange={(e) => setGratitude(e.target.value)}
-              sx={{
-                mb: 2,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: 2,
-                  backgroundColor: (theme: Theme) => alpha(theme.palette.background.paper, 0.8),
-                  backdropFilter: 'blur(20px)',
-                  WebkitBackdropFilter: 'blur(20px)',
-                },
-              }}
-            />
-
-            <Button
-              type="submit"
-              variant="contained"
-              fullWidth
-              disabled={loading}
-              sx={{ mt: 2 }}
             >
-              {loading ? <CircularProgress size={24} /> : 'Enviar Avaliação'}
-            </Button>
-          </Box>
-        </Paper>
+              <Typography variant="h5" gutterBottom align="center">
+                Avaliação Diária
+              </Typography>
+
+              <Typography variant="body1" color="text.secondary" paragraph align="center">
+                Como foi seu dia no relacionamento? Avalie os aspectos abaixo.
+              </Typography>
+
+              <Box component="form" onSubmit={handleSubmit}>
+                {categories.map((category) => (
+                  <Box key={category.id} sx={{ mb: { xs: 3, sm: 4 } }}>
+                    <Typography variant="h6" gutterBottom>
+                      {category.label}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      {category.description}
+                    </Typography>
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary" 
+                      sx={{ 
+                        mb: 2, 
+                        fontStyle: 'italic',
+                        fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                      }}
+                    >
+                      {category.tip}
+                    </Typography>
+                    <Slider
+                      value={ratings[category.id] || 1}
+                      onChange={handleRatingChange(category.id)}
+                      min={1}
+                      max={10}
+                      step={1}
+                      marks
+                      valueLabelDisplay="auto"
+                      sx={{
+                        '& .MuiSlider-markLabel': {
+                          fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                        }
+                      }}
+                    />
+                    <Divider sx={{ mt: 2 }} />
+                  </Box>
+                ))}
+
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={4}
+                  label="Comentários Adicionais"
+                  value={comments}
+                  onChange={(e) => setComments(e.target.value)}
+                  sx={{
+                    mb: 2,
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                      backgroundColor: (theme) => alpha(theme.palette.background.paper, 0.8),
+                      backdropFilter: 'blur(20px)',
+                      WebkitBackdropFilter: 'blur(20px)',
+                    },
+                  }}
+                />
+
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={4}
+                  label="Gratidão e Reconhecimento"
+                  value={gratitude}
+                  onChange={(e) => setGratitude(e.target.value)}
+                  sx={{
+                    mb: 2,
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                      backgroundColor: (theme) => alpha(theme.palette.background.paper, 0.8),
+                      backdropFilter: 'blur(20px)',
+                      WebkitBackdropFilter: 'blur(20px)',
+                    },
+                  }}
+                />
+
+                <Button
+                  type="submit"
+                  variant="contained"
+                  fullWidth
+                  disabled={loading}
+                  sx={{ 
+                    mt: 2,
+                    py: { xs: 1.5, sm: 2 },
+                    fontSize: { xs: '1rem', sm: '1.1rem' }
+                  }}
+                >
+                  {loading ? <CircularProgress size={24} /> : 'Enviar Avaliação'}
+                </Button>
+              </Box>
+            </Paper>
+          )}
+        </Box>
       </Container>
     </Layout>
   );

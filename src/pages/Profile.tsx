@@ -20,6 +20,7 @@ import { useAuth } from '../context/AuthContext';
 import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { User } from '../types';
+import { Layout } from '../components/Layout';
 
 export default function Profile() {
   const { currentUser, userData } = useAuth();
@@ -140,150 +141,176 @@ export default function Profile() {
 
   if (!userData) {
     return (
-      <Container>
-        <Typography>Loading...</Typography>
-      </Container>
+      <Layout>
+        <Container>
+          <Typography>Loading...</Typography>
+        </Container>
+      </Layout>
     );
   }
 
   return (
-    <Container maxWidth="md">
-      <Paper sx={{ p: 4, mt: 4 }}>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        {success && (
-          <Alert severity="success" sx={{ mb: 2 }}>
-            {success}
-          </Alert>
-        )}
-
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
-          <Avatar
-            sx={{
-              width: 100,
-              height: 100,
-              bgcolor: 'primary.main',
-              fontSize: '2rem',
-              mr: 3,
-            }}
-          >
-            {userData.name ? userData.name[0].toUpperCase() : 'U'}
-          </Avatar>
-          <Box>
-            <Typography variant="h4" gutterBottom>
-              {userData.name}
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              {userData.email}
-            </Typography>
-          </Box>
-          {!isEditing && (
-            <IconButton onClick={handleEdit} sx={{ ml: 'auto' }}>
-              <EditIcon />
-            </IconButton>
+    <Layout>
+      <Container maxWidth="md">
+        <Paper sx={{ p: 4, mt: 4 }}>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
           )}
-        </Box>
+          {success && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              {success}
+            </Alert>
+          )}
 
-        <Grid container spacing={3}>
-          {isEditing ? (
-            <>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
+            <Avatar
+              sx={{
+                width: 100,
+                height: 100,
+                bgcolor: 'primary.main',
+                fontSize: '2rem',
+                mr: 3,
+              }}
+            >
+              {userData.name ? userData.name[0].toUpperCase() : 'U'}
+            </Avatar>
+            <Box>
+              <Typography variant="h4" gutterBottom>
+                {userData.name || 'Usuário'}
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                {userData.email}
+              </Typography>
+            </Box>
+            {!isEditing && (
+              <IconButton onClick={handleEdit} sx={{ ml: 'auto' }}>
+                <EditIcon />
+              </IconButton>
+            )}
+          </Box>
+
+          <Grid container spacing={3}>
+            {isEditing ? (
+              <>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Nome"
+                    value={editedData.name || ''}
+                    onChange={handleChange('name')}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Email"
+                    value={editedData.email || ''}
+                    onChange={handleChange('email')}
+                    disabled
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+                    <Button
+                      variant="outlined"
+                      startIcon={<CancelIcon />}
+                      onClick={handleCancel}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      variant="contained"
+                      startIcon={<SaveIcon />}
+                      onClick={handleSave}
+                    >
+                      Salvar
+                    </Button>
+                  </Box>
+                </Grid>
+              </>
+            ) : (
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Name"
-                  value={editedData.name || ''}
-                  onChange={handleChange('name')}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  value={editedData.email || ''}
-                  onChange={handleChange('email')}
-                  disabled
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-                  <Button
-                    variant="outlined"
-                    startIcon={<CancelIcon />}
-                    onClick={handleCancel}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="contained"
-                    startIcon={<SaveIcon />}
-                    onClick={handleSave}
-                  >
-                    Save
-                  </Button>
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Informações do Perfil
+                  </Typography>
+                  {Object.entries(userData).map(([key, value]) => {
+                    if (key === 'id' || key === 'partnerId') return null;
+                    return (
+                      <Box key={key} sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          {key === 'name' ? 'Nome' :
+                           key === 'email' ? 'Email' :
+                           key === 'createdAt' ? 'Criado em' :
+                           key === 'updatedAt' ? 'Atualizado em' :
+                           key.charAt(0).toUpperCase() + key.slice(1)}
+                        </Typography>
+                        <Typography>
+                          {key === 'createdAt' || key === 'updatedAt' 
+                            ? new Date(value as string).toLocaleString('pt-BR')
+                            : value as string}
+                        </Typography>
+                      </Box>
+                    );
+                  })}
                 </Box>
               </Grid>
-            </>
-          ) : (
-            <Grid item xs={12}>
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="h6" gutterBottom>
-                  Profile Information
-                </Typography>
-                {Object.entries(userData).map(([key, value]) => {
-                  if (key === 'id' || key === 'partnerId') return null;
-                  return (
-                    <Box key={key} sx={{ mb: 2 }}>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        {key.charAt(0).toUpperCase() + key.slice(1)}
-                      </Typography>
-                      <Typography>{value}</Typography>
-                    </Box>
-                  );
-                })}
-              </Box>
-            </Grid>
-          )}
-        </Grid>
+            )}
+          </Grid>
 
-        {!userData.partnerId && (
           <Box sx={{ mt: 4 }}>
             <Typography variant="h6" gutterBottom>
-              Partner Connection
+              Conexão com Parceiro
             </Typography>
             <Typography variant="body2" color="text.secondary" paragraph>
-              Connect with your partner to share daily assessments and track your relationship wellness together.
+              {userData.partnerId 
+                ? 'Você já está conectado com um parceiro. Deseja conectar com outro parceiro?'
+                : 'Conecte-se com seu parceiro para compartilhar avaliações e acompanhar o bem-estar do relacionamento juntos.'}
             </Typography>
-            <Button variant="contained" onClick={handlePartnerDialogOpen}>
-              Connect with Partner
+            <Button 
+              variant="contained" 
+              onClick={handlePartnerDialogOpen}
+              sx={{ 
+                fontWeight: 'bold',
+                '&:hover': {
+                  transform: 'scale(1.05)',
+                  transition: 'transform 0.2s'
+                }
+              }}
+            >
+              {userData.partnerId ? 'Trocar Parceiro' : 'Conectar com Parceiro'}
             </Button>
           </Box>
-        )}
 
-        <Dialog open={isPartnerDialogOpen} onClose={handlePartnerDialogClose}>
-          <DialogTitle>Connect with Partner</DialogTitle>
-          <DialogContent>
-            <Typography variant="body2" color="text.secondary" paragraph>
-              Enter your partner's email address to connect your accounts.
-            </Typography>
-            <TextField
-              fullWidth
-              label="Partner's Email"
-              value={partnerEmail}
-              onChange={(e) => setPartnerEmail(e.target.value)}
-              margin="dense"
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handlePartnerDialogClose}>Cancel</Button>
-            <Button onClick={handlePartnerEmailSubmit} variant="contained">
-              Connect
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </Paper>
-    </Container>
+          <Dialog open={isPartnerDialogOpen} onClose={handlePartnerDialogClose}>
+            <DialogTitle>
+              {userData.partnerId ? 'Trocar Parceiro' : 'Conectar com Parceiro'}
+            </DialogTitle>
+            <DialogContent>
+              <Typography variant="body2" color="text.secondary" paragraph>
+                {userData.partnerId 
+                  ? 'Digite o email do novo parceiro para conectar suas contas.'
+                  : 'Digite o email do seu parceiro para conectar suas contas.'}
+              </Typography>
+              <TextField
+                fullWidth
+                label="Email do Parceiro"
+                value={partnerEmail}
+                onChange={(e) => setPartnerEmail(e.target.value)}
+                margin="dense"
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handlePartnerDialogClose}>Cancelar</Button>
+              <Button onClick={handlePartnerEmailSubmit} variant="contained">
+                {userData.partnerId ? 'Trocar' : 'Conectar'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </Paper>
+      </Container>
+    </Layout>
   );
 } 

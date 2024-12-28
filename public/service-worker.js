@@ -1,11 +1,26 @@
-const CACHE_NAME = 'wellness-monitor-v1';
+const CACHE_NAME = 'wellness-monitor-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/favicon.ico',
-  '/logo192.png',
-  '/logo512.png',
+  '/icons/favicon-196.png',
+  '/icons/icon-72x72.png',
+  '/icons/icon-96x96.png',
+  '/icons/icon-128x128.png',
+  '/icons/icon-144x144.png',
+  '/icons/icon-152x152.png',
+  '/icons/icon-167x167.png',
+  '/icons/icon-180x180.png',
+  '/icons/icon-192x192.png',
+  '/icons/icon-384x384.png',
+  '/icons/icon-512x512.png',
+  '/icons/splash-640x1136.png',
+  '/icons/splash-750x1334.png',
+  '/icons/splash-1125x2436.png',
+  '/icons/splash-1242x2208.png',
+  '/icons/splash-1536x2048.png',
+  '/icons/splash-1668x2224.png',
+  '/icons/splash-2048x2732.png',
 ];
 
 // Install service worker and cache static assets

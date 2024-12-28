@@ -25,14 +25,33 @@ export interface RelationshipAnalysis {
   };
 }
 
+const getApiKey = () => {
+  if (typeof process !== 'undefined' && process.env && process.env.VITE_OPENAI_API_KEY) {
+    return process.env.VITE_OPENAI_API_KEY;
+  }
+  if (typeof window !== 'undefined' && (window as any).env && (window as any).env.VITE_OPENAI_API_KEY) {
+    return (window as any).env.VITE_OPENAI_API_KEY;
+  }
+  throw new Error('API key not found');
+};
+
 export const generateDailyInsight = async (
   assessment: DailyAssessment,
   relationshipContext?: RelationshipContext
 ): Promise<string> => {
   const prompt = `
-Analise a avaliação diária do relacionamento e forneça um insight personalizado.
+Como terapeuta especializado em relacionamentos, analise profundamente a avaliação diária deste casal. 
+Use sua experiência clínica para identificar padrões sutis, dinâmicas subjacentes e ofereça insights terapêuticos significativos.
 
-Avaliação:
+Considere especialmente:
+- Padrões de comportamento e comunicação recorrentes
+- Dinâmicas emocionais subjacentes
+- Necessidades não expressas
+- Gatilhos potenciais
+- Estilos de apego e como eles se manifestam
+- Impacto das experiências passadas na dinâmica atual
+
+Avaliação Detalhada:
 - Comunicação: ${assessment.ratings.comunicacao}
 - Conexão Emocional: ${assessment.ratings.conexaoEmocional}
 - Apoio Mútuo: ${assessment.ratings.apoioMutuo}
@@ -47,40 +66,63 @@ Avaliação:
 - Gratidão: ${assessment.ratings.gratidao}
 - Qualidade do Tempo: ${assessment.ratings.qualidadeTempo}
 
-${assessment.comments ? `Comentários: ${assessment.comments}\n` : ''}
-${assessment.gratitude ? `Gratidão: ${assessment.gratitude}\n` : ''}
+${assessment.comments ? `Observações Adicionais: ${assessment.comments}\n` : ''}
+${assessment.gratitude ? `Expressões de Gratidão: ${assessment.gratitude}\n` : ''}
 
 ${
   relationshipContext
     ? `
-Contexto do Relacionamento:
-- Duração: ${relationshipContext.duration}
-- Status: ${relationshipContext.status}
-- Tipo: ${relationshipContext.type}
-- Objetivos: ${relationshipContext.goals.join(', ')}
-- Desafios: ${relationshipContext.challenges.join(', ')}
-- Valores: ${relationshipContext.values.join(', ')}
+Contexto Terapêutico do Relacionamento:
+- História e Duração: ${relationshipContext.duration}
+- Status Atual: ${relationshipContext.status}
+- Natureza do Vínculo: ${relationshipContext.type}
+- Objetivos Compartilhados: ${relationshipContext.goals.join(', ')}
+- Desafios Identificados: ${relationshipContext.challenges.join(', ')}
+- Valores Fundamentais: ${relationshipContext.values.join(', ')}
+- Dinâmica Atual: ${relationshipContext.currentDynamics}
+- Pontos Fortes: ${relationshipContext.strengths}
+- Estado Emocional do Usuário: ${relationshipContext.userEmotionalState}
+- Estado Emocional do Parceiro: ${relationshipContext.partnerEmotionalState}
+- Histórico de Crises: ${relationshipContext.hadSignificantCrises ? 'Sim - ' + relationshipContext.crisisDescription : 'Não'}
+- Tentativas de Resolução: ${relationshipContext.attemptedSolutions ? 'Sim - ' + relationshipContext.solutionsDescription : 'Não'}
+- Impacto da Rotina: ${relationshipContext.routineImpact}
+- Intimidade Física: ${relationshipContext.physicalIntimacy}
 `
     : ''
 }
 
-Por favor, forneça um insight personalizado sobre o estado atual do relacionamento, destacando pontos positivos e áreas que merecem atenção. O insight deve ser motivador e construtivo, oferecendo sugestões práticas quando apropriado.
-`;
+Forneça uma análise terapêutica profunda que:
+1. Identifique padrões relacionais significativos
+2. Explore as dinâmicas emocionais subjacentes
+3. Conecte comportamentos atuais com experiências passadas
+4. Ofereça insights sobre necessidades não atendidas
+5. Sugira intervenções terapêuticas específicas
+6. Proponha exercícios práticos para desenvolvimento emocional
+
+Sua análise deve ser empática, profunda e terapeuticamente orientada, focando no crescimento do relacionamento.`;
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
+        Authorization: `Bearer ${getApiKey()}`,
       },
       body: JSON.stringify({
         model: 'gpt-4',
         messages: [
           {
             role: 'system',
-            content:
-              'Você é um terapeuta de casais experiente que fornece insights personalizados sobre relacionamentos.',
+            content: `Você é um terapeuta de casais altamente experiente, com formação em:
+- Terapia Focada na Emoção (EFT)
+- Terapia Cognitivo-Comportamental para Casais
+- Teoria do Apego
+- Análise Sistêmica de Relacionamentos
+- Técnicas de Comunicação Não-Violenta
+- Mindfulness para Relacionamentos
+
+Use sua experiência clínica para fornecer insights profundos e terapêuticos, mantendo sempre uma postura empática e profissional. 
+Evite generalizações superficiais e foque em análises profundas das dinâmicas relacionais.`,
           },
           {
             role: 'user',
@@ -109,9 +151,10 @@ export const generateRelationshipAnalysis = async (
   relationshipContext?: RelationshipContext
 ): Promise<RelationshipAnalysis> => {
   const prompt = `
-Analise a saúde do relacionamento com base nas avaliações diárias do casal e no contexto do relacionamento.
+Como terapeuta especializado, realize uma análise profunda da dinâmica relacional deste casal.
+Considere tanto os aspectos manifestos quanto os padrões latentes do relacionamento.
 
-Avaliação do Usuário:
+Avaliação do Primeiro Parceiro:
 - Comunicação: ${userAssessment.ratings.comunicacao}
 - Conexão Emocional: ${userAssessment.ratings.conexaoEmocional}
 - Apoio Mútuo: ${userAssessment.ratings.apoioMutuo}
@@ -126,7 +169,7 @@ Avaliação do Usuário:
 - Gratidão: ${userAssessment.ratings.gratidao}
 - Qualidade do Tempo: ${userAssessment.ratings.qualidadeTempo}
 
-Avaliação do Parceiro:
+Avaliação do Segundo Parceiro:
 - Comunicação: ${partnerAssessment.ratings.comunicacao}
 - Conexão Emocional: ${partnerAssessment.ratings.conexaoEmocional}
 - Apoio Mútuo: ${partnerAssessment.ratings.apoioMutuo}
@@ -141,122 +184,149 @@ Avaliação do Parceiro:
 - Gratidão: ${partnerAssessment.ratings.gratidao}
 - Qualidade do Tempo: ${partnerAssessment.ratings.qualidadeTempo}
 
+${userAssessment.comments ? `Observações do Primeiro Parceiro: ${userAssessment.comments}\n` : ''}
+${userAssessment.gratitude ? `Gratidão do Primeiro Parceiro: ${userAssessment.gratitude}\n` : ''}
+${partnerAssessment.comments ? `Observações do Segundo Parceiro: ${partnerAssessment.comments}\n` : ''}
+${partnerAssessment.gratitude ? `Gratidão do Segundo Parceiro: ${partnerAssessment.gratitude}\n` : ''}
+
 ${
   relationshipContext
     ? `
-Contexto do Relacionamento:
-- Duração: ${relationshipContext.duration}
-- Status: ${relationshipContext.status}
-- Tipo: ${relationshipContext.type}
-- Objetivos: ${relationshipContext.goals.join(', ')}
-- Desafios: ${relationshipContext.challenges.join(', ')}
-- Valores: ${relationshipContext.values.join(', ')}
+Contexto Terapêutico do Relacionamento:
+- História e Duração: ${relationshipContext.duration}
+- Status Atual: ${relationshipContext.status}
+- Natureza do Vínculo: ${relationshipContext.type}
+- Objetivos Compartilhados: ${relationshipContext.goals.join(', ')}
+- Desafios Identificados: ${relationshipContext.challenges.join(', ')}
+- Valores Fundamentais: ${relationshipContext.values.join(', ')}
+- Dinâmica Atual: ${relationshipContext.currentDynamics}
+- Pontos Fortes: ${relationshipContext.strengths}
+- Estado Emocional do Usuário: ${relationshipContext.userEmotionalState}
+- Estado Emocional do Parceiro: ${relationshipContext.partnerEmotionalState}
+- Histórico de Crises: ${relationshipContext.hadSignificantCrises ? 'Sim - ' + relationshipContext.crisisDescription : 'Não'}
+- Tentativas de Resolução: ${relationshipContext.attemptedSolutions ? 'Sim - ' + relationshipContext.solutionsDescription : 'Não'}
+- Impacto da Rotina: ${relationshipContext.routineImpact}
+- Intimidade Física: ${relationshipContext.physicalIntimacy}
 `
     : ''
 }
 
-Por favor, forneça uma análise detalhada do relacionamento no seguinte formato JSON:
+Baseado em sua experiência clínica, forneça uma análise terapêutica detalhada no seguinte formato JSON:
 
 {
   "overallHealth": {
-    "score": number, // 0-100
-    "trend": string // "up", "down", or "stable"
+    "score": number, // 0-100, avaliação clínica da saúde do relacionamento
+    "trend": string // "up", "down", or "stable" - tendência terapêutica
   },
   "categories": {
     "comunicacao": {
       "score": number, // 0-10
       "trend": string, // "up", "down", or "stable"
-      "insights": string[] // Lista de insights específicos
+      "insights": string[] // Insights terapêuticos específicos sobre padrões de comunicação
     },
     "conexaoEmocional": {
       "score": number,
       "trend": string,
-      "insights": string[]
+      "insights": string[] // Análise da vinculação emocional e padrões de apego
     },
     "apoioMutuo": {
       "score": number,
       "trend": string,
-      "insights": string[]
+      "insights": string[] // Avaliação dos sistemas de suporte e reciprocidade
     },
     "transparenciaConfianca": {
       "score": number,
       "trend": string,
-      "insights": string[]
+      "insights": string[] // Análise da segurança emocional e vulnerabilidade
     },
     "intimidadeFisica": {
       "score": number,
       "trend": string,
-      "insights": string[]
+      "insights": string[] // Avaliação da conexão física e intimidade
     },
     "saudeMental": {
       "score": number,
       "trend": string,
-      "insights": string[]
+      "insights": string[] // Impacto da saúde mental na dinâmica do casal
     },
     "resolucaoConflitos": {
       "score": number,
       "trend": string,
-      "insights": string[]
+      "insights": string[] // Padrões de conflito e estratégias de resolução
     },
     "segurancaRelacionamento": {
       "score": number,
       "trend": string,
-      "insights": string[]
+      "insights": string[] // Análise do apego e segurança emocional
     },
     "alinhamentoObjetivos": {
       "score": number,
       "trend": string,
-      "insights": string[]
+      "insights": string[] // Avaliação da visão compartilhada e valores
     },
     "satisfacaoGeral": {
       "score": number,
       "trend": string,
-      "insights": string[]
+      "insights": string[] // Análise holística da satisfação relacional
     },
     "autocuidado": {
       "score": number,
       "trend": string,
-      "insights": string[]
+      "insights": string[] // Impacto do autocuidado na dinâmica do casal
     },
     "gratidao": {
       "score": number,
       "trend": string,
-      "insights": string[]
+      "insights": string[] // Análise da expressão de apreciação e reconhecimento
     },
     "qualidadeTempo": {
       "score": number,
       "trend": string,
-      "insights": string[]
+      "insights": string[] // Avaliação da qualidade da conexão durante tempo juntos
     }
   },
   "strengthsAndChallenges": {
-    "strengths": string[], // Lista de pontos fortes
-    "challenges": string[] // Lista de desafios
+    "strengths": string[], // Recursos terapêuticos e pontos fortes identificados
+    "challenges": string[] // Áreas que necessitam intervenção terapêutica
   },
-  "communicationSuggestions": string[], // Lista de sugestões de comunicação
-  "actionItems": string[], // Lista de ações práticas
+  "communicationSuggestions": string[], // Intervenções terapêuticas específicas para comunicação
+  "actionItems": string[], // Exercícios e práticas terapêuticas recomendadas
   "relationshipDynamics": {
-    "positivePatterns": string[], // Padrões positivos identificados
-    "concerningPatterns": string[], // Padrões preocupantes identificados
-    "growthAreas": string[] // Áreas com potencial de crescimento
+    "positivePatterns": string[], // Padrões relacionais saudáveis identificados
+    "concerningPatterns": string[], // Padrões que necessitam atenção terapêutica
+    "growthAreas": string[] // Oportunidades de desenvolvimento emocional
   }
-}
-`;
+}`;
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
+        Authorization: `Bearer ${getApiKey()}`,
       },
       body: JSON.stringify({
         model: 'gpt-4',
         messages: [
           {
             role: 'system',
-            content:
-              'Você é um terapeuta de casais experiente que analisa a saúde dos relacionamentos com base em avaliações diárias e fornece insights valiosos.',
+            content: `Você é um terapeuta de casais altamente experiente, com formação em:
+- Terapia Focada na Emoção (EFT)
+- Terapia Cognitivo-Comportamental para Casais
+- Teoria do Apego
+- Análise Sistêmica de Relacionamentos
+- Técnicas de Comunicação Não-Violenta
+- Mindfulness para Relacionamentos
+
+Use sua experiência clínica para fornecer análises profundas e terapeuticamente orientadas:
+1. Identifique padrões relacionais subjacentes
+2. Analise as dinâmicas de apego e segurança emocional
+3. Avalie os ciclos de interação e padrões de comunicação
+4. Considere o impacto de experiências passadas
+5. Proponha intervenções terapêuticas específicas
+6. Mantenha uma perspectiva sistêmica do relacionamento
+
+Suas análises devem refletir profundidade clínica e compreensão terapêutica.`,
           },
           {
             role: 'user',

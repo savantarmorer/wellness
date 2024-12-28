@@ -2,12 +2,12 @@ import React, { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { CircularProgress, Box } from '@mui/material';
 import { useAuth } from './context/AuthContext';
+import Profile from './pages/Profile';
 
 // Lazy load pages
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const DailyAssessment = React.lazy(() => import('./pages/DailyAssessment'));
 const Statistics = React.lazy(() => import('./pages/Statistics'));
-const Profile = React.lazy(() => import('./pages/Profile'));
 const Login = React.lazy(() => import('./pages/Login'));
 const Register = React.lazy(() => import('./pages/Register'));
 const HelloWorld = React.lazy(() => import('./components/HelloWorld'));

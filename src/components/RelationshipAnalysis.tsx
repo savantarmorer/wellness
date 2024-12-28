@@ -91,7 +91,12 @@ const RelationshipAnalysisContent: React.FC<Props> = ({ analysis, isLoading = fa
 
     return (
       <Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          mb: { xs: 3, sm: 4 }
+        }}>
           <Box sx={{ position: 'relative', display: 'inline-flex', mb: 2 }}>
             <CircularProgress
               variant="determinate"
@@ -124,12 +129,12 @@ const RelationshipAnalysisContent: React.FC<Props> = ({ analysis, isLoading = fa
               </Typography>
             </Box>
           </Box>
-          <Typography variant="h6" gutterBottom>
-            Overall Relationship Health
+          <Typography variant="h6" gutterBottom align="center">
+            Saúde Geral do Relacionamento
           </Typography>
         </Box>
 
-        <List>
+        <List sx={{ width: '100%' }}>
           {Array.isArray(strengths) && strengths.length > 0 && (
             <>
               <ListItem>
@@ -137,7 +142,11 @@ const RelationshipAnalysisContent: React.FC<Props> = ({ analysis, isLoading = fa
                   <StarIcon color="primary" />
                 </ListItemIcon>
                 <ListItemText
-                  primary="Strengths"
+                  primary={
+                    <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                      Pontos Fortes
+                    </Typography>
+                  }
                   secondary={
                     <Box sx={{ mt: 1 }}>
                       {strengths.map((strength, index) => (
@@ -147,7 +156,11 @@ const RelationshipAnalysisContent: React.FC<Props> = ({ analysis, isLoading = fa
                           color="success"
                           variant="outlined"
                           size="small"
-                          sx={{ mr: 1, mb: 1 }}
+                          sx={{ 
+                            mr: 1, 
+                            mb: 1,
+                            fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                          }}
                         />
                       ))}
                     </Box>
@@ -165,7 +178,11 @@ const RelationshipAnalysisContent: React.FC<Props> = ({ analysis, isLoading = fa
                   <WarningIcon color="error" />
                 </ListItemIcon>
                 <ListItemText
-                  primary="Challenges"
+                  primary={
+                    <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                      Desafios
+                    </Typography>
+                  }
                   secondary={
                     <Box sx={{ mt: 1 }}>
                       {challenges.map((challenge, index) => (
@@ -175,7 +192,11 @@ const RelationshipAnalysisContent: React.FC<Props> = ({ analysis, isLoading = fa
                           color="error"
                           variant="outlined"
                           size="small"
-                          sx={{ mr: 1, mb: 1 }}
+                          sx={{ 
+                            mr: 1, 
+                            mb: 1,
+                            fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                          }}
                         />
                       ))}
                     </Box>
@@ -193,11 +214,22 @@ const RelationshipAnalysisContent: React.FC<Props> = ({ analysis, isLoading = fa
                   <RecommendIcon color="info" />
                 </ListItemIcon>
                 <ListItemText
-                  primary="Recommendations"
+                  primary={
+                    <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                      Recomendações
+                    </Typography>
+                  }
                   secondary={
                     <Box sx={{ mt: 1 }}>
                       {recommendations.map((rec, index) => (
-                        <Typography key={index} component="div" sx={{ mb: 1 }}>
+                        <Typography 
+                          key={index} 
+                          component="div" 
+                          sx={{ 
+                            mb: 1,
+                            fontSize: { xs: '0.875rem', sm: '1rem' }
+                          }}
+                        >
                           • {rec}
                         </Typography>
                       ))}
@@ -216,11 +248,22 @@ const RelationshipAnalysisContent: React.FC<Props> = ({ analysis, isLoading = fa
                   <AssignmentIcon color="secondary" />
                 </ListItemIcon>
                 <ListItemText
-                  primary="Action Items"
+                  primary={
+                    <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                      Ações Sugeridas
+                    </Typography>
+                  }
                   secondary={
                     <Box sx={{ mt: 1 }}>
                       {actionItems.map((item, index) => (
-                        <Typography key={index} component="div" sx={{ mb: 1 }}>
+                        <Typography 
+                          key={index} 
+                          component="div" 
+                          sx={{ 
+                            mb: 1,
+                            fontSize: { xs: '0.875rem', sm: '1rem' }
+                          }}
+                        >
                           • {item}
                         </Typography>
                       ))}
@@ -240,12 +283,35 @@ const RelationshipAnalysisContent: React.FC<Props> = ({ analysis, isLoading = fa
                     {getTrendIcon(data?.trend)}
                   </ListItemIcon>
                   <ListItemText
-                    primary={category}
+                    primary={
+                      <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                        {category}
+                      </Typography>
+                    }
                     secondary={
                       <Box sx={{ mt: 1 }}>
-                        <Box sx={{ mb: 1 }}>Score: {data?.score ?? 0}/10</Box>
+                        <Box sx={{ mb: 1 }}>
+                          <Typography 
+                            component="span" 
+                            sx={{ 
+                              fontWeight: 500,
+                              fontSize: { xs: '0.875rem', sm: '1rem' }
+                            }}
+                          >
+                            Pontuação: {data?.score ?? 0}/10
+                          </Typography>
+                        </Box>
                         {Array.isArray(data?.insights) && data.insights.map((insight: string, index: number) => (
-                          <Box key={index} sx={{ mb: 0.5 }}>• {insight}</Box>
+                          <Typography 
+                            key={index} 
+                            component="div" 
+                            sx={{ 
+                              mb: 0.5,
+                              fontSize: { xs: '0.875rem', sm: '1rem' }
+                            }}
+                          >
+                            • {insight}
+                          </Typography>
                         ))}
                       </Box>
                     }
@@ -254,74 +320,6 @@ const RelationshipAnalysisContent: React.FC<Props> = ({ analysis, isLoading = fa
                 <Divider variant="inset" component="li" />
               </React.Fragment>
             ))
-          )}
-
-          {relationshipDynamics && Array.isArray(relationshipDynamics.positivePatterns) && relationshipDynamics.positivePatterns.length > 0 && (
-            <>
-              <ListItem>
-                <ListItemIcon>
-                  <StarIcon color="success" />
-                </ListItemIcon>
-                <ListItemText
-                  primary="Positive Patterns"
-                  secondary={
-                    <Box sx={{ mt: 1 }}>
-                      {relationshipDynamics.positivePatterns.map((pattern, index) => (
-                        <Typography key={index} component="div" sx={{ mb: 1 }}>
-                          • {pattern}
-                        </Typography>
-                      ))}
-                    </Box>
-                  }
-                />
-              </ListItem>
-              <Divider variant="inset" component="li" />
-            </>
-          )}
-
-          {relationshipDynamics && Array.isArray(relationshipDynamics.concerningPatterns) && relationshipDynamics.concerningPatterns.length > 0 && (
-            <>
-              <ListItem>
-                <ListItemIcon>
-                  <WarningIcon color="error" />
-                </ListItemIcon>
-                <ListItemText
-                  primary="Concerning Patterns"
-                  secondary={
-                    <Box sx={{ mt: 1 }}>
-                      {relationshipDynamics.concerningPatterns.map((pattern, index) => (
-                        <Typography key={index} component="div" sx={{ mb: 1 }}>
-                          • {pattern}
-                        </Typography>
-                      ))}
-                    </Box>
-                  }
-                />
-              </ListItem>
-              <Divider variant="inset" component="li" />
-            </>
-          )}
-
-          {relationshipDynamics && Array.isArray(relationshipDynamics.growthAreas) && relationshipDynamics.growthAreas.length > 0 && (
-            <>
-              <ListItem>
-                <ListItemIcon>
-                  <TrendingUpIcon color="info" />
-                </ListItemIcon>
-                <ListItemText
-                  primary="Growth Areas"
-                  secondary={
-                    <Box sx={{ mt: 1 }}>
-                      {relationshipDynamics.growthAreas.map((area, index) => (
-                        <Typography key={index} component="div" sx={{ mb: 1 }}>
-                          • {area}
-                        </Typography>
-                      ))}
-                    </Box>
-                  }
-                />
-              </ListItem>
-            </>
           )}
         </List>
       </Box>

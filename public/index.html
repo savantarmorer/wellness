@@ -1,9 +1,35 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Welcome to Firebase Hosting</title>
+    <title>Dr. Bread - Relacionamento</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#7C3AED" />
+    <meta name="description" content="Monitore e melhore seu relacionamento" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Dr. Bread" />
+    
+    <!-- Manifest and Icons -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" sizes="196x196" href="/icons/favicon-196.png" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/icons/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-167x167.png" />
+    
+    <!-- Splash Screens -->
+    <link rel="apple-touch-startup-image" href="/icons/splash-2048x2732.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash-1668x2224.png" media="(device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash-1536x2048.png" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash-640x1136.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
 
     <!-- update the version number as needed -->
     <script defer src="/__/firebase/11.1.0/firebase-app-compat.js"></script>
@@ -39,13 +65,8 @@
     </style>
   </head>
   <body>
-    <div id="message">
-      <h2>Welcome</h2>
-      <h1>Firebase Hosting Setup Complete</h1>
-      <p>You're seeing this because you've successfully setup Firebase Hosting. Now it's time to go build something extraordinary!</p>
-      <a target="_blank" href="https://firebase.google.com/docs/hosting/">Open Hosting Documentation</a>
-    </div>
-    <p id="load">Firebase SDK Loading&hellip;</p>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
 
     <script>
       document.addEventListener('DOMContentLoaded', function() {

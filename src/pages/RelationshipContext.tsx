@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Box, Container, Typography, Alert } from '@mui/material';
 import { RelationshipContextForm } from '../components/RelationshipContextForm';
+import { RelationshipContextView } from '../components/RelationshipContextView';
 import { useAuth } from '../context/AuthContext';
 import { getRelationshipContext, saveRelationshipContext, updateRelationshipContext } from '../services/relationshipContextService';
 import type { RelationshipContext, RelationshipContextFormData } from '../types';
@@ -11,6 +12,7 @@ export default function RelationshipContext() {
   const [existingContext, setExistingContext] = useState<Partial<RelationshipContextFormData> | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     const fetchContext = async () => {
@@ -50,8 +52,10 @@ export default function RelationshipContext() {
             additionalInfo: context.additionalInfo,
           };
           setExistingContext(formData);
+          setIsEditing(false);
         } else {
           setExistingContext(undefined);
+          setIsEditing(true);
         }
       } catch (error) {
         console.error('Error fetching relationship context:', error);
@@ -113,8 +117,10 @@ export default function RelationshipContext() {
           additionalInfo: updatedContext.additionalInfo,
         };
         setExistingContext(formData);
+        setIsEditing(false);
       } else {
         setExistingContext(undefined);
+        setIsEditing(true);
       }
     } catch (error) {
       console.error('Error saving relationship context:', error);
@@ -149,12 +155,12 @@ export default function RelationshipContext() {
       <Container maxWidth="md">
         <Box sx={{ mt: 4 }}>
           <Typography variant="h4" gutterBottom>
-            Relationship Context
+            Contexto do Relacionamento
           </Typography>
 
           <Typography variant="body1" color="text.secondary" paragraph>
-            Help us understand your relationship better by providing some context. This information will be
-            used to provide more personalized insights and recommendations.
+            Ajude-nos a entender melhor seu relacionamento fornecendo algumas informações. 
+            Essas informações serão usadas para fornecer insights e recomendações mais personalizadas.
           </Typography>
 
           {error && (
@@ -169,10 +175,17 @@ export default function RelationshipContext() {
             </Alert>
           )}
 
-          <RelationshipContextForm
-            initialValues={existingContext}
-            onSubmit={handleSubmit}
-          />
+          {existingContext && !isEditing ? (
+            <RelationshipContextView
+              data={existingContext as RelationshipContextFormData}
+              onEdit={() => setIsEditing(true)}
+            />
+          ) : (
+            <RelationshipContextForm
+              initialValues={existingContext}
+              onSubmit={handleSubmit}
+            />
+          )}
         </Box>
       </Container>
     </Layout>

@@ -11,6 +11,7 @@ import {
   ListItem,
   ListItemText,
   Divider,
+  Alert,
 } from '@mui/material';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
@@ -180,118 +181,140 @@ const Dashboard = () => {
   return (
     <Layout>
       <Container maxWidth="lg">
-        <Box sx={{ mt: 4, mb: 4 }}>
-          <Grid container spacing={3}>
-            {/* Welcome Section */}
-            <Grid item xs={12}>
-              <Paper sx={{ p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box>
-                  <Typography variant="h4" gutterBottom>
-                    Welcome Back, {userData?.name}
-                  </Typography>
-                  <Typography variant="body1" color="text.secondary">
-                    Track your relationship wellness daily
-                  </Typography>
-                </Box>
-                <Button
-                  variant="contained"
-                  size="large"
-                  onClick={() => navigate('/assessment')}
-                >
-                  Start Today's Assessment
-                </Button>
-              </Paper>
-            </Grid>
-
-            {/* Partner Status */}
-            <Grid item xs={12} md={4}>
-              <Paper sx={{ p: 3, height: '100%' }}>
-                <Typography variant="h6" gutterBottom>
-                  Partner Status
+        {!userData?.partnerId && (
+          <Alert 
+            severity="info" 
+            sx={{ mb: 3 }}
+            action={
+              <Button 
+                variant="contained" 
+                color="primary" 
+                onClick={() => navigate('/profile')}
+                sx={{ 
+                  fontWeight: 'bold',
+                  '&:hover': {
+                    transform: 'scale(1.05)',
+                    transition: 'transform 0.2s'
+                  }
+                }}
+              >
+                Conectar Parceiro
+              </Button>
+            }
+          >
+            Conecte-se com seu parceiro para compartilhar avaliações e acompanhar o bem-estar do relacionamento juntos.
+          </Alert>
+        )}
+        <Grid container spacing={3}>
+          {/* Welcome Section */}
+          <Grid item xs={12}>
+            <Paper sx={{ p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box>
+                <Typography variant="h4" gutterBottom>
+                  Bem Vindo de volta, {userData?.name}
                 </Typography>
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="body1">
-                    {partnerStatus.name}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Last assessment: {partnerStatus.lastAssessment || 'No assessment yet'}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Assessment streak: {partnerStatus.assessmentStreak} days
-                  </Typography>
-                </Box>
-              </Paper>
-            </Grid>
-
-            {/* Recent Assessments */}
-            <Grid item xs={12} md={8}>
-              <Paper sx={{ p: 3, height: '100%' }}>
-                <Typography variant="h6" gutterBottom>
-                  Recent Assessments
+                <Typography variant="body1" color="text.secondary">
+                  Acompanhe seu relacionamento diário
                 </Typography>
-                <List>
-                  {recentAssessments.map((assessment, index) => (
-                    <React.Fragment key={assessment.id}>
-                      <ListItem>
-                        <ListItemText
-                          primary={formatDate(assessment.date)}
-                          secondary={`Average Rating: ${assessment.ratings.satisfacaoGeral}`}
-                        />
-                      </ListItem>
-                      {index < recentAssessments.length - 1 && <Divider />}
-                    </React.Fragment>
-                  ))}
-                  {recentAssessments.length === 0 && (
-                    <ListItem>
-                      <ListItemText primary="No assessments yet" />
-                    </ListItem>
-                  )}
-                </List>
-              </Paper>
-            </Grid>
-
-            {/* Quick Stats */}
-            <Grid item xs={12}>
-              <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Quick Statistics
-                </Typography>
-                <Grid container spacing={3}>
-                  <Grid item xs={12} sm={4}>
-                    <Box textAlign="center">
-                      <Typography variant="h4" color="primary">
-                        {stats.weeklyAverage}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Average Rating This Week
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <Box textAlign="center">
-                      <Typography variant="h4" color="primary">
-                        {stats.completionRate}%
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Assessment Completion Rate
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <Box textAlign="center">
-                      <Typography variant="h4" color="primary">
-                        {stats.streak}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Days Streak
-                      </Typography>
-                    </Box>
-                  </Grid>
-                </Grid>
-              </Paper>
-            </Grid>
+              </Box>
+              <Button
+                variant="contained"
+                size="large"
+                onClick={() => navigate('/assessment')}
+              >
+                Iniciar Avaliação de hoje
+              </Button>
+            </Paper>
           </Grid>
-        </Box>
+
+          {/* Partner Status */}
+          <Grid item xs={12} md={4}>
+            <Paper sx={{ p: 3, height: '100%' }}>
+              <Typography variant="h6" gutterBottom>
+                Status do parceiro
+              </Typography>
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body1">
+                  {partnerStatus.name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Avaliação mais recente: {partnerStatus.lastAssessment || 'Nenhuma avaliação ainda'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Sequência de avaliações: {partnerStatus.assessmentStreak} dias
+                </Typography>
+              </Box>
+            </Paper>
+          </Grid>
+
+          {/* Recent Assessments */}
+          <Grid item xs={12} md={8}>
+            <Paper sx={{ p: 3, height: '100%' }}>
+              <Typography variant="h6" gutterBottom>
+                Avaliações recentes
+              </Typography>
+              <List>
+                {recentAssessments.map((assessment, index) => (
+                  <React.Fragment key={assessment.id}>
+                    <ListItem>
+                      <ListItemText
+                        primary={formatDate(assessment.date)}
+                        secondary={`Avaliação geral: ${assessment.ratings.satisfacaoGeral}`}
+                      />
+                    </ListItem>
+                    {index < recentAssessments.length - 1 && <Divider />}
+                  </React.Fragment>
+                ))}
+                {recentAssessments.length === 0 && (
+                  <ListItem>
+                    <ListItemText primary="Nenhuma avaliação ainda" />
+                  </ListItem>
+                )}
+              </List>
+            </Paper>
+          </Grid>
+
+          {/* Quick Stats */}
+          <Grid item xs={12}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Estatísticas rápidas
+              </Typography>
+              <Grid container spacing={3}>
+                <Grid item xs={12} sm={4}>
+                  <Box textAlign="center">
+                    <Typography variant="h4" color="primary">
+                      {stats.weeklyAverage}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Avaliação geral esta semana
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Box textAlign="center">
+                    <Typography variant="h4" color="primary">
+                      {stats.completionRate}%
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Taxa de conclusão de avaliações
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Box textAlign="center">
+                    <Typography variant="h4" color="primary">
+                      {stats.streak}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Sequência de avaliações
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+            </Paper>
+          </Grid>
+        </Grid>
       </Container>
     </Layout>
   );

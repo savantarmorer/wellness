@@ -198,15 +198,18 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     }}>
       <Box
         component="nav"
-        sx={{ width: { sm: 250 }, flexShrink: { sm: 0 } }}
+        sx={{ 
+          width: { sm: 250 }, 
+          flexShrink: { sm: 0 },
+        }}
       >
         <Box sx={{ 
           display: 'flex', 
           alignItems: 'center', 
           gap: 2,
           position: 'fixed',
-          top: 16,
-          left: 16,
+          top: { xs: 8, sm: 16 },
+          left: { xs: 8, sm: 16 },
           zIndex: theme.zIndex.drawer + 2,
         }}>
           <StyledIconButton
@@ -231,7 +234,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           }}
           sx={{
             display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': { width: 250 },
+            '& .MuiDrawer-paper': { 
+              width: 250,
+              mt: { xs: 0 },
+              pt: { xs: 2 }
+            },
           }}
         >
           {drawer}
@@ -240,7 +247,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           variant="permanent"
           sx={{
             display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { width: 250, boxSizing: 'border-box' },
+            '& .MuiDrawer-paper': { 
+              width: 250, 
+              boxSizing: 'border-box',
+              mt: { sm: 0 }
+            },
           }}
           open
         >
@@ -250,11 +261,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       <MotionBox
         sx={{
           flexGrow: 1,
-          p: 3,
-          width: { sm: `calc(100% - 250px)` },
-          minHeight: '100vh',
-          position: 'relative',
-          zIndex: 1,
+          p: { xs: 2, sm: 3 },
+          width: { xs: '100%', sm: `calc(100% - 250px)` },
+          mt: { xs: 5, sm: 0 },
+          overflow: 'auto'
         }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
