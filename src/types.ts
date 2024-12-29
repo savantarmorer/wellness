@@ -5,19 +5,20 @@ export interface GPTAnalysis {
   date: string;
   type: 'individual' | 'collective';
   analysis: {
-    overallHealth: number;
+    overallHealth: {
+      score: number;
+      trend: string;
+    };
     strengths: string[];
     challenges: string[];
     recommendations: string[];
     actionItems: string[];
-    categoryAnalysis: {
-      [key: string]: {
-        score: number;
-        trend: string;
-        insights: string[];
-      };
-    };
-    relationshipDynamics?: {
+    categories: Record<string, {
+      score: number;
+      trend: string;
+      insights: string[];
+    }>;
+    relationshipDynamics: {
       positivePatterns: string[];
       concerningPatterns: string[];
       growthAreas: string[];

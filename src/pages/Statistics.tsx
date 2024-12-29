@@ -43,6 +43,8 @@ import { generateDailyInsight, generateRelationshipAnalysis } from '../services/
 import { Layout } from '../components/Layout';
 import { Psychology as PsychologyIcon, Group as GroupIcon } from '@mui/icons-material';
 import { saveAnalysis, getAnalysisForDate } from '../services/analysisHistoryService';
+import { RelationshipAnalysis } from '../components/RelationshipAnalysis';
+import type { RelationshipAnalysis as RelationshipAnalysisType } from '../services/gptService';
 
 const METRICS = {
   comunicacao: 'Comunicação',
@@ -56,21 +58,27 @@ const METRICS = {
   satisfacaoGeral: 'Satisfação Geral',
 };
 
+interface AnalysisDialog {
+  open: boolean;
+  title: string;
+  content: string | RelationshipAnalysisType;
+}
+
 export default function Statistics() {
+  const theme = useTheme();
   const { currentUser, userData } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [chartData, setChartData] = useState<any[]>([]);
   const [radarData, setRadarData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const [generatingAnalysis, setGeneratingAnalysis] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [analysisDialog, setAnalysisDialog] = useState<AnalysisDialog>({
+    open: false,
+    title: '',
+    content: '',
+  });
   const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [analysisDialog, setAnalysisDialog] = useState<{
-    open: boolean;
-    title: string;
-    content: string;
-  }>({ open: false, title: '', content: '' });
-  const theme = useTheme();
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -88,8 +96,10 @@ export default function Statistics() {
         setChartData(timeSeriesData);
         setRadarData(radarChartData);
       } catch (error) {
-        console.error('Error fetching assessment history:', error);
-        setError('Failed to load assessment history');
+        console.error('Failed to load assessment history:', error);
+        setError(new Error('Failed to load assessment history'));
+        setChartData([]);
+        setRadarData([]);
       } finally {
         setLoading(false);
       }
@@ -167,7 +177,7 @@ export default function Statistics() {
         setAnalysisDialog({
           open: true,
           title: 'Análise Individual',
-          content: existingAnalysis.analysis as string,
+          content: existingAnalysis.analysis,
         });
         return;
       }
@@ -226,7 +236,7 @@ export default function Statistics() {
         setAnalysisDialog({
           open: true,
           title: 'Análise do Casal',
-          content: JSON.stringify(existingAnalysis.analysis, null, 2),
+          content: existingAnalysis.analysis,
         });
         return;
       }
@@ -280,10 +290,24 @@ export default function Statistics() {
       const analysis = await generateRelationshipAnalysis(userAssessment, partnerAssessment);
       await saveAnalysis(currentUser.uid, 'collective', analysis, userData.partnerId);
       
+      // Ensure the analysis has all required fields before setting it in the dialog
+      const formattedAnalysis: RelationshipAnalysisType = {
+        overallHealth: analysis.overallHealth || { score: 0, trend: 'stable' },
+        categories: analysis.categories || {},
+        strengthsAndChallenges: analysis.strengthsAndChallenges || { strengths: [], challenges: [] },
+        communicationSuggestions: analysis.communicationSuggestions || [],
+        actionItems: analysis.actionItems || [],
+        relationshipDynamics: analysis.relationshipDynamics || {
+          positivePatterns: [],
+          concerningPatterns: [],
+          growthAreas: []
+        }
+      };
+
       setAnalysisDialog({
         open: true,
         title: 'Análise do Casal',
-        content: JSON.stringify(analysis, null, 2),
+        content: formattedAnalysis,
       });
     } catch (error) {
       console.error('Error generating collective analysis:', error);
@@ -298,7 +322,11 @@ export default function Statistics() {
     return (
       <Layout>
         <Container>
-          <Typography>Please log in to view statistics.</Typography>
+          <Box sx={{ mt: 4, textAlign: 'center' }}>
+            <Typography variant="body1">
+              Please log in to view statistics.
+            </Typography>
+          </Box>
         </Container>
       </Layout>
     );
@@ -308,9 +336,11 @@ export default function Statistics() {
     return (
       <Layout>
         <Container>
-          <Typography>
-            You need to connect with your partner to view relationship statistics.
-          </Typography>
+          <Box sx={{ mt: 4, textAlign: 'center' }}>
+            <Typography variant="body1">
+              You need to connect with your partner to view relationship statistics.
+            </Typography>
+          </Box>
         </Container>
       </Layout>
     );
@@ -333,7 +363,7 @@ export default function Statistics() {
       <Layout>
         <Container>
           <Alert severity="error" sx={{ mt: 2 }}>
-            {error}
+            {String(error)}
           </Alert>
         </Container>
       </Layout>
@@ -345,14 +375,10 @@ export default function Statistics() {
       return (
         <Paper sx={{ p: 2 }}>
           <Typography variant="subtitle2" gutterBottom>
-            {label}
+            {String(label)}
           </Typography>
           {payload.map((entry: any, index: number) => (
-            <Typography
-              key={index}
-              variant="body2"
-              sx={{ color: entry.color, display: 'flex', alignItems: 'center', gap: 1 }}
-            >
+            <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
               <Box
                 component="span"
                 sx={{
@@ -360,11 +386,12 @@ export default function Statistics() {
                   height: 12,
                   borderRadius: '50%',
                   backgroundColor: entry.color,
-                  display: 'inline-block',
                 }}
               />
-              {entry.name}: {entry.value}
-            </Typography>
+              <Typography variant="body2" sx={{ color: entry.color }}>
+                {`${entry.name}: ${entry.value}`}
+              </Typography>
+            </Box>
           ))}
         </Paper>
       );
@@ -603,26 +630,15 @@ export default function Statistics() {
           <Dialog
             open={analysisDialog.open}
             onClose={() => setAnalysisDialog({ open: false, title: '', content: '' })}
-            maxWidth="md"
+            maxWidth="lg"
             fullWidth
           >
             <DialogTitle>{analysisDialog.title}</DialogTitle>
             <DialogContent dividers>
-              <Typography
-                component="pre"
-                sx={{
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                  fontFamily: 'inherit',
-                }}
-              >
-                {analysisDialog.content}
-              </Typography>
+              <RelationshipAnalysis analysis={analysisDialog.content} />
             </DialogContent>
             <DialogActions>
-              <Button
-                onClick={() => setAnalysisDialog({ open: false, title: '', content: '' })}
-              >
+              <Button onClick={() => setAnalysisDialog({ open: false, title: '', content: '' })}>
                 Fechar
               </Button>
             </DialogActions>

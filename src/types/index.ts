@@ -127,6 +127,7 @@ export interface GPTAnalysis {
   userId: string;
   partnerId: string;
   date: string;
+  type: 'individual' | 'collective';
   analysis: {
     overallHealth: number;
     strengths: string[];

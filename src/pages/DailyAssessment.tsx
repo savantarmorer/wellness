@@ -112,13 +112,13 @@ const convertToGPTAnalysis = (
   analysis: RelationshipAnalysis,
   userId: string,
   partnerId: string,
-  type: 'individual' | 'collective' = 'individual'
+  analysisType: 'individual' | 'collective'
 ): GPTAnalysis => ({
   id: generateAnalysisId(),
   userId,
   partnerId,
-  type,
   date: new Date().toISOString(),
+  type: analysisType,
   analysis: {
     overallHealth: analysis.overallHealth.score,
     strengths: analysis.strengthsAndChallenges.strengths,
@@ -149,7 +149,7 @@ const DailyAssessment = () => {
   const [loading, setLoading] = useState(false);
   const [hasSubmittedToday, setHasSubmittedToday] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
-  const [analysis, setAnalysis] = useState<GPTAnalysis | null>(null);
+  const [analysis, setAnalysis] = useState<RelationshipAnalysis | null>(null);
   const [dailyInsight, setDailyInsight] = useState<string>('');
   const [relationshipContext, setRelationshipContext] = useState<RelationshipContext | null>(null);
 
@@ -234,7 +234,31 @@ const DailyAssessment = () => {
                 if (!existingAnalysis.empty) {
                   // Use existing analysis
                   const analysisData = existingAnalysis.docs[0].data();
-                  setAnalysis(analysisData.analysis);
+                  const existingGptAnalysis = analysisData.analysis;
+                  
+                  // Convert to RelationshipAnalysis format for display
+                  const displayAnalysis: RelationshipAnalysis = typeof existingGptAnalysis === 'string' 
+                    ? JSON.parse(existingGptAnalysis)
+                    : {
+                        overallHealth: {
+                          score: existingGptAnalysis.overallHealth,
+                          trend: 'stable'
+                        },
+                        categories: existingGptAnalysis.categoryAnalysis || {},
+                        strengthsAndChallenges: {
+                          strengths: existingGptAnalysis.strengths || [],
+                          challenges: existingGptAnalysis.challenges || []
+                        },
+                        communicationSuggestions: existingGptAnalysis.recommendations || [],
+                        actionItems: existingGptAnalysis.actionItems || [],
+                        relationshipDynamics: existingGptAnalysis.relationshipDynamics || {
+                          positivePatterns: [],
+                          concerningPatterns: [],
+                          growthAreas: []
+                        }
+                      };
+                  
+                  setAnalysis(displayAnalysis);
                 } else {
                   // Generate new analysis
                   const analysis = await generateRelationshipAnalysis(
@@ -242,13 +266,30 @@ const DailyAssessment = () => {
                     partnerAssessment,
                     relationshipContext || undefined
                   );
-                  const gptAnalysis = convertToGPTAnalysis(analysis, currentUser.uid, userData.partnerId, 'individual');
-                  setAnalysis(gptAnalysis);
+                  const gptAnalysis = convertToGPTAnalysis(analysis, currentUser.uid, userData.partnerId, 'collective');
+                  
+                  // Convert GPTAnalysis back to RelationshipAnalysis format for display
+                  const displayAnalysis: RelationshipAnalysis = {
+                    overallHealth: {
+                      score: gptAnalysis.analysis.overallHealth,
+                      trend: 'stable'
+                    },
+                    categories: gptAnalysis.analysis.categoryAnalysis,
+                    strengthsAndChallenges: {
+                      strengths: gptAnalysis.analysis.strengths,
+                      challenges: gptAnalysis.analysis.challenges
+                    },
+                    communicationSuggestions: gptAnalysis.analysis.recommendations,
+                    actionItems: gptAnalysis.analysis.actionItems,
+                    relationshipDynamics: gptAnalysis.analysis.relationshipDynamics
+                  };
+                  
+                  setAnalysis(displayAnalysis);
 
                   // Save analysis to history
                   await saveAnalysis(
                     currentUser.uid,
-                    'individual',
+                    'collective',
                     analysis,
                     userData.partnerId
                   );
@@ -340,16 +381,97 @@ const DailyAssessment = () => {
         setDailyInsight(insight);
 
         // Save individual analysis
-        const individualAnalysis = {
-          userId: currentUser.uid,
-          partnerId: userData?.partnerId,
-          date: new Date().toISOString(),
-          type: 'individual',
-          assessmentId: assessmentRef.id,
-          insight,
-          createdAt: new Date().toISOString(),
+        const analysisData: RelationshipAnalysis = {
+          overallHealth: {
+            score: ratings.satisfacaoGeral || 75,
+            trend: 'stable'
+          },
+          categories: {
+            comunicacao: { 
+              score: ratings.comunicacao || 0, 
+              trend: 'stable', 
+              insights: [] 
+            },
+            conexaoEmocional: { 
+              score: ratings.conexaoEmocional || 0, 
+              trend: 'stable', 
+              insights: [] 
+            },
+            apoioMutuo: { 
+              score: ratings.apoioMutuo || 0, 
+              trend: 'stable', 
+              insights: [] 
+            },
+            transparenciaConfianca: { 
+              score: ratings.transparenciaConfianca || 0, 
+              trend: 'stable', 
+              insights: [] 
+            },
+            intimidadeFisica: { 
+              score: ratings.intimidadeFisica || 0, 
+              trend: 'stable', 
+              insights: [] 
+            },
+            saudeMental: { 
+              score: ratings.saudeMental || 0, 
+              trend: 'stable', 
+              insights: [] 
+            },
+            resolucaoConflitos: { 
+              score: ratings.resolucaoConflitos || 0, 
+              trend: 'stable', 
+              insights: [] 
+            },
+            segurancaRelacionamento: { 
+              score: ratings.segurancaRelacionamento || 0, 
+              trend: 'stable', 
+              insights: [] 
+            },
+            alinhamentoObjetivos: { 
+              score: ratings.alinhamentoObjetivos || 0, 
+              trend: 'stable', 
+              insights: [] 
+            },
+            autocuidado: { 
+              score: ratings.autocuidado || 0, 
+              trend: 'stable', 
+              insights: [] 
+            },
+            gratidao: { 
+              score: ratings.gratidao || 0, 
+              trend: 'stable', 
+              insights: [] 
+            },
+            qualidadeTempo: { 
+              score: ratings.qualidadeTempo || 0, 
+              trend: 'stable', 
+              insights: [] 
+            }
+          },
+          strengthsAndChallenges: {
+            strengths: Object.entries(ratings)
+              .filter(([_, score]) => score >= 8)
+              .map(([category]) => categories.find(c => c.id === category)?.label || category),
+            challenges: Object.entries(ratings)
+              .filter(([_, score]) => score <= 4)
+              .map(([category]) => categories.find(c => c.id === category)?.label || category)
+          },
+          communicationSuggestions: [insight],
+          actionItems: [],
+          relationshipDynamics: {
+            positivePatterns: [],
+            concerningPatterns: [],
+            growthAreas: []
+          }
         };
-        await addDoc(collection(db, 'analysisHistory'), individualAnalysis);
+
+        // Save to analysis history
+        await saveAnalysis(
+          currentUser.uid,
+          'individual',
+          analysisData,
+          userData?.partnerId || undefined
+        );
 
         // Check if partner has submitted today and generate combined analysis if they have
         if (userData?.partnerId) {
@@ -381,6 +503,24 @@ const DailyAssessment = () => {
 
             const gptAnalysis = convertToGPTAnalysis(analysis, currentUser.uid, userData.partnerId, 'collective');
             
+            // Convert GPTAnalysis back to RelationshipAnalysis format for display
+            const displayAnalysis: RelationshipAnalysis = {
+              overallHealth: {
+                score: gptAnalysis.analysis.overallHealth,
+                trend: 'stable'
+              },
+              categories: gptAnalysis.analysis.categoryAnalysis,
+              strengthsAndChallenges: {
+                strengths: gptAnalysis.analysis.strengths,
+                challenges: gptAnalysis.analysis.challenges
+              },
+              communicationSuggestions: gptAnalysis.analysis.recommendations,
+              actionItems: gptAnalysis.analysis.actionItems,
+              relationshipDynamics: gptAnalysis.analysis.relationshipDynamics
+            };
+            
+            setAnalysis(displayAnalysis);
+            
             // Save combined analysis
             await saveAnalysis(
               currentUser.uid,
@@ -388,8 +528,6 @@ const DailyAssessment = () => {
               analysis,
               userData.partnerId
             );
-
-            setAnalysis(gptAnalysis);
           }
         }
       } catch (error) {

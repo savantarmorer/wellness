@@ -2,81 +2,75 @@ import React from 'react';
 import {
   Box,
   Typography,
-  CircularProgress,
+  Paper,
+  Grid,
+  Chip,
+  Divider,
   List,
   ListItem,
-  ListItemText,
   ListItemIcon,
-  Divider,
-  Chip,
+  ListItemText,
+  CircularProgress,
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
-  Remove as RemoveIcon,
   Star as StarIcon,
   Warning as WarningIcon,
-  Recommend as RecommendIcon,
+  Psychology as PsychologyIcon,
   Assignment as AssignmentIcon,
+  Recommend as RecommendIcon,
 } from '@mui/icons-material';
-import type { GPTAnalysis } from '../types';
-import type { RelationshipAnalysis as ServiceAnalysis } from '../services/gptService';
-import { ErrorBoundary } from './ErrorBoundary';
 
-interface Props {
-  analysis: GPTAnalysis | ServiceAnalysis | null;
-  isLoading?: boolean;
-}
-
-type CategoryData = {
+interface Category {
   score: number;
   trend: string;
   insights: string[];
-};
+}
 
-type ExtractedData = {
-  overallHealth: number;
-  categories: Record<string, CategoryData>;
-  strengths: string[];
-  challenges: string[];
+interface RelationshipAnalysisData {
+  overallHealth: {
+    score: number;
+    trend: string;
+  };
+  categories: {
+    [key: string]: Category;
+  };
+  strengthsAndChallenges: {
+    strengths: string[];
+    challenges: string[];
+  };
   communicationSuggestions: string[];
   actionItems: string[];
-};
-
-const extractAnalysisData = (analysis: GPTAnalysis | ServiceAnalysis): ExtractedData => {
-  const isGPTAnalysis = (analysis: any): analysis is GPTAnalysis => {
-    return 'userId' in analysis && 'analysis' in analysis;
+  relationshipDynamics: {
+    positivePatterns: string[];
+    concerningPatterns: string[];
+    growthAreas: string[];
   };
+}
 
-  if (isGPTAnalysis(analysis)) {
-    const gptData = analysis.analysis || {};
-    return {
-      overallHealth: typeof gptData.overallHealth === 'number' ? gptData.overallHealth : 0,
-      categories: gptData.categoryAnalysis || {},
-      strengths: Array.isArray(gptData.strengths) ? gptData.strengths : [],
-      challenges: Array.isArray(gptData.challenges) ? gptData.challenges : [],
-      communicationSuggestions: Array.isArray(gptData.recommendations) ? gptData.recommendations : [],
-      actionItems: Array.isArray(gptData.actionItems) ? gptData.actionItems : [],
-    };
-  } else {
-    return {
-      overallHealth: analysis.overallHealth?.score || 0,
-      categories: analysis.categories || {},
-      strengths: Array.isArray(analysis.strengthsAndChallenges?.strengths) 
-        ? analysis.strengthsAndChallenges.strengths 
-        : [],
-      challenges: Array.isArray(analysis.strengthsAndChallenges?.challenges)
-        ? analysis.strengthsAndChallenges.challenges
-        : [],
-      communicationSuggestions: Array.isArray(analysis.communicationSuggestions)
-        ? analysis.communicationSuggestions
-        : [],
-      actionItems: Array.isArray(analysis.actionItems) ? analysis.actionItems : [],
-    };
-  }
+interface Props {
+  analysis: string | RelationshipAnalysisData;
+  isLoading?: boolean;
+}
+
+const CATEGORY_LABELS: { [key: string]: string } = {
+  comunicacao: 'Comunicação',
+  conexaoEmocional: 'Conexão Emocional',
+  apoioMutuo: 'Apoio Mútuo',
+  transparenciaConfianca: 'Transparência e Confiança',
+  intimidadeFisica: 'Intimidade Física',
+  saudeMental: 'Saúde Mental',
+  resolucaoConflitos: 'Resolução de Conflitos',
+  segurancaRelacionamento: 'Segurança no Relacionamento',
+  satisfacaoGeral: 'Satisfação Geral',
+  gratidao: 'Gratidão',
+  autocuidado: 'Autocuidado',
+  qualidadeTempo: 'Qualidade do Tempo',
+  alinhamentoObjetivos: 'Alinhamento de Objetivos',
 };
 
-const RelationshipAnalysisContent: React.FC<Props> = ({ analysis, isLoading = false }) => {
+export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = false }) => {
   if (isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
@@ -89,48 +83,56 @@ const RelationshipAnalysisContent: React.FC<Props> = ({ analysis, isLoading = fa
     return null;
   }
 
-  try {
-    const {
-      overallHealth,
-      categories,
-      strengths,
-      challenges,
-      communicationSuggestions,
-      actionItems,
-    } = extractAnalysisData(analysis);
-
-    const getTrendIcon = (trend?: string) => {
-      if (!trend) return <RemoveIcon color="warning" />;
-      
-      switch (trend.toLowerCase()) {
-        case 'up':
-          return <TrendingUpIcon color="success" />;
-        case 'down':
-          return <TrendingDownIcon color="error" />;
-        default:
-          return <RemoveIcon color="warning" />;
-      }
-    };
-
+  // If it's already a string, display it directly
+  if (typeof analysis === 'string') {
     return (
       <Box>
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'center', 
-          mb: { xs: 3, sm: 4 }
-        }}>
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+            {analysis}
+          </Typography>
+        </Paper>
+      </Box>
+    );
+  }
+
+  // If it's an object, try to parse it if needed
+  const parsedAnalysis: RelationshipAnalysisData = typeof analysis === 'string' 
+    ? JSON.parse(analysis)
+    : analysis;
+
+  // Validate if it's a collective analysis
+  if (!parsedAnalysis || !parsedAnalysis.overallHealth || !parsedAnalysis.strengthsAndChallenges) {
+    return (
+      <Box>
+        <Paper sx={{ p: 3 }}>
+          <Typography color="error">
+            Formato de análise inválido. Esperado: análise coletiva com métricas detalhadas.
+          </Typography>
+        </Paper>
+      </Box>
+    );
+  }
+
+  return (
+    <Box>
+      {/* Overall Health Score */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <Typography variant="h6" gutterBottom>
+            Saúde Geral do Relacionamento
+          </Typography>
           <Box sx={{ position: 'relative', display: 'inline-flex', mb: 2 }}>
             <CircularProgress
               variant="determinate"
-              value={overallHealth}
+              value={parsedAnalysis.overallHealth.score}
               size={80}
               thickness={4}
               sx={{
                 color: (theme) =>
-                  overallHealth >= 70
+                  parsedAnalysis.overallHealth.score >= 70
                     ? theme.palette.success.main
-                    : overallHealth >= 40
+                    : parsedAnalysis.overallHealth.score >= 40
                     ? theme.palette.warning.main
                     : theme.palette.error.main,
               }}
@@ -147,220 +149,206 @@ const RelationshipAnalysisContent: React.FC<Props> = ({ analysis, isLoading = fa
                 justifyContent: 'center',
               }}
             >
-              <Typography variant="h6" component="div">
-                {overallHealth}%
+              <Typography variant="h6">
+                {parsedAnalysis.overallHealth.score}%
               </Typography>
             </Box>
           </Box>
-          <Typography variant="h6" gutterBottom align="center">
-            Saúde Geral do Relacionamento
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              Tendência:
+            </Typography>
+            {parsedAnalysis.overallHealth.trend === 'up' ? (
+              <TrendingUpIcon color="success" />
+            ) : parsedAnalysis.overallHealth.trend === 'down' ? (
+              <TrendingDownIcon color="error" />
+            ) : (
+              <span>→</span>
+            )}
+          </Box>
         </Box>
+      </Paper>
 
-        <List sx={{ width: '100%' }}>
-          {strengths.length > 0 && (
-            <>
-              <ListItem>
-                <ListItemIcon>
-                  <StarIcon color="primary" />
-                </ListItemIcon>
-                <ListItemText
-                  primary={
-                    <Typography variant="subtitle1" sx={{ mb: 1 }}>
-                      Pontos Fortes
-                    </Typography>
-                  }
-                  secondary={
-                    <Box sx={{ mt: 1 }}>
-                      {strengths.map((strength: string, index: number) => (
-                        <Chip
-                          key={index}
-                          label={strength}
-                          color="success"
-                          variant="outlined"
-                          size="small"
-                          sx={{ 
-                            mr: 1, 
-                            mb: 1,
-                            fontSize: { xs: '0.75rem', sm: '0.875rem' }
-                          }}
-                        />
-                      ))}
-                    </Box>
-                  }
+      {/* Strengths and Challenges */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 2, height: '100%' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <StarIcon color="success" sx={{ mr: 1 }} />
+              <Typography variant="h6">Pontos Fortes</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {parsedAnalysis.strengthsAndChallenges.strengths.map((strength, index) => (
+                <Chip
+                  key={index}
+                  label={strength}
+                  color="success"
+                  variant="outlined"
+                  size="small"
                 />
-              </ListItem>
-              <Divider variant="inset" component="li" />
-            </>
-          )}
+              ))}
+            </Box>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 2, height: '100%' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <WarningIcon color="error" sx={{ mr: 1 }} />
+              <Typography variant="h6">Desafios</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {parsedAnalysis.strengthsAndChallenges.challenges.map((challenge, index) => (
+                <Chip
+                  key={index}
+                  label={challenge}
+                  color="error"
+                  variant="outlined"
+                  size="small"
+                />
+              ))}
+            </Box>
+          </Paper>
+        </Grid>
+      </Grid>
 
-          {challenges.length > 0 && (
-            <>
-              <ListItem>
-                <ListItemIcon>
-                  <WarningIcon color="error" />
-                </ListItemIcon>
-                <ListItemText
-                  primary={
-                    <Typography variant="subtitle1" sx={{ mb: 1 }}>
-                      Desafios
-                    </Typography>
-                  }
-                  secondary={
-                    <Box sx={{ mt: 1 }}>
-                      {challenges.map((challenge: string, index: number) => (
-                        <Chip
-                          key={index}
-                          label={challenge}
-                          color="error"
-                          variant="outlined"
-                          size="small"
-                          sx={{ 
-                            mr: 1, 
-                            mb: 1,
-                            fontSize: { xs: '0.75rem', sm: '0.875rem' }
-                          }}
-                        />
-                      ))}
-                    </Box>
-                  }
-                />
-              </ListItem>
-              <Divider variant="inset" component="li" />
-            </>
-          )}
-
-          {communicationSuggestions.length > 0 && (
-            <>
-              <ListItem>
-                <ListItemIcon>
-                  <RecommendIcon color="info" />
-                </ListItemIcon>
-                <ListItemText
-                  primary={
-                    <Typography variant="subtitle1" sx={{ mb: 1 }}>
-                      Recomendações
-                    </Typography>
-                  }
-                  secondary={
-                    <Box sx={{ mt: 1 }}>
-                      {communicationSuggestions.map((rec: string, index: number) => (
-                        <Typography 
-                          key={index} 
-                          component="div" 
-                          sx={{ 
-                            mb: 1,
-                            fontSize: { xs: '0.875rem', sm: '1rem' }
-                          }}
-                        >
-                          • {rec}
-                        </Typography>
-                      ))}
-                    </Box>
-                  }
-                />
-              </ListItem>
-              <Divider variant="inset" component="li" />
-            </>
-          )}
-
-          {actionItems.length > 0 && (
-            <>
-              <ListItem>
-                <ListItemIcon>
-                  <AssignmentIcon color="secondary" />
-                </ListItemIcon>
-                <ListItemText
-                  primary={
-                    <Typography variant="subtitle1" sx={{ mb: 1 }}>
-                      Ações Sugeridas
-                    </Typography>
-                  }
-                  secondary={
-                    <Box sx={{ mt: 1 }}>
-                      {actionItems.map((item: string, index: number) => (
-                        <Typography 
-                          key={index} 
-                          component="div" 
-                          sx={{ 
-                            mb: 1,
-                            fontSize: { xs: '0.875rem', sm: '1rem' }
-                          }}
-                        >
-                          • {item}
-                        </Typography>
-                      ))}
-                    </Box>
-                  }
-                />
-              </ListItem>
-              <Divider variant="inset" component="li" />
-            </>
-          )}
-
-          {Object.entries(categories).map(([category, data]) => (
-            <React.Fragment key={category}>
-              <ListItem>
-                <ListItemIcon>
-                  {getTrendIcon(data.trend)}
-                </ListItemIcon>
-                <ListItemText
-                  primary={
-                    <Typography variant="subtitle1" sx={{ mb: 1 }}>
-                      {category}
-                    </Typography>
-                  }
-                  secondary={
-                    <Box sx={{ mt: 1 }}>
-                      <Box sx={{ mb: 1 }}>
-                        <Typography 
-                          component="span" 
-                          sx={{ 
-                            fontWeight: 500,
-                            fontSize: { xs: '0.875rem', sm: '1rem' }
-                          }}
-                        >
-                          Pontuação: {data.score}/10
-                        </Typography>
-                      </Box>
-                      {Array.isArray(data.insights) && data.insights.map((insight: string, index: number) => (
-                        <Typography 
-                          key={index} 
-                          component="div" 
-                          sx={{ 
-                            mb: 0.5,
-                            fontSize: { xs: '0.875rem', sm: '1rem' }
-                          }}
-                        >
-                          • {insight}
-                        </Typography>
-                      ))}
-                    </Box>
-                  }
-                />
-              </ListItem>
-              <Divider variant="inset" component="li" />
-            </React.Fragment>
-          ))}
-        </List>
-      </Box>
-    );
-  } catch (error) {
-    console.error('Error rendering RelationshipAnalysis:', error);
-    return (
-      <Box sx={{ p: 3, textAlign: 'center' }}>
-        <Typography color="error">
-          An error occurred while displaying the analysis.
+      {/* Categories Analysis */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Análise por Categoria
         </Typography>
-      </Box>
-    );
-  }
-};
+        <Grid container spacing={2}>
+          {Object.entries(parsedAnalysis.categories).map(([key, category]) => (
+            <Grid item xs={12} sm={6} md={4} key={key}>
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  {CATEGORY_LABELS[key] || key}
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
+                    Score: {category.score}
+                  </Typography>
+                  {category.trend === 'up' ? (
+                    <TrendingUpIcon color="success" fontSize="small" />
+                  ) : category.trend === 'down' ? (
+                    <TrendingDownIcon color="error" fontSize="small" />
+                  ) : (
+                    <span>→</span>
+                  )}
+                </Box>
+                <List dense>
+                  {category.insights.map((insight, index) => (
+                    <ListItem key={index}>
+                      <ListItemText
+                        primary={insight}
+                        primaryTypographyProps={{
+                          variant: 'body2',
+                          color: 'text.secondary',
+                        }}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </Paper>
+            </Grid>
+          ))}
+        </Grid>
+      </Paper>
 
-export const RelationshipAnalysis: React.FC<Props> = (props) => {
-  return (
-    <ErrorBoundary>
-      <RelationshipAnalysisContent {...props} />
-    </ErrorBoundary>
+      {/* Action Items and Suggestions */}
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 2, height: '100%' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <AssignmentIcon color="primary" sx={{ mr: 1 }} />
+              <Typography variant="h6">Ações Sugeridas</Typography>
+            </Box>
+            <List>
+              {parsedAnalysis.actionItems.map((item, index) => (
+                <ListItem key={index}>
+                  <ListItemIcon>•</ListItemIcon>
+                  <ListItemText primary={item} />
+                </ListItem>
+              ))}
+            </List>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 2, height: '100%' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <RecommendIcon color="info" sx={{ mr: 1 }} />
+              <Typography variant="h6">Sugestões de Comunicação</Typography>
+            </Box>
+            <List>
+              {parsedAnalysis.communicationSuggestions.map((suggestion, index) => (
+                <ListItem key={index}>
+                  <ListItemIcon>•</ListItemIcon>
+                  <ListItemText primary={suggestion} />
+                </ListItem>
+              ))}
+            </List>
+          </Paper>
+        </Grid>
+      </Grid>
+
+      {/* Relationship Dynamics */}
+      <Paper sx={{ p: 2, mt: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Dinâmicas do Relacionamento
+        </Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={4}>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="subtitle1" color="success.main" gutterBottom>
+                Padrões Positivos
+              </Typography>
+              <List dense>
+                {parsedAnalysis.relationshipDynamics.positivePatterns.map((pattern, index) => (
+                  <ListItem key={index}>
+                    <ListItemIcon>
+                      <StarIcon color="success" fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary={pattern} />
+                  </ListItem>
+                ))}
+              </List>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="subtitle1" color="warning.main" gutterBottom>
+                Áreas de Crescimento
+              </Typography>
+              <List dense>
+                {parsedAnalysis.relationshipDynamics.growthAreas.map((area, index) => (
+                  <ListItem key={index}>
+                    <ListItemIcon>
+                      <PsychologyIcon color="warning" fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary={area} />
+                  </ListItem>
+                ))}
+              </List>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="subtitle1" color="error.main" gutterBottom>
+                Padrões Preocupantes
+              </Typography>
+              <List dense>
+                {parsedAnalysis.relationshipDynamics.concerningPatterns.map((pattern, index) => (
+                  <ListItem key={index}>
+                    <ListItemIcon>
+                      <WarningIcon color="error" fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary={pattern} />
+                  </ListItem>
+                ))}
+              </List>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Paper>
+    </Box>
   );
 }; 

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { getAnalysisHistory } from '../services/analysisHistoryService';
 import { AnalysisHistoryList } from '../components/AnalysisHistoryList';
 import type { AnalysisRecord } from '../services/analysisHistoryService';
+import { Layout } from '../components/Layout';
 
 export const AnalysisHistory = () => {
   const { currentUser } = useAuth();
@@ -30,26 +31,32 @@ export const AnalysisHistory = () => {
 
   if (loading) {
     return (
-      <Container sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-        <CircularProgress />
-      </Container>
+      <Layout>
+        <Container sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+          <CircularProgress />
+        </Container>
+      </Layout>
     );
   }
 
   if (error) {
     return (
-      <Container>
-        <Typography color="error">{error}</Typography>
-      </Container>
+      <Layout>
+        <Container>
+          <Typography color="error">{error}</Typography>
+        </Container>
+      </Layout>
     );
   }
 
   return (
-    <Container>
-      <Typography variant="h4" gutterBottom>
-        Histórico de Análises
-      </Typography>
-      <AnalysisHistoryList analyses={analyses} />
-    </Container>
+    <Layout>
+      <Container>
+        <Typography variant="h4" gutterBottom>
+          Histórico de Análises
+        </Typography>
+        <AnalysisHistoryList analyses={analyses} />
+      </Container>
+    </Layout>
   );
 };

@@ -27,7 +27,6 @@ import {
   Person as PersonIcon,
   Favorite as FavoriteIcon,
   ExitToApp as LogoutIcon,
-  History as HistoryIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { NotificationBell } from './NotificationBell';
@@ -83,7 +82,6 @@ export const Layout: React.FC<Props> = ({ children }) => {
     { text: 'Avaliação Diária', icon: <AssessmentIcon />, path: '/assessment' },
     { text: 'Estatísticas', icon: <ChartIcon />, path: '/statistics' },
     { text: 'Análises', icon: <InsightIcon />, path: '/analysis' },
-    { text: 'Histórico', icon: <HistoryIcon />, path: '/history' },
     { text: 'Perfil', icon: <PersonIcon />, path: '/profile' },
     { text: 'Relacionamento', icon: <FavoriteIcon />, path: '/relationship' },
   ];

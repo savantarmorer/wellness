@@ -20,14 +20,36 @@ export const saveAnalysis = async (
 ): Promise<void> => {
   try {
     const analysisCollection = collection(db, 'gptAnalysis');
-    await addDoc(analysisCollection, {
+    
+    // If analysis is a string (individual analysis), store it directly
+    // If it's a RelationshipAnalysis object (collective analysis), ensure it has all required fields
+    const formattedAnalysis = typeof analysis === 'string' ? analysis : {
+      overallHealth: analysis.overallHealth || { score: 0, trend: 'stable' },
+      categories: analysis.categories || {},
+      strengthsAndChallenges: analysis.strengthsAndChallenges || { strengths: [], challenges: [] },
+      communicationSuggestions: analysis.communicationSuggestions || [],
+      actionItems: analysis.actionItems || [],
+      relationshipDynamics: analysis.relationshipDynamics || {
+        positivePatterns: [],
+        concerningPatterns: [],
+        growthAreas: []
+      }
+    };
+
+    const analysisData = {
       userId,
-      partnerId,
       type,
-      analysis,
+      analysis: formattedAnalysis,
       date: new Date().toISOString().split('T')[0],
       createdAt: Timestamp.now(),
-    });
+    };
+
+    // Only add partnerId if it's defined
+    if (partnerId) {
+      Object.assign(analysisData, { partnerId });
+    }
+
+    await addDoc(analysisCollection, analysisData);
   } catch (error) {
     console.error('Error saving analysis:', error);
     throw error;

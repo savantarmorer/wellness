@@ -39,7 +39,7 @@ Avaliação do Usuário:
 Avaliação do Parceiro:
 - Comunicação: ${partnerAssessment.ratings.comunicacao}
 - Ansiedade: ${partnerAssessment.ratings.saudeMental}
-- Transpar��ncia: ${partnerAssessment.ratings.transparenciaConfianca}
+- Transparência: ${partnerAssessment.ratings.transparenciaConfianca}
 - Intimidade: ${partnerAssessment.ratings.intimidadeFisica}
 - Insegurança: ${partnerAssessment.ratings.segurancaRelacionamento}
 - Satisfação Geral: ${partnerAssessment.ratings.satisfacaoGeral}
@@ -51,9 +51,9 @@ Contexto do Relacionamento:
 - Duração: ${relationshipContext.duration}
 - Status: ${relationshipContext.status}
 - Tipo de Relacionamento: ${relationshipContext.type}
-- Objetivos: ${relationshipContext.goals.join(', ')}
-- Desafios: ${relationshipContext.challenges.join(', ')}
-- Valores: ${relationshipContext.values.join(', ')}
+- Objetivos: ${relationshipContext.goals?.join(', ') || 'Não especificados'}
+- Desafios: ${relationshipContext.challenges?.join(', ') || 'Não especificados'}
+- Valores: ${relationshipContext.values?.join(', ') || 'Não especificados'}
 `
     : ''
 }
