@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Badge, IconButton, Menu, MenuItem, Typography } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Notification, subscribeToNotifications, markNotificationAsRead } from '../services/notificationService';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';

@@ -30,13 +30,10 @@ import {
   PolarGrid,
   PolarAngleAxis,
   PolarRadiusAxis,
-  Radar,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
+  Radar
+  
 } from 'recharts';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import { DailyAssessmentWithRatings } from '../types';
 import { getAssessmentHistory } from '../services/assessmentHistoryService';
 import { generateDailyInsight, generateRelationshipAnalysis } from '../services/gptService';
@@ -45,6 +42,7 @@ import { Psychology as PsychologyIcon, Group as GroupIcon } from '@mui/icons-mat
 import { saveAnalysis, getAnalysisForDate } from '../services/analysisHistoryService';
 import { RelationshipAnalysis } from '../components/RelationshipAnalysis';
 import type { RelationshipAnalysis as RelationshipAnalysisType } from '../services/gptService';
+import { ConsensusFormData } from '../services/analysisHistoryService';
 
 const METRICS = {
   comunicacao: 'Comunicação',
@@ -61,7 +59,7 @@ const METRICS = {
 interface AnalysisDialog {
   open: boolean;
   title: string;
-  content: string | RelationshipAnalysisType;
+  content: string | RelationshipAnalysisType | ConsensusFormData;
 }
 
 export default function Statistics() {
@@ -88,6 +86,7 @@ export default function Statistics() {
         setLoading(true);
         setError(null);
 
+        // Carregar histórico de avaliações
         const userAssessments = await getAssessmentHistory(currentUser.uid);
         const partnerAssessments = await getAssessmentHistory(userData.partnerId);
 
@@ -96,10 +95,8 @@ export default function Statistics() {
         setChartData(timeSeriesData);
         setRadarData(radarChartData);
       } catch (error) {
-        console.error('Failed to load assessment history:', error);
-        setError(new Error('Failed to load assessment history'));
-        setChartData([]);
-        setRadarData([]);
+        console.error('Failed to load data:', error);
+        setError(new Error('Failed to load data'));
       } finally {
         setLoading(false);
       }
@@ -370,50 +367,36 @@ export default function Statistics() {
     );
   }
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="subtitle2" gutterBottom>
-            {String(label)}
-          </Typography>
-          {payload.map((entry: any, index: number) => (
-            <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-              <Box
-                component="span"
-                sx={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: '50%',
-                  backgroundColor: entry.color,
-                }}
-              />
-              <Typography variant="body2" sx={{ color: entry.color }}>
-                {`${entry.name}: ${entry.value}`}
-              </Typography>
-            </Box>
-          ))}
-        </Paper>
-      );
-    }
-    return null;
-  };
-
   return (
     <Layout>
-      <Container maxWidth="lg">
-        <Box sx={{ mt: 4, mb: 6 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h4" gutterBottom>
-              Relationship Statistics
+      <Container>
+        <Box sx={{ mt: 4 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between', 
+            alignItems: { xs: 'stretch', sm: 'center' }, 
+            gap: 2,
+            mb: 3 
+          }}>
+            <Typography variant="h4" sx={{ 
+              fontSize: { xs: '1.75rem', sm: '2rem' },
+              textAlign: { xs: 'center', sm: 'left' }
+            }}>
+              Estatísticas do Relacionamento
             </Typography>
-            <Stack direction="row" spacing={2}>
+            <Stack 
+              direction={{ xs: 'column', sm: 'row' }} 
+              spacing={2}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
+            >
               <Button
                 variant="contained"
                 color="primary"
                 startIcon={<PsychologyIcon />}
                 onClick={handleGenerateIndividualAnalysis}
                 disabled={generatingAnalysis || !chartData.length}
+                fullWidth
               >
                 Análise Individual
               </Button>
@@ -423,6 +406,7 @@ export default function Statistics() {
                 startIcon={<GroupIcon />}
                 onClick={handleGenerateCollectiveAnalysis}
                 disabled={generatingAnalysis || !chartData.length}
+                fullWidth
               >
                 Análise do Casal
               </Button>
@@ -443,7 +427,7 @@ export default function Statistics() {
             <Grid item xs={12}>
               <Paper sx={{ p: 3 }}>
                 <Typography variant="h6" gutterBottom>
-                  Current Relationship Overview
+                  Visão Geral do Relacionamento
                 </Typography>
                 <Box sx={{ height: 500 }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -466,119 +450,18 @@ export default function Statistics() {
                         fillOpacity={0.3}
                       />
                       <Legend />
-                      <Tooltip content={<CustomTooltip />} />
+                      <Tooltip />
                     </RadarChart>
                   </ResponsiveContainer>
                 </Box>
               </Paper>
             </Grid>
 
-            {/* Area Chart - Overall Satisfaction */}
+            {/* Line Charts */}
             <Grid item xs={12}>
               <Paper sx={{ p: 3 }}>
                 <Typography variant="h6" gutterBottom>
-                  Overall Satisfaction Trends
-                </Typography>
-                <Box sx={{ height: 400 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis domain={[0, 10]} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Legend />
-                      <Area
-                        type="monotone"
-                        dataKey="userSatisfacaoGeral"
-                        name="Your Satisfaction"
-                        stroke={theme.palette.primary.main}
-                        fill={theme.palette.primary.main}
-                        fillOpacity={0.3}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="partnerSatisfacaoGeral"
-                        name="Partner's Satisfaction"
-                        stroke={theme.palette.secondary.main}
-                        fill={theme.palette.secondary.main}
-                        fillOpacity={0.3}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </Box>
-              </Paper>
-            </Grid>
-
-            {/* Bar Chart - Communication and Emotional Connection */}
-            <Grid item xs={12} md={6}>
-              <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Latest Communication Comparison
-                </Typography>
-                <Box sx={{ height: 400 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={[chartData[chartData.length - 1]].filter(Boolean)}
-                      layout="vertical"
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" domain={[0, 10]} />
-                      <YAxis dataKey="date" type="category" hide />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Legend />
-                      <Bar
-                        dataKey="userComunicacao"
-                        name="Your Communication"
-                        fill={theme.palette.primary.main}
-                      />
-                      <Bar
-                        dataKey="partnerComunicacao"
-                        name="Partner's Communication"
-                        fill={theme.palette.secondary.main}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </Box>
-              </Paper>
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Latest Emotional Connection Comparison
-                </Typography>
-                <Box sx={{ height: 400 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={[chartData[chartData.length - 1]].filter(Boolean)}
-                      layout="vertical"
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" domain={[0, 10]} />
-                      <YAxis dataKey="date" type="category" hide />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Legend />
-                      <Bar
-                        dataKey="userConexaoEmocional"
-                        name="Your Emotional Connection"
-                        fill={theme.palette.primary.main}
-                      />
-                      <Bar
-                        dataKey="partnerConexaoEmocional"
-                        name="Partner's Emotional Connection"
-                        fill={theme.palette.secondary.main}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </Box>
-              </Paper>
-            </Grid>
-
-            {/* Line Chart - Trends */}
-            <Grid item xs={12}>
-              <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Relationship Health Trends
+                  Evolução do Relacionamento
                 </Typography>
                 <Box sx={{ height: 400 }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -586,37 +469,21 @@ export default function Statistics() {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" />
                       <YAxis domain={[0, 10]} />
-                      <Tooltip content={<CustomTooltip />} />
+                      <Tooltip />
                       <Legend />
                       <Line
                         type="monotone"
-                        dataKey="userSaudeMental"
-                        name="Your Mental Health"
+                        dataKey="userSatisfacaoGeral"
+                        name="Your Overall Satisfaction"
                         stroke={theme.palette.primary.main}
                         strokeWidth={2}
                         dot={{ r: 4 }}
                       />
                       <Line
                         type="monotone"
-                        dataKey="partnerSaudeMental"
-                        name="Partner's Mental Health"
+                        dataKey="partnerSatisfacaoGeral"
+                        name="Partner's Overall Satisfaction"
                         stroke={theme.palette.secondary.main}
-                        strokeWidth={2}
-                        dot={{ r: 4 }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="userSegurancaRelacionamento"
-                        name="Your Relationship Security"
-                        stroke={theme.palette.success.main}
-                        strokeWidth={2}
-                        dot={{ r: 4 }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="partnerSegurancaRelacionamento"
-                        name="Partner's Relationship Security"
-                        stroke={theme.palette.warning.main}
                         strokeWidth={2}
                         dot={{ r: 4 }}
                       />
@@ -635,7 +502,15 @@ export default function Statistics() {
           >
             <DialogTitle>{analysisDialog.title}</DialogTitle>
             <DialogContent dividers>
-              <RelationshipAnalysis analysis={analysisDialog.content} />
+              {typeof analysisDialog.content === 'object' && 'type' in analysisDialog.content && analysisDialog.content.type === 'consensus_form' ? (
+                <Typography>{JSON.stringify(analysisDialog.content.analysis || 'No analysis available')}</Typography>
+              ) : (
+                <RelationshipAnalysis analysis={
+                  typeof analysisDialog.content === 'string' || 'overallHealth' in analysisDialog.content 
+                    ? analysisDialog.content 
+                    : 'Invalid analysis format'
+                } />
+              )}
             </DialogContent>
             <DialogActions>
               <Button onClick={() => setAnalysisDialog({ open: false, title: '', content: '' })}>

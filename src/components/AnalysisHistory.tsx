@@ -67,8 +67,8 @@ const AnalysisHistory: React.FC<Props> = ({ analyses }) => {
               {formatDate(analysis.date)}
             </Typography>
             <Chip
-              label={`Saúde: ${analysis.analysis.overallHealth}%`}
-              color={analysis.analysis.overallHealth >= 70 ? 'success' : 'warning'}
+              label={`Saúde: ${analysis.analysis.overallHealth.score}%`}
+              color={analysis.analysis.overallHealth.score >= 70 ? 'success' : 'warning'}
               size="small"
             />
           </AccordionSummary>
@@ -78,7 +78,7 @@ const AnalysisHistory: React.FC<Props> = ({ analyses }) => {
                 Pontos Fortes
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                {analysis.analysis.strengths.map((strength, idx) => (
+                {(analysis.analysis.strengths || []).map((strength, idx) => (
                   <Chip
                     key={idx}
                     label={strength}
@@ -93,7 +93,7 @@ const AnalysisHistory: React.FC<Props> = ({ analyses }) => {
                 Desafios
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                {analysis.analysis.challenges.map((challenge, idx) => (
+                {(analysis.analysis.challenges || []).map((challenge, idx) => (
                   <Chip
                     key={idx}
                     label={challenge}
@@ -108,7 +108,7 @@ const AnalysisHistory: React.FC<Props> = ({ analyses }) => {
                 Recomendações
               </Typography>
               <Box component="ul" sx={{ m: 0, pl: 2 }}>
-                {analysis.analysis.recommendations.map((rec, idx) => (
+                {(analysis.analysis.recommendations || []).map((rec, idx) => (
                   <Box component="li" key={idx} sx={{ mb: 1 }}>
                     {rec}
                   </Box>

@@ -10,11 +10,22 @@ import {
 } from '@mui/material';
 
 export const StyledButton = styled(Button)(({ theme }) => ({
-  background: alpha(theme.palette.primary.main, 0.1),
-  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-  '&:hover': {
-    background: alpha(theme.palette.primary.main, 0.2),
-    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+  borderRadius: 8,
+  padding: theme.spacing(1, 2),
+  [theme.breakpoints.up('sm')]: {
+    padding: theme.spacing(1.5, 3),
+  },
+  fontSize: '0.875rem',
+  [theme.breakpoints.up('sm')]: {
+    fontSize: '1rem',
+  },
+  fontWeight: 600,
+  textTransform: 'none',
+  '&.MuiButton-contained': {
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+    '&:hover': {
+      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+    },
   },
 }));
 
@@ -25,6 +36,10 @@ export const StyledPaper = styled(Paper)(({ theme }) => ({
   WebkitBackdropFilter: 'blur(20px)',
   borderRadius: 12,
   border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+  padding: theme.spacing(2),
+  [theme.breakpoints.up('sm')]: {
+    padding: theme.spacing(3),
+  },
 }));
 
 export const StyledCard = styled(Card)(({ theme }) => ({
@@ -35,6 +50,22 @@ export const StyledCard = styled(Card)(({ theme }) => ({
   WebkitBackdropFilter: 'blur(20px)',
   border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
   boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+  padding: theme.spacing(2),
+  [theme.breakpoints.up('sm')]: {
+    padding: theme.spacing(3),
+  },
+  '& .MuiCardContent-root': {
+    padding: theme.spacing(2),
+    [theme.breakpoints.up('sm')]: {
+      padding: theme.spacing(3),
+    },
+  },
+  '& .MuiCardActions-root': {
+    padding: theme.spacing(1, 2),
+    [theme.breakpoints.up('sm')]: {
+      padding: theme.spacing(2, 3),
+    },
+  },
   '&:hover': {
     boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
   },
@@ -47,6 +78,16 @@ export const StyledTextField = styled(TextField)(({ theme }) => ({
     backdropFilter: 'blur(20px)',
     WebkitBackdropFilter: 'blur(20px)',
     border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+    fontSize: '0.875rem',
+    [theme.breakpoints.up('sm')]: {
+      fontSize: '1rem',
+    },
+    '& .MuiOutlinedInput-input': {
+      padding: theme.spacing(1.5, 2),
+      [theme.breakpoints.up('sm')]: {
+        padding: theme.spacing(2, 2.5),
+      },
+    },
     '&:hover': {
       borderColor: alpha(theme.palette.primary.main, 0.5),
     },

@@ -1,5 +1,9 @@
 import { db } from './firebase';
 import { collection, query, where, onSnapshot, addDoc, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { app } from './firebase';
+
+const messaging = getMessaging(app);
 
 export interface Notification {
   id?: string;
@@ -110,4 +114,65 @@ export const subscribeToNotifications = (
     } as Notification));
     onNotification(notifications);
   });
+};
+
+export const requestNotificationPermission = async () => {
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      const token = await getToken(messaging, {
+        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY
+      });
+      return token;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error requesting notification permission:', error);
+    return null;
+  }
+};
+
+export const onMessageListener = () =>
+  new Promise((resolve) => {
+    onMessage(messaging, (payload) => {
+      resolve(payload);
+    });
+  });
+
+export const scheduleReminderNotification = () => {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    // Agendar notificação para 20h se ainda não fez a avaliação
+    const now = new Date();
+    const reminderTime = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      20, // 20h
+      0,
+      0
+    );
+
+    if (now < reminderTime) {
+      const timeUntilReminder = reminderTime.getTime() - now.getTime();
+      setTimeout(() => {
+        new Notification('Lembrete de Avaliação', {
+          body: 'Não se esqueça de fazer sua avaliação diária!',
+          icon: '/icons/icon-192x192.png',
+          badge: '/icons/icon-72x72.png',
+          tag: 'daily-reminder'
+        });
+      }, timeUntilReminder);
+    }
+  }
+};
+
+export const showWelcomeBack = () => {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('Bem-vindo(a) de volta!', {
+      body: 'Continue mantendo seu relacionamento saudável.',
+      icon: '/icons/icon-192x192.png',
+      badge: '/icons/icon-72x72.png',
+      tag: 'welcome-back'
+    });
+  }
 }; 

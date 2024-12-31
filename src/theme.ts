@@ -144,9 +144,7 @@ export const theme = createTheme({
           borderRadius: 12,
           textTransform: 'none',
           padding: '10px 24px',
-          fontSize: '1rem',
           fontWeight: 600,
-          letterSpacing: '-0.01em',
         },
         contained: ({ theme }: { theme: Theme }) => ({
           background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
@@ -156,12 +154,6 @@ export const theme = createTheme({
             boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
           },
         }),
-        outlined: {
-          borderWidth: 2,
-          '&:hover': {
-            borderWidth: 2,
-          },
-        },
       },
     },
     MuiPaper: {
@@ -173,92 +165,7 @@ export const theme = createTheme({
           WebkitBackdropFilter: 'blur(20px)',
           borderRadius: 24,
           border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-        }),
-        elevation1: {
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-        },
-        elevation2: {
-          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-        },
-      },
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: ({ theme }: { theme: Theme }) => ({
-          borderRadius: 24,
-          backgroundImage: 'none',
-          backgroundColor: alpha(theme.palette.background.paper, 0.8),
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-          '&:hover': {
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-          },
-        }),
-      },
-    },
-    MuiListItem: {
-      styleOverrides: {
-        root: {
-          borderRadius: 16,
-        },
-      },
-    },
-    MuiTextField: {
-      styleOverrides: {
-        root: {
-          '& .MuiOutlinedInput-root': {
-            borderRadius: 12,
-            backgroundColor: ({ theme }: { theme: Theme }) => alpha(theme.palette.background.paper, 0.8),
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            border: ({ theme }: { theme: Theme }) => `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-            '&:hover': {
-              borderColor: ({ theme }: { theme: Theme }) => alpha(theme.palette.primary.main, 0.3),
-            },
-            '&.Mui-focused': {
-              borderColor: ({ theme }: { theme: Theme }) => theme.palette.primary.main,
-              boxShadow: ({ theme }: { theme: Theme }) => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
-            },
-          },
-        },
-      },
-    },
-    MuiChip: {
-      styleOverrides: {
-        root: ({ theme }: { theme: Theme }) => ({
-          borderRadius: 8,
-          backgroundColor: alpha(theme.palette.primary.main, 0.1),
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-          '&:hover': {
-            backgroundColor: alpha(theme.palette.primary.main, 0.2),
-          },
-        }),
-      },
-    },
-    MuiAppBar: {
-      styleOverrides: {
-        root: ({ theme }: { theme: Theme }) => ({
-          backgroundImage: 'none',
-          backgroundColor: alpha(theme.palette.background.paper, 0.8),
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderBottom: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-        }),
-      },
-    },
-    MuiDialog: {
-      styleOverrides: {
-        paper: ({ theme }: { theme: Theme }) => ({
-          borderRadius: 24,
-          backgroundImage: 'none',
-          backgroundColor: alpha(theme.palette.background.paper, 0.8),
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+          padding: '24px',
         }),
       },
     },

@@ -1,138 +1,345 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  List,
-  ListItem,
-  Paper,
   Box,
-  Divider,
-  Stack,
   Typography,
-  Alert,
+  List,
+  Chip,
+  Paper,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Divider,
+  useTheme,
+  alpha
 } from '@mui/material';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { RelationshipAnalysis } from './RelationshipAnalysis';
-import type { AnalysisRecord } from '../services/analysisHistoryService';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import PersonIcon from '@mui/icons-material/Person';
+import GroupIcon from '@mui/icons-material/Group';
 import type { GPTAnalysis } from '../types';
-import type { RelationshipAnalysis as ServiceAnalysis } from '../services/gptService';
 
 interface Props {
-  analyses: AnalysisRecord[];
+  analyses: GPTAnalysis[];
 }
 
-const generateAnalysisId = () => `gpt_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-
 export const AnalysisHistoryList: React.FC<Props> = ({ analyses }) => {
-  const convertToServiceAnalysis = (record: AnalysisRecord): ServiceAnalysis | null => {
-    try {
-      let analysisData: any = record.analysis;
-      if (typeof record.analysis === 'string' && 
-          (record.analysis.startsWith('{') || record.analysis.startsWith('['))) {
-        try {
-          analysisData = JSON.parse(record.analysis);
-        } catch (e) {
-          console.error('Failed to parse analysis string:', e);
-          return null;
-        }
-      }
+  const theme = useTheme();
+  const [expanded, setExpanded] = useState<string | false>(false);
 
-      if (!analysisData) {
-        console.error('Analysis data is null or undefined');
-        return null;
-      }
-
-      // Handle both GPTAnalysis and direct RelationshipAnalysis formats
-      if (typeof analysisData === 'object' && 'analysis' in analysisData) {
-        // If it's a GPTAnalysis format
-        const gptAnalysis = analysisData.analysis as GPTAnalysis['analysis'];
-        return {
-          overallHealth: {
-            score: gptAnalysis.overallHealth || 0,
-            trend: 'stable'
-          },
-          categories: gptAnalysis.categoryAnalysis || {},
-          strengthsAndChallenges: {
-            strengths: gptAnalysis.strengths || [],
-            challenges: gptAnalysis.challenges || []
-          },
-          communicationSuggestions: gptAnalysis.recommendations || [],
-          actionItems: gptAnalysis.actionItems || [],
-          relationshipDynamics: gptAnalysis.relationshipDynamics || {
-            positivePatterns: [],
-            concerningPatterns: [],
-            growthAreas: []
-          }
-        };
-      }
-
-      // If it's already in RelationshipAnalysis format
-      const analysis = analysisData as ServiceAnalysis;
-      return {
-        overallHealth: {
-          score: analysis.overallHealth?.score || 0,
-          trend: analysis.overallHealth?.trend || 'stable'
-        },
-        categories: analysis.categories || {},
-        strengthsAndChallenges: {
-          strengths: analysis.strengthsAndChallenges?.strengths || [],
-          challenges: analysis.strengthsAndChallenges?.challenges || []
-        },
-        communicationSuggestions: analysis.communicationSuggestions || [],
-        actionItems: analysis.actionItems || [],
-        relationshipDynamics: analysis.relationshipDynamics || {
-          positivePatterns: [],
-          concerningPatterns: [],
-          growthAreas: []
-        }
-      };
-    } catch (error) {
-      console.error('Error converting analysis:', error);
-      console.error('Record that caused error:', record);
-      return null;
-    }
+  const handleChange = (panel: string) => (_: React.SyntheticEvent, isExpanded: boolean) => {
+    setExpanded(isExpanded ? panel : false);
   };
 
-  if (!analyses || analyses.length === 0) {
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+  };
+
+  const renderAnalysisContent = (analysisContent: GPTAnalysis['analysis']) => {
+    if ('textReport' in analysisContent && typeof analysisContent.textReport === 'string') {
+      const sections = analysisContent.textReport.split('\n\n').filter(Boolean);
+      return (
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            p: 3,
+            background: alpha(theme.palette.background.paper, 0.7),
+            backdropFilter: 'blur(10px)',
+            borderRadius: 2,
+            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            transition: 'all 0.3s ease'
+          }}
+        >
+          {sections.map((section: string, index: number) => (
+            <Box key={index} sx={{ mb: 3 }}>
+              <Typography 
+                variant="body1" 
+                sx={{ 
+                  whiteSpace: 'pre-wrap',
+                  lineHeight: 1.8,
+                  color: theme.palette.text.primary,
+                  fontWeight: section.startsWith('1.') ? 600 : 400,
+                  fontSize: section.startsWith('1.') ? '1.1rem' : '1rem'
+                }}
+              >
+                {section}
+              </Typography>
+              {index < sections.length - 1 && (
+                <Divider 
+                  sx={{ 
+                    my: 3,
+                    opacity: 0.2,
+                    borderColor: theme.palette.primary.main
+                  }} 
+                />
+              )}
+            </Box>
+          ))}
+        </Paper>
+      );
+    }
+
     return (
-      <Alert severity="info" sx={{ mt: 2 }}>
-        Nenhuma análise encontrada.
-      </Alert>
+      <Box sx={{ width: '100%' }}>
+        <Box sx={{ 
+          display: 'grid', 
+          gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
+          gap: 3,
+          mb: 4
+        }}>
+          <Paper 
+            elevation={0} 
+            sx={{ 
+              p: 3,
+              background: alpha(theme.palette.success.main, 0.05),
+              borderRadius: 2,
+              border: `1px solid ${alpha(theme.palette.success.main, 0.1)}`,
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-2px)',
+                boxShadow: theme.shadows[4]
+              }
+            }}
+          >
+            <Typography 
+              variant="h6" 
+              gutterBottom
+              sx={{ 
+                color: theme.palette.success.main,
+                fontWeight: 600,
+                mb: 2
+              }}
+            >
+              Pontos Fortes
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {analysisContent.strengths?.map((strength: string, idx: number) => (
+                <Chip
+                  key={idx}
+                  label={strength}
+                  color="success"
+                  size="small"
+                  sx={{ 
+                    borderRadius: '8px',
+                    '& .MuiChip-label': {
+                      px: 2
+                    }
+                  }}
+                />
+              ))}
+            </Box>
+          </Paper>
+
+          <Paper 
+            elevation={0} 
+            sx={{ 
+              p: 3,
+              background: alpha(theme.palette.error.main, 0.05),
+              borderRadius: 2,
+              border: `1px solid ${alpha(theme.palette.error.main, 0.1)}`,
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-2px)',
+                boxShadow: theme.shadows[4]
+              }
+            }}
+          >
+            <Typography 
+              variant="h6" 
+              gutterBottom
+              sx={{ 
+                color: theme.palette.error.main,
+                fontWeight: 600,
+                mb: 2
+              }}
+            >
+              Desafios
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {analysisContent.challenges?.map((challenge: string, idx: number) => (
+                <Chip
+                  key={idx}
+                  label={challenge}
+                  color="error"
+                  size="small"
+                  sx={{ 
+                    borderRadius: '8px',
+                    '& .MuiChip-label': {
+                      px: 2
+                    }
+                  }}
+                />
+              ))}
+            </Box>
+          </Paper>
+
+          <Paper 
+            elevation={0} 
+            sx={{ 
+              p: 3,
+              background: alpha(theme.palette.info.main, 0.05),
+              borderRadius: 2,
+              border: `1px solid ${alpha(theme.palette.info.main, 0.1)}`,
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-2px)',
+                boxShadow: theme.shadows[4]
+              }
+            }}
+          >
+            <Typography 
+              variant="h6" 
+              gutterBottom
+              sx={{ 
+                color: theme.palette.info.main,
+                fontWeight: 600,
+                mb: 2
+              }}
+            >
+              Recomendações
+            </Typography>
+            <Box component="ul" sx={{ m: 0, pl: 2 }}>
+              {analysisContent.recommendations?.map((rec: string, idx: number) => (
+                <Box 
+                  component="li" 
+                  key={idx} 
+                  sx={{ 
+                    mb: 1,
+                    color: theme.palette.text.secondary,
+                    '&::marker': {
+                      color: theme.palette.info.main
+                    }
+                  }}
+                >
+                  {rec}
+                </Box>
+              ))}
+            </Box>
+          </Paper>
+        </Box>
+      </Box>
     );
-  }
+  };
 
   return (
-    <List>
-      {analyses.map((analysis) => {
-        const convertedAnalysis = convertToServiceAnalysis(analysis);
-        if (!convertedAnalysis) {
-          return (
-            <ListItem key={analysis.id || 'error'}>
-              <Alert severity="error" sx={{ width: '100%' }}>
-                Erro ao carregar esta análise.
-              </Alert>
-            </ListItem>
-          );
-        }
+    <Box sx={{ width: '100%', maxWidth: 1200, mx: 'auto', p: { xs: 2, md: 4 } }}>
+      <Box sx={{ mb: 4 }}>
+        <Typography 
+          variant="h4" 
+          sx={{ 
+            fontWeight: 700,
+            background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            mb: 2
+          }}
+        >
+          Histórico de Análises
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Acompanhe a evolução do seu relacionamento através das análises realizadas
+        </Typography>
+      </Box>
 
-        return (
-          <ListItem key={analysis.id}>
-            <Paper elevation={2} sx={{ width: '100%', p: 2 }}>
-              <Stack spacing={2}>
-                <Box>
-                  <Typography variant="subtitle1" color="primary">
-                    {format(new Date(analysis.date), 'PPP', { locale: ptBR })}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {analysis.type === 'individual' ? 'Análise Individual' : 'Análise do Casal'}
+      <List sx={{ width: '100%' }}>
+        {analyses.map((analysis) => {
+          const analysisContent = analysis.analysis;
+
+          return (
+            <Accordion
+              key={analysis.id}
+              expanded={expanded === analysis.id}
+              onChange={handleChange(analysis.id)}
+              sx={{ 
+                mb: 2,
+                width: '100%',
+                background: alpha(theme.palette.background.paper, 0.7),
+                backdropFilter: 'blur(10px)',
+                borderRadius: '16px !important',
+                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                overflow: 'hidden',
+                '&:before': {
+                  display: 'none'
+                },
+                '&.Mui-expanded': {
+                  margin: '0 0 16px 0'
+                }
+              }}
+            >
+              <AccordionSummary
+                expandIcon={
+                  <ExpandMoreIcon sx={{ 
+                    color: theme.palette.primary.main,
+                    transition: 'transform 0.3s ease',
+                    transform: expanded === analysis.id ? 'rotate(180deg)' : 'none'
+                  }} />
+                }
+                sx={{ 
+                  '& .MuiAccordionSummary-content': {
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: 2
+                  }
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <TimelineIcon sx={{ color: theme.palette.primary.main }} />
+                  <Typography 
+                    variant="subtitle1"
+                    sx={{ 
+                      fontWeight: 600,
+                      color: theme.palette.text.primary
+                    }}
+                  >
+                    {formatDate(analysis.date)}
                   </Typography>
                 </Box>
-                <Divider />
-                <RelationshipAnalysis analysis={convertedAnalysis} />
-              </Stack>
-            </Paper>
-          </ListItem>
-        );
-      })}
-    </List>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Chip
+                    icon={analysis.type === 'individual' ? <PersonIcon /> : <GroupIcon />}
+                    label={analysis.type === 'individual' ? 'Individual' : 'Casal'}
+                    color="primary"
+                    size="small"
+                    sx={{ 
+                      borderRadius: '8px',
+                      background: alpha(theme.palette.primary.main, 0.1),
+                      color: theme.palette.primary.main,
+                      '& .MuiChip-icon': {
+                        color: theme.palette.primary.main
+                      }
+                    }}
+                  />
+                  {'textReport' in analysisContent && 
+                   typeof analysisContent.textReport === 'string' && 
+                   !analysisContent.textReport && 
+                   analysisContent.overallHealth && (
+                    <Chip
+                      label={`Saúde: ${analysisContent.overallHealth.score}%`}
+                      color={analysisContent.overallHealth.score >= 70 ? 'success' : 'warning'}
+                      size="small"
+                      sx={{ 
+                        borderRadius: '8px',
+                        '& .MuiChip-label': {
+                          px: 2
+                        }
+                      }}
+                    />
+                  )}
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: { xs: 2, md: 3 } }}>
+                {renderAnalysisContent(analysisContent)}
+              </AccordionDetails>
+            </Accordion>
+          );
+        })}
+      </List>
+    </Box>
   );
 };

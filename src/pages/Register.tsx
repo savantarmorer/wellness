@@ -10,7 +10,7 @@ import {
   Paper,
   Alert,
 } from '@mui/material';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import { FirebaseError } from 'firebase/app';
 
 const Register = () => {
@@ -37,7 +37,7 @@ const Register = () => {
     try {
       setError('');
       setLoading(true);
-      await signup(email, password, name);
+      await signup(email, password);
       navigate('/dashboard');
     } catch (err) {
       if (err instanceof FirebaseError) {

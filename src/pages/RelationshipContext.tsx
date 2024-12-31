@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Box, Container, Typography, Alert } from '@mui/material';
 import { RelationshipContextForm } from '../components/RelationshipContextForm';
 import { RelationshipContextView } from '../components/RelationshipContextView';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import { getRelationshipContext, saveRelationshipContext, updateRelationshipContext } from '../services/relationshipContextService';
 import type { RelationshipContext, RelationshipContextFormData } from '../types';
 import { Layout } from '../components/Layout';

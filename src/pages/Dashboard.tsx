@@ -12,17 +12,23 @@ import {
   ListItemText,
   Divider,
   Alert,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import { Layout } from '../components/Layout';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import type { DailyAssessment } from '../types';
+import { DateCalendar, DateEvent } from '../components/DateCalendar';
+import * as calendarService from '../services/calendarService';
+import { DateSuggestions, DateSuggestion } from '../components/DateSuggestions';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { userData, currentUser } = useAuth();
   const [recentAssessments, setRecentAssessments] = useState<DailyAssessment[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<DateEvent[]>([]);
   const [stats, setStats] = useState({
     weeklyAverage: 0,
     completionRate: 0,
@@ -34,12 +40,19 @@ const Dashboard = () => {
     assessmentStreak: 0,
   });
   const [loading, setLoading] = useState(true);
+  const theme = useTheme();
+  const matches = useMediaQuery(theme.breakpoints.down('sm'));
+  const [userInterests, setUserInterests] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       if (!currentUser) return;
 
       try {
+        // Fetch calendar events
+        const events = await calendarService.getEvents(currentUser.uid, userData?.partnerId);
+        setCalendarEvents(events);
+
         // Fetch recent assessments
         const assessmentsRef = collection(db, 'assessments');
         const assessmentsQuery = query(
@@ -147,6 +160,12 @@ const Dashboard = () => {
             });
           }
         }
+
+        // Fetch user interests if they exist
+        if (userData?.interests) {
+          setUserInterests(userData.interests);
+        }
+
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       } finally {
@@ -156,6 +175,34 @@ const Dashboard = () => {
 
     fetchData();
   }, [currentUser, userData]);
+
+  const handleAddEvent = async (event: Omit<DateEvent, 'id'>) => {
+    try {
+      await calendarService.addEvent(event);
+      const updatedEvents = await calendarService.getEvents(currentUser!.uid, userData?.partnerId);
+      setCalendarEvents(updatedEvents);
+    } catch (error) {
+      console.error('Error adding event:', error);
+    }
+  };
+
+  const handleAddToCalendar = async (suggestion: DateSuggestion) => {
+    try {
+      const eventDetails: Omit<DateEvent, 'id'> = {
+        title: suggestion.title,
+        date: new Date(),
+        time: '',
+        location: suggestion.location,
+        isRecurring: false,
+        createdBy: currentUser!.uid,
+      };
+      await calendarService.addEvent(eventDetails);
+      const updatedEvents = await calendarService.getEvents(currentUser!.uid, userData?.partnerId);
+      setCalendarEvents(updatedEvents);
+    } catch (error) {
+      console.error('Error adding event from suggestion:', error);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -206,26 +253,55 @@ const Dashboard = () => {
           </Alert>
         )}
         <Grid container spacing={3}>
+          {/* Calendar Section */}
+          <Grid item xs={12}>
+            <DateCalendar
+              events={calendarEvents}
+              onAddEvent={handleAddEvent}
+              userId={currentUser?.uid || ''}
+            />
+          </Grid>
+
           {/* Welcome Section */}
           <Grid item xs={12}>
-            <Paper sx={{ p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Paper sx={{ 
+              p: { xs: 2, sm: 3 }, 
+              display: 'flex', 
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: 2,
+              justifyContent: 'space-between', 
+              alignItems: { xs: 'stretch', sm: 'center' } 
+            }}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 2,
+                flexDirection: { xs: 'column', sm: 'row' },
+                textAlign: { xs: 'center', sm: 'left' }
+              }}>
                 <Box
                   component="img"
                   src="/icons/icon-192x192.png"
                   alt="Dr. Bread Logo"
                   sx={{
-                    width: 60,
-                    height: 60,
+                    width: { xs: 80, sm: 60 },
+                    height: { xs: 80, sm: 60 },
                     borderRadius: '20%'
                   }}
                 />
                 <Box>
-                  <Typography variant="h4" gutterBottom>
+                  <Typography variant="h4" sx={{ 
+                    fontSize: { xs: '1.75rem', sm: '2rem' },
+                    mb: 1 
+                  }}>
                     Bem Vindo de volta, {userData?.name}
                   </Typography>
                   <Typography variant="body1" color="text.secondary">
-                    Acompanhe seu relacionamento diário
+                    {userData?.partnerId ? (
+                      <>Conectado com <strong>{partnerStatus.name}</strong> • Acompanhe seu relacionamento diário</>
+                    ) : (
+                      'Acompanhe seu relacionamento diário'
+                    )}
                   </Typography>
                 </Box>
               </Box>
@@ -233,6 +309,11 @@ const Dashboard = () => {
                 variant="contained"
                 size="large"
                 onClick={() => navigate('/assessment')}
+                fullWidth={matches}
+                sx={{ 
+                  mt: { xs: 2, sm: 0 },
+                  minWidth: { xs: '100%', sm: 'auto' }
+                }}
               >
                 Iniciar Avaliação de hoje
               </Button>
@@ -325,6 +406,14 @@ const Dashboard = () => {
                 </Grid>
               </Grid>
             </Paper>
+          </Grid>
+
+          {/* Date Suggestions Section */}
+          <Grid item xs={12}>
+            <DateSuggestions
+              userInterests={userInterests}
+              onAddToCalendar={handleAddToCalendar}
+            />
           </Grid>
         </Grid>
       </Container>

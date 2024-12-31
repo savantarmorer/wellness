@@ -7,6 +7,7 @@ export interface User {
   partnerId?: string;
   createdAt: string;
   updatedAt?: string;
+  interests?: string[];
 }
 
 export interface CategoryRatings {
@@ -29,133 +30,112 @@ export interface DailyAssessment {
   id?: string;
   userId: string;
   date: string;
-  ratings: CategoryRatings;
-  comments?: string;
-  partnerId?: string;
-  gratitude?: string;
-  createdAt: string;
-  updatedAt?: string;
+  mood: number;
+  notes: string;
+  analysis?: RelationshipAnalysis | string;
 }
 
 export interface DailyAssessmentWithRatings extends DailyAssessment {
-  ratings: CategoryRatings;
+  ratings: {
+    comunicacao: number;
+    conexaoEmocional: number;
+    apoioMutuo: number;
+    transparenciaConfianca: number;
+    intimidadeFisica: number;
+    saudeMental: number;
+    resolucaoConflitos: number;
+    segurancaRelacionamento: number;
+    satisfacaoGeral: number;
+  };
 }
 
 export interface RelationshipContext {
-  id: string;
-  userId: string;
-  partnerId: string;
-  duration: string;
-  status: string;
-  type: string;
-  goals: string[];
-  challenges: string[];
-  values: string[];
-  relationshipDuration: string;
-  relationshipStyle: string;
-  relationshipStyleOther: string;
-  currentDynamics: string;
-  strengths: string;
-  areasNeedingAttention: {
-    comunicacao: boolean;
-    confianca: boolean;
-    intimidade: boolean;
-    resolucaoConflitos: boolean;
-    apoioEmocional: boolean;
-    outros: boolean;
-  };
-  areasNeedingAttentionOther: string;
-  recurringProblems: string;
-  appGoals: string;
-  hadSignificantCrises: boolean;
-  crisisDescription: string;
-  attemptedSolutions: boolean;
-  solutionsDescription: string;
-  userEmotionalState: string;
-  partnerEmotionalState: string;
-  timeSpentTogether: string;
-  qualityTime: boolean;
-  qualityTimeDescription: string;
-  routineImpact: string;
-  physicalIntimacy: string;
-  intimacyImprovements: string;
-  additionalInfo: string;
-  createdAt: string;
-  updatedAt?: string;
+  relationshipDuration: number;
+  relationshipStatus: 'dating' | 'engaged' | 'married' | 'other';
+  livingTogether: boolean;
+  hasChildren: boolean;
+  previousCounseling: boolean;
+  majorLifeEvents?: string[];
 }
 
-export interface RelationshipContextFormData {
-  duration: string;
-  status: string;
-  type: string;
-  goals: string[];
-  challenges: string[];
-  values: string[];
-  relationshipDuration: string;
-  relationshipStyle: string;
-  relationshipStyleOther: string;
-  currentDynamics: string;
-  strengths: string;
-  areasNeedingAttention: {
-    comunicacao: boolean;
-    confianca: boolean;
-    intimidade: boolean;
-    resolucaoConflitos: boolean;
-    apoioEmocional: boolean;
-    outros: boolean;
+export interface AnalysisContent {
+  type: 'daily_assessment' | 'consensus_form';
+  content: RelationshipAnalysis | ConsensusFormData;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  partnerEmail?: string;
+  partnerId?: string;
+  relationshipContext?: RelationshipContext;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationPreferences {
+  dailyReminder: boolean;
+  weeklyInsights: boolean;
+  partnerActivities: boolean;
+  emailNotifications: boolean;
+  pushNotifications: boolean;
+  reminderTime?: string;
+}
+
+export interface AppError {
+  code: string;
+  message: string;
+  details?: any;
+}
+
+export interface ConsensusFormData {
+  id?: string;
+  userId: string;
+  partnerId: string;
+  date: string;
+  responses: {
+    [key: string]: {
+      rating: number;
+      notes?: string;
+    };
   };
-  areasNeedingAttentionOther: string;
-  recurringProblems: string;
-  appGoals: string;
-  hadSignificantCrises: boolean;
-  crisisDescription: string;
-  attemptedSolutions: boolean;
-  solutionsDescription: string;
-  userEmotionalState: string;
-  partnerEmotionalState: string;
-  timeSpentTogether: string;
-  qualityTime: boolean;
-  qualityTimeDescription: string;
-  routineImpact: string;
-  physicalIntimacy: string;
-  intimacyImprovements: string;
-  additionalInfo: string;
+  analysis?: RelationshipAnalysis;
+}
+
+export interface RelationshipAnalysis {
+  summary: string;
+  relationshipDynamics: {
+    positivePatterns: string[];
+    concerningPatterns: string[];
+    growthAreas: string[];
+  };
+  recommendations: string[];
+  moodTrend: 'improving' | 'stable' | 'declining';
+  communicationQuality: 'strong' | 'moderate' | 'needs_improvement';
+}
+
+export interface GPTAnalysisContent {
+  overallHealth?: { score: number; trend: string };
+  strengths?: string[];
+  challenges?: string[];
+  recommendations?: string[];
+  categories?: Record<string, any>;
+  relationshipDynamics?: {
+    positivePatterns: string[];
+    concerningPatterns: string[];
+    growthAreas: string[];
+  };
+  actionItems?: string[];
+  textReport?: string;
 }
 
 export interface GPTAnalysis {
   id: string;
   userId: string;
-  partnerId: string;
+  partnerId?: string;
   date: string;
   type: 'individual' | 'collective';
-  analysis: {
-    overallHealth: number;
-    strengths: string[];
-    challenges: string[];
-    recommendations: string[];
-    categoryAnalysis: Record<string, {
-      score: number;
-      trend: string;
-      insights: string[];
-    }>;
-    relationshipDynamics: {
-      positivePatterns: string[];
-      concerningPatterns: string[];
-      growthAreas: string[];
-    };
-    actionItems: string[];
-  };
-  createdAt: string;
-}
-
-export interface AnalysisHistoryItem {
-  id: string;
-  userId: string;
-  partnerId: string;
-  date: string;
-  analysis: RelationshipAnalysis;
-  userAssessmentId: string;
-  partnerAssessmentId: string;
-  createdAt: string;
-  updatedAt?: string;
+  analysis: GPTAnalysisContent;
+  createdAt: any;
 } 

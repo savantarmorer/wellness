@@ -180,4 +180,80 @@ Forneça uma análise que:
 6. Identifique padrões emergentes ou recorrentes
 
 Sua análise deve focar na evolução do relacionamento e na eficácia das intervenções ao longo do tempo.`;
-}; 
+};
+
+export const CONSENSUS_FORM_ANALYSIS_PROMPT = `Como terapeuta especializado em relacionamentos, analise os resultados deste formulário de consenso conjugal.
+Considere o contexto histórico, as avaliações diárias anteriores e as análises prévias para fornecer insights profundos sobre:
+
+1. Padrões de Concordância e Discordância
+- Identifique áreas de forte alinhamento e potenciais pontos de conflito
+- Analise a consistência entre as respostas e comportamentos relatados anteriormente
+- Avalie o impacto das diferenças nas dinâmicas do relacionamento
+
+2. Análise de Risco
+- Avalie indicadores de risco para o relacionamento
+- Identifique padrões que podem levar a conflitos futuros
+- Analise a gravidade de desalinhamentos encontrados
+
+3. Progressão do Relacionamento
+- Compare com avaliações anteriores para identificar tendências
+- Avalie melhorias ou deteriorações em áreas específicas
+- Analise a eficácia das intervenções anteriores
+
+4. Insights Terapêuticos
+- Proponha intervenções específicas baseadas nas respostas
+- Identifique necessidades não expressas ou mal compreendidas
+- Sugira exercícios práticos para melhorar áreas problemáticas
+
+5. Análise de Consistência
+- Compare as respostas com os relatos diários
+- Identifique possíveis discrepâncias ou inconsistências
+- Analise as motivações por trás das respostas
+
+6. Recomendações
+- Sugira abordagens específicas para melhorar a comunicação
+- Proponha exercícios práticos para fortalecer o vínculo
+- Indique áreas que precisam de atenção profissional
+
+Forneça sua análise em formato JSON seguindo esta estrutura:
+{
+  "overallAnalysis": {
+    "score": number, // 0-100
+    "trend": string, // "improving", "stable", "concerning"
+    "summary": string,
+    "riskLevel": string // "low", "moderate", "high"
+  },
+  "categoryAnalysis": {
+    [categoria]: {
+      "score": number,
+      "insights": string[],
+      "recommendations": string[],
+      "riskFactors": string[]
+    }
+  },
+  "progressionAnalysis": {
+    "improvements": string[],
+    "concerns": string[],
+    "trends": {
+      [area]: {
+        "direction": string,
+        "significance": string
+      }
+    }
+  },
+  "therapeuticInsights": {
+    "immediateActions": string[],
+    "longTermStrategies": string[],
+    "underlyingIssues": string[]
+  },
+  "consistencyAnalysis": {
+    "alignedAreas": string[],
+    "discrepancies": string[],
+    "possibleMotivations": string[]
+  },
+  "recommendations": {
+    "communication": string[],
+    "exercises": string[],
+    "professionalSupport": string[]
+  }
+}`; 

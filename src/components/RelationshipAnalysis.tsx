@@ -5,7 +5,6 @@ import {
   Paper,
   Grid,
   Chip,
-  Divider,
   List,
   ListItem,
   ListItemIcon,
@@ -50,7 +49,7 @@ interface RelationshipAnalysisData {
 }
 
 interface Props {
-  analysis: string | RelationshipAnalysisData;
+  analysis: RelationshipAnalysisData | string;
   isLoading?: boolean;
 }
 
@@ -83,7 +82,7 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
     return null;
   }
 
-  // If it's already a string, display it directly
+  // If it's a string, display it directly
   if (typeof analysis === 'string') {
     return (
       <Box>
@@ -96,23 +95,19 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
     );
   }
 
-  // If it's an object, try to parse it if needed
-  const parsedAnalysis: RelationshipAnalysisData = typeof analysis === 'string' 
-    ? JSON.parse(analysis)
-    : analysis;
-
-  // Validate if it's a collective analysis
-  if (!parsedAnalysis || !parsedAnalysis.overallHealth || !parsedAnalysis.strengthsAndChallenges) {
-    return (
-      <Box>
-        <Paper sx={{ p: 3 }}>
-          <Typography color="error">
-            Formato de análise inválido. Esperado: análise coletiva com métricas detalhadas.
-          </Typography>
-        </Paper>
-      </Box>
-    );
-  }
+  // Ensure we have all required properties
+  const {
+    overallHealth = { score: 0, trend: 'stable' },
+    categories = {},
+    strengthsAndChallenges = { strengths: [], challenges: [] },
+    communicationSuggestions = [],
+    actionItems = [],
+    relationshipDynamics = {
+      positivePatterns: [],
+      concerningPatterns: [],
+      growthAreas: [],
+    },
+  } = analysis;
 
   return (
     <Box>
@@ -125,14 +120,14 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
           <Box sx={{ position: 'relative', display: 'inline-flex', mb: 2 }}>
             <CircularProgress
               variant="determinate"
-              value={parsedAnalysis.overallHealth.score}
+              value={overallHealth.score}
               size={80}
               thickness={4}
               sx={{
                 color: (theme) =>
-                  parsedAnalysis.overallHealth.score >= 70
+                  overallHealth.score >= 70
                     ? theme.palette.success.main
-                    : parsedAnalysis.overallHealth.score >= 40
+                    : overallHealth.score >= 40
                     ? theme.palette.warning.main
                     : theme.palette.error.main,
               }}
@@ -150,7 +145,7 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
               }}
             >
               <Typography variant="h6">
-                {parsedAnalysis.overallHealth.score}%
+                {overallHealth.score}%
               </Typography>
             </Box>
           </Box>
@@ -158,9 +153,9 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
             <Typography variant="body2" color="text.secondary">
               Tendência:
             </Typography>
-            {parsedAnalysis.overallHealth.trend === 'up' ? (
+            {overallHealth.trend === 'up' ? (
               <TrendingUpIcon color="success" />
-            ) : parsedAnalysis.overallHealth.trend === 'down' ? (
+            ) : overallHealth.trend === 'down' ? (
               <TrendingDownIcon color="error" />
             ) : (
               <span>→</span>
@@ -178,7 +173,7 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
               <Typography variant="h6">Pontos Fortes</Typography>
             </Box>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {parsedAnalysis.strengthsAndChallenges.strengths.map((strength, index) => (
+              {strengthsAndChallenges.strengths.map((strength, index) => (
                 <Chip
                   key={index}
                   label={strength}
@@ -197,7 +192,7 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
               <Typography variant="h6">Desafios</Typography>
             </Box>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {parsedAnalysis.strengthsAndChallenges.challenges.map((challenge, index) => (
+              {strengthsAndChallenges.challenges.map((challenge, index) => (
                 <Chip
                   key={index}
                   label={challenge}
@@ -217,7 +212,7 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
           Análise por Categoria
         </Typography>
         <Grid container spacing={2}>
-          {Object.entries(parsedAnalysis.categories).map(([key, category]) => (
+          {Object.entries(categories).map(([key, category]) => (
             <Grid item xs={12} sm={6} md={4} key={key}>
               <Paper variant="outlined" sx={{ p: 2 }}>
                 <Typography variant="subtitle1" gutterBottom>
@@ -263,7 +258,7 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
               <Typography variant="h6">Ações Sugeridas</Typography>
             </Box>
             <List>
-              {parsedAnalysis.actionItems.map((item, index) => (
+              {actionItems.map((item, index) => (
                 <ListItem key={index}>
                   <ListItemIcon>•</ListItemIcon>
                   <ListItemText primary={item} />
@@ -279,7 +274,7 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
               <Typography variant="h6">Sugestões de Comunicação</Typography>
             </Box>
             <List>
-              {parsedAnalysis.communicationSuggestions.map((suggestion, index) => (
+              {communicationSuggestions.map((suggestion, index) => (
                 <ListItem key={index}>
                   <ListItemIcon>•</ListItemIcon>
                   <ListItemText primary={suggestion} />
@@ -302,7 +297,7 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
                 Padrões Positivos
               </Typography>
               <List dense>
-                {parsedAnalysis.relationshipDynamics.positivePatterns.map((pattern, index) => (
+                {relationshipDynamics.positivePatterns.map((pattern, index) => (
                   <ListItem key={index}>
                     <ListItemIcon>
                       <StarIcon color="success" fontSize="small" />
@@ -319,7 +314,7 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
                 Áreas de Crescimento
               </Typography>
               <List dense>
-                {parsedAnalysis.relationshipDynamics.growthAreas.map((area, index) => (
+                {relationshipDynamics.growthAreas.map((area, index) => (
                   <ListItem key={index}>
                     <ListItemIcon>
                       <PsychologyIcon color="warning" fontSize="small" />
@@ -336,7 +331,7 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
                 Padrões Preocupantes
               </Typography>
               <List dense>
-                {parsedAnalysis.relationshipDynamics.concerningPatterns.map((pattern, index) => (
+                {relationshipDynamics.concerningPatterns.map((pattern, index) => (
                   <ListItem key={index}>
                     <ListItemIcon>
                       <WarningIcon color="error" fontSize="small" />
