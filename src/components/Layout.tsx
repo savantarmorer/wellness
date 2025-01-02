@@ -30,7 +30,6 @@ import {
   Person as PersonIcon,
   Favorite as FavoriteIcon,
   ExitToApp as LogoutIcon,
-  CompareArrows as CompareIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { NotificationBell } from './NotificationBell';
@@ -46,6 +45,12 @@ const StyledDrawer = styled(Drawer)(({ theme }) => ({
     background: alpha(theme.palette.background.paper, 0.8),
     backdropFilter: 'blur(8px)',
     borderRight: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+    paddingTop: '64px',
+    height: '100%',
+    transition: theme.transitions.create(['width', 'margin'], {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.enteringScreen,
+    }),
   },
 }));
 
@@ -55,6 +60,16 @@ const StyledAppBar = styled(AppBar)(({ theme }) => ({
   borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
   boxShadow: 'none',
   color: theme.palette.text.primary,
+  height: '64px',
+  zIndex: theme.zIndex.drawer + 1,
+  transition: theme.transitions.create(['margin', 'width'], {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.leavingScreen,
+  }),
+  [theme.breakpoints.up('sm')]: {
+    width: `calc(100% - ${drawerWidth}px)`,
+    marginLeft: drawerWidth,
+  },
 }));
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -65,6 +80,11 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   alignItems: 'center',
   gap: theme.spacing(2),
   padding: theme.spacing(2),
+  transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+  '&:hover': {
+    transform: 'translateY(-2px)',
+    boxShadow: `0 8px 16px -4px ${alpha(theme.palette.primary.main, 0.15)}`,
+  },
 }));
 
 interface Props {
@@ -95,7 +115,6 @@ export const Layout: React.FC<Props> = ({ children }) => {
     { text: 'Início', icon: <HomeIcon />, path: '/dashboard' },
     { text: 'Avaliação Diária', icon: <AssessmentIcon />, path: '/assessment' },
     { text: 'Estatísticas', icon: <ChartIcon />, path: '/statistics' },
-    { text: 'Análise de Discrepâncias', icon: <CompareIcon />, path: '/discrepancies' },
     { text: 'Análises', icon: <InsightIcon />, path: '/analysis' },
     { text: 'Perfil', icon: <PersonIcon />, path: '/profile' },
     { text: 'Relacionamento', icon: <FavoriteIcon />, path: '/relationship' },
@@ -111,12 +130,20 @@ export const Layout: React.FC<Props> = ({ children }) => {
             background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
-            mb: 1
+            mb: 1,
+            fontSize: { xs: '1.25rem', sm: '1.5rem' },
           }}
         >
           Wellness Monitor
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography 
+          variant="body2" 
+          color="text.secondary"
+          sx={{ 
+            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+            opacity: 0.8 
+          }}
+        >
           Fortalecendo relacionamentos
         </Typography>
       </Box>
@@ -127,8 +154,9 @@ export const Layout: React.FC<Props> = ({ children }) => {
             <Avatar 
               sx={{ 
                 bgcolor: theme.palette.primary.main,
-                width: 40,
-                height: 40
+                width: { xs: 32, sm: 40 },
+                height: { xs: 32, sm: 40 },
+                fontSize: { xs: '1rem', sm: '1.25rem' },
               }}
             >
               {currentUser.email?.[0].toUpperCase()}
@@ -140,7 +168,8 @@ export const Layout: React.FC<Props> = ({ children }) => {
                   fontWeight: 600,
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
-                  textOverflow: 'ellipsis'
+                  textOverflow: 'ellipsis',
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
                 }}
               >
                 {currentUser.email}
@@ -152,7 +181,8 @@ export const Layout: React.FC<Props> = ({ children }) => {
                   display: 'block',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
-                  textOverflow: 'ellipsis'
+                  textOverflow: 'ellipsis',
+                  fontSize: { xs: '0.675rem', sm: '0.75rem' },
                 }}
               >
                 Conectado
@@ -164,38 +194,37 @@ export const Layout: React.FC<Props> = ({ children }) => {
 
       <List sx={{ px: 2, flex: 1 }}>
         {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding sx={{ mb: 1 }}>
+          <ListItem key={item.path} disablePadding sx={{ mb: 1 }}>
             <ListItemButton
               component={Link}
               to={item.path}
               selected={location.pathname === item.path}
               sx={{
                 borderRadius: 2,
-                transition: 'all 0.2s ease',
+                minHeight: { xs: 44, sm: 48 },
+                px: { xs: 2, sm: 3 },
+                transition: 'all 0.2s ease-in-out',
                 '&.Mui-selected': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                  bgcolor: alpha(theme.palette.primary.main, 0.1),
                   '&:hover': {
-                    backgroundColor: alpha(theme.palette.primary.main, 0.2),
+                    bgcolor: alpha(theme.palette.primary.main, 0.15),
                   },
                   '& .MuiListItemIcon-root': {
                     color: theme.palette.primary.main,
                   },
-                  '& .MuiListItemText-primary': {
-                    color: theme.palette.primary.main,
-                    fontWeight: 600,
-                  },
                 },
                 '&:hover': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                  bgcolor: alpha(theme.palette.primary.main, 0.05),
+                  transform: 'translateX(4px)',
                 },
               }}
             >
-              <ListItemIcon 
-                sx={{ 
-                  minWidth: 40,
+              <ListItemIcon
+                sx={{
+                  minWidth: { xs: 40, sm: 48 },
                   color: location.pathname === item.path 
                     ? theme.palette.primary.main 
-                    : alpha(theme.palette.text.primary, 0.6)
+                    : theme.palette.text.secondary,
                 }}
               >
                 {item.icon}
@@ -207,7 +236,8 @@ export const Layout: React.FC<Props> = ({ children }) => {
                     fontWeight: location.pathname === item.path ? 600 : 400,
                     color: location.pathname === item.path 
                       ? theme.palette.primary.main 
-                      : theme.palette.text.primary
+                      : theme.palette.text.primary,
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
                   }
                 }}
               />
@@ -226,7 +256,8 @@ export const Layout: React.FC<Props> = ({ children }) => {
           sx={{
             borderRadius: 2,
             textTransform: 'none',
-            py: 1,
+            py: { xs: 1, sm: 1.5 },
+            fontSize: { xs: '0.875rem', sm: '1rem' },
             borderColor: alpha(theme.palette.error.main, 0.5),
             '&:hover': {
               borderColor: theme.palette.error.main,
@@ -244,7 +275,7 @@ export const Layout: React.FC<Props> = ({ children }) => {
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
       <StyledAppBar position="fixed">
-        <Toolbar>
+        <Toolbar sx={{ minHeight: '64px !important', height: '64px' }}>
           <IconButton
             color="inherit"
             aria-label="open drawer"
@@ -287,7 +318,14 @@ export const Layout: React.FC<Props> = ({ children }) => {
       </StyledAppBar>
       <Box
         component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+        sx={{ 
+          width: { sm: drawerWidth }, 
+          flexShrink: { sm: 0 },
+          '& .MuiDrawer-paper': {
+            boxSizing: 'border-box',
+            width: drawerWidth,
+          },
+        }}
       >
         <StyledDrawer
           variant="temporary"
@@ -298,6 +336,9 @@ export const Layout: React.FC<Props> = ({ children }) => {
           }}
           sx={{
             display: { xs: 'block', sm: 'none' },
+            '& .MuiDrawer-paper': {
+              paddingTop: '64px',
+            },
           }}
         >
           {drawer}
@@ -318,9 +359,13 @@ export const Layout: React.FC<Props> = ({ children }) => {
           flexGrow: 1,
           p: { xs: 2, sm: 3 },
           width: { sm: `calc(100% - ${drawerWidth}px)` },
-          mt: { xs: 7, sm: 8 },
+          mt: { xs: '64px', sm: '64px' },
           background: alpha(theme.palette.background.default, 0.6),
-          minHeight: '100vh',
+          minHeight: 'calc(100vh - 64px)',
+          transition: theme.transitions.create('margin', {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.leavingScreen,
+          }),
           '& .MuiContainer-root': {
             px: { xs: 1, sm: 2, md: 3 }
           },
@@ -335,6 +380,13 @@ export const Layout: React.FC<Props> = ({ children }) => {
           },
           '& .MuiButton-root': {
             fontSize: { xs: '0.875rem', sm: '1rem' }
+          },
+          '& .MuiCard-root': {
+            transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+            '&:hover': {
+              transform: 'translateY(-4px)',
+              boxShadow: `0 12px 20px -5px ${alpha(theme.palette.common.black, 0.2)}`,
+            }
           }
         }}
       >

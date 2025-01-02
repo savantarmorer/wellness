@@ -41,7 +41,7 @@ import { saveAnalysis } from '../services/analysisHistoryService';
 import { useAuth } from '../contexts/AuthContext';
 import { analyzeConsensusForm } from '../services/gptService';
 import { getAnalysisHistory } from '../services/analysisHistoryService';
-import { ConsensusFormData } from '../services/analysisHistoryService';
+import { ConsensusFormData } from '../services/gptService';
 
 interface FormSection {
   title: string;
@@ -232,6 +232,11 @@ const RelationshipConsensusForm: React.FC = () => {
       return;
     }
 
+    if (Object.keys(answers).length < FORM_SECTIONS.reduce((total, section) => total + section.questions.length, 0)) {
+      setError('Por favor, responda todas as perguntas antes de enviar.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Get historical data
@@ -267,28 +272,42 @@ const RelationshipConsensusForm: React.FC = () => {
         form.answers !== answers
       );
 
-      // Analyze form data
-      const formAnalysis = await analyzeConsensusForm(
-        {
-          type: 'consensus_form',
-          answers,
-          date: new Date().toISOString(),
-        },
-        partnerForm,
-        {
-          previousForms: previousForms.slice(-5), // Last 5 forms
-          dailyAssessments: dailyAssessments.slice(-30), // Last 30 days
-          previousAnalyses: previousAnalyses.slice(-10), // Last 10 analyses
-        }
-      );
-
-      // Save form data with analysis
-      await saveAnalysis(currentUser.uid, 'individual', {
+      // Prepare form data
+      const formData: ConsensusFormData = {
         type: 'consensus_form',
         answers,
         date: new Date().toISOString(),
-        analysis: formAnalysis,
-      });
+      };
+
+      // Analyze form data
+      let formAnalysis;
+      try {
+        formAnalysis = await analyzeConsensusForm(
+          formData,
+          partnerForm,
+          {
+            previousForms: previousForms.slice(-5), // Last 5 forms
+            dailyAssessments: dailyAssessments.slice(-30), // Last 30 days
+            previousAnalyses: previousAnalyses.slice(-10), // Last 10 analyses
+          }
+        );
+      } catch (analysisError) {
+        console.error('Error analyzing form:', analysisError);
+        setError('Erro ao analisar o formulário. Por favor, tente novamente.');
+        return;
+      }
+
+      // Save form data with analysis
+      try {
+        await saveAnalysis(currentUser.uid, 'individual', {
+          ...formData,
+          analysis: formAnalysis,
+        });
+      } catch (saveError) {
+        console.error('Error saving form:', saveError);
+        setError('Erro ao salvar o formulário. Por favor, tente novamente.');
+        return;
+      }
 
       setAnalysis(formAnalysis);
       setShowAnalysis(true);
@@ -298,8 +317,8 @@ const RelationshipConsensusForm: React.FC = () => {
       setAnswers({});
       setActiveStep(0);
     } catch (err) {
-      setError('Erro ao salvar as respostas. Por favor, tente novamente.');
-      console.error('Error saving consensus form:', err);
+      console.error('Error in form submission:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao processar o formulário. Por favor, tente novamente.');
     } finally {
       setIsSubmitting(false);
     }
@@ -568,14 +587,18 @@ const RelationshipConsensusForm: React.FC = () => {
     <Box sx={{ width: '100%', mb: 4 }}>
       <Stepper 
         activeStep={activeStep} 
+        orientation={window.innerWidth < 600 ? 'vertical' : 'horizontal'}
         sx={{ 
-          mb: 4,
+          mb: { xs: 2, sm: 4 },
           '& .MuiStepLabel-root': {
             color: theme.palette.text.secondary,
           },
           '& .MuiStepLabel-active': {
             color: theme.palette.primary.main,
           },
+          '& .MuiStepLabel-label': {
+            fontSize: { xs: '0.875rem', sm: '1rem' }
+          }
         }}
       >
         {FORM_SECTIONS.map((section) => (
@@ -589,13 +612,17 @@ const RelationshipConsensusForm: React.FC = () => {
         <Paper 
           elevation={3}
           sx={{ 
-            p: 4, 
+            p: { xs: 2, sm: 3, md: 4 }, 
             textAlign: 'center',
             background: theme.palette.background.default,
-            borderRadius: 2,
+            borderRadius: { xs: 2, sm: 3 },
           }}
         >
-          <Typography variant="h6" gutterBottom>
+          <Typography 
+            variant="h6" 
+            gutterBottom
+            sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
+          >
             {success || 'Todas as perguntas foram respondidas!'}
           </Typography>
           {!success && (
@@ -607,8 +634,9 @@ const RelationshipConsensusForm: React.FC = () => {
               disabled={isSubmitting}
               sx={{ 
                 mt: 2,
-                minWidth: 200,
-                borderRadius: 8,
+                minWidth: { xs: '100%', sm: 200 },
+                borderRadius: { xs: 2, sm: 8 },
+                py: { xs: 1.5, sm: 2 }
               }}
             >
               {isSubmitting ? (
@@ -623,9 +651,9 @@ const RelationshipConsensusForm: React.FC = () => {
         <Paper 
           elevation={3}
           sx={{ 
-            p: 4,
+            p: { xs: 2, sm: 3, md: 4 },
             background: theme.palette.background.default,
-            borderRadius: 2,
+            borderRadius: { xs: 2, sm: 3 },
           }}
         >
           <Typography 
@@ -635,6 +663,7 @@ const RelationshipConsensusForm: React.FC = () => {
               color: theme.palette.primary.main,
               fontWeight: 'medium',
               mb: 3,
+              fontSize: { xs: '1.25rem', sm: '1.5rem' }
             }}
           >
             {FORM_SECTIONS[activeStep].title}
@@ -650,9 +679,9 @@ const RelationshipConsensusForm: React.FC = () => {
             <Box
               key={question.id}
               sx={{
-                mb: 4,
-                p: 3,
-                borderRadius: 2,
+                mb: { xs: 2, sm: 4 },
+                p: { xs: 2, sm: 3 },
+                borderRadius: { xs: 1, sm: 2 },
                 backgroundColor: theme.palette.background.paper,
                 boxShadow: 1,
                 '&:hover': {
@@ -664,9 +693,10 @@ const RelationshipConsensusForm: React.FC = () => {
               <Typography 
                 variant="h6" 
                 sx={{ 
-                  mb: 2,
+                  mb: { xs: 1.5, sm: 2 },
                   color: theme.palette.text.primary,
-                  fontSize: '1.1rem',
+                  fontSize: { xs: '1rem', sm: '1.1rem' },
+                  lineHeight: 1.4
                 }}
               >
                 {`${index + 1}. ${question.question}`}
@@ -677,17 +707,21 @@ const RelationshipConsensusForm: React.FC = () => {
 
           <Box sx={{ 
             display: 'flex', 
+            flexDirection: { xs: 'column', sm: 'row' },
             justifyContent: 'space-between',
-            mt: 4,
+            gap: { xs: 2, sm: 0 },
+            mt: { xs: 3, sm: 4 },
           }}>
             <Button
               disabled={activeStep === 0}
               onClick={handleBack}
               startIcon={<NavigateBefore />}
               variant="outlined"
+              fullWidth={window.innerWidth < 600}
               sx={{ 
-                borderRadius: 8,
-                minWidth: 120,
+                borderRadius: { xs: 2, sm: 8 },
+                minWidth: { sm: 120 },
+                order: { xs: 2, sm: 1 }
               }}
             >
               Voltar
@@ -696,9 +730,11 @@ const RelationshipConsensusForm: React.FC = () => {
               variant="contained"
               onClick={handleNext}
               endIcon={<NavigateNext />}
+              fullWidth={window.innerWidth < 600}
               sx={{ 
-                borderRadius: 8,
-                minWidth: 120,
+                borderRadius: { xs: 2, sm: 8 },
+                minWidth: { sm: 120 },
+                order: { xs: 1, sm: 2 }
               }}
             >
               {activeStep === FORM_SECTIONS.length - 1 ? 'Finalizar' : 'Próximo'}
@@ -709,12 +745,12 @@ const RelationshipConsensusForm: React.FC = () => {
             variant="determinate"
             value={(activeStep / FORM_SECTIONS.length) * 100}
             sx={{ 
-              mt: 4,
-              height: 8,
-              borderRadius: 4,
+              mt: { xs: 3, sm: 4 },
+              height: { xs: 6, sm: 8 },
+              borderRadius: { xs: 3, sm: 4 },
               backgroundColor: theme.palette.grey[200],
               '& .MuiLinearProgress-bar': {
-                borderRadius: 4,
+                borderRadius: { xs: 3, sm: 4 },
               },
             }}
           />

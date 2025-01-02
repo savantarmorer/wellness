@@ -67,42 +67,76 @@ export const theme = createTheme({
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
     h1: {
       fontWeight: 700,
+      fontSize: '2rem',
+      '@media (min-width:600px)': {
+        fontSize: '2.5rem',
+      },
       letterSpacing: '-0.025em',
     },
     h2: {
       fontWeight: 700,
+      fontSize: '1.75rem',
+      '@media (min-width:600px)': {
+        fontSize: '2rem',
+      },
       letterSpacing: '-0.025em',
     },
     h3: {
       fontWeight: 600,
+      fontSize: '1.5rem',
+      '@media (min-width:600px)': {
+        fontSize: '1.75rem',
+      },
       letterSpacing: '-0.025em',
     },
     h4: {
       fontWeight: 600,
+      fontSize: '1.25rem',
+      '@media (min-width:600px)': {
+        fontSize: '1.5rem',
+      },
       letterSpacing: '-0.025em',
     },
     h5: {
       fontWeight: 600,
+      fontSize: '1.1rem',
+      '@media (min-width:600px)': {
+        fontSize: '1.25rem',
+      },
       letterSpacing: '-0.025em',
     },
     h6: {
       fontWeight: 600,
+      fontSize: '1rem',
+      '@media (min-width:600px)': {
+        fontSize: '1.1rem',
+      },
       letterSpacing: '-0.025em',
     },
     subtitle1: {
       fontWeight: 500,
+      fontSize: '1rem',
       letterSpacing: '-0.015em',
     },
     subtitle2: {
       fontWeight: 500,
+      fontSize: '0.875rem',
       letterSpacing: '-0.015em',
     },
     body1: {
       fontWeight: 400,
+      fontSize: '0.875rem',
+      '@media (min-width:600px)': {
+        fontSize: '1rem',
+      },
       letterSpacing: '-0.01em',
     },
     body2: {
       fontWeight: 400,
+      fontSize: '0.8125rem',
+      '@media (min-width:600px)': {
+        fontSize: '0.875rem',
+      },
       letterSpacing: '-0.01em',
     },
     button: {
@@ -145,6 +179,10 @@ export const theme = createTheme({
           textTransform: 'none',
           padding: '10px 24px',
           fontWeight: 600,
+          fontSize: '0.875rem',
+          '@media (min-width:600px)': {
+            fontSize: '1rem',
+          },
         },
         contained: ({ theme }: { theme: Theme }) => ({
           background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
@@ -165,8 +203,76 @@ export const theme = createTheme({
           WebkitBackdropFilter: 'blur(20px)',
           borderRadius: 24,
           border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-          padding: '24px',
+          padding: theme.spacing(2),
+          '@media (min-width:600px)': {
+            padding: theme.spacing(3),
+          },
         }),
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          borderRadius: 16,
+          backgroundImage: 'none',
+          transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+          '&:hover': {
+            transform: 'translateY(-4px)',
+            boxShadow: '0 12px 20px -5px rgba(0, 0, 0, 0.2)',
+          },
+        },
+      },
+    },
+    MuiDialog: {
+      styleOverrides: {
+        paper: {
+          borderRadius: 24,
+          padding: '16px',
+          '@media (min-width:600px)': {
+            padding: '24px',
+          },
+        },
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-root': {
+            borderRadius: 12,
+          },
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+          height: '32px',
+          '& .MuiChip-label': {
+            padding: '0 12px',
+          },
+        },
+      },
+    },
+    MuiList: {
+      styleOverrides: {
+        root: {
+          padding: '8px',
+          '@media (min-width:600px)': {
+            padding: '16px',
+          },
+        },
+      },
+    },
+    MuiListItem: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+          marginBottom: '8px',
+          '&:last-child': {
+            marginBottom: 0,
+          },
+        },
       },
     },
   },

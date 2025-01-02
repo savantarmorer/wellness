@@ -9,9 +9,14 @@ export interface GPTAnalysis {
       score: number;
       trend: string;
     };
-    strengths: string[];
-    challenges: string[];
-    recommendations: string[];
+    strengths?: string[];
+    challenges?: string[];
+    recommendations?: string[];
+    strengthsAndChallenges?: {
+      strengths: string[];
+      challenges: string[];
+    };
+    communicationSuggestions?: string[];
     actionItems: string[];
     categories: Record<string, {
       score: number;
@@ -23,6 +28,24 @@ export interface GPTAnalysis {
       concerningPatterns: string[];
       growthAreas: string[];
     };
+    emotionalDynamics?: {
+      emotionalSecurity: number;
+      intimacyBalance: {
+        score: number;
+        areas: {
+          emotional: number;
+          physical: number;
+          intellectual: number;
+          shared: number;
+        };
+      };
+      conflictResolution: {
+        style: string;
+        effectiveness: number;
+        patterns: string[];
+      };
+    };
+    textReport?: string;
   };
   createdAt: string;
 }
@@ -64,6 +87,7 @@ export interface CategoryRatings {
   autocuidado: number;
   gratidao: number;
   qualidadeTempo: number;
+  [key: string]: number;
 }
 
 export interface DailyAssessment {
@@ -126,4 +150,90 @@ export interface RelationshipContext {
 }
 
 export interface RelationshipContextFormData extends Omit<RelationshipContext, 'id' | 'userId' | 'partnerId' | 'createdAt' | 'updatedAt'> {}
-// ... existing code ...
+
+export interface TemporalAnalysis {
+  trends: {
+    [category: string]: {
+      userTrend: 'improving' | 'stable' | 'declining';
+      partnerTrend: 'improving' | 'stable' | 'declining';
+      convergence: 'converging' | 'stable' | 'diverging';
+      volatility: number;
+    };
+  };
+  patterns: {
+    cyclical: string[];
+    persistent: string[];
+    emerging: string[];
+  };
+  timeframes: {
+    daily: AnalysisSummary;
+    weekly: AnalysisSummary;
+    monthly: AnalysisSummary;
+  };
+}
+
+export interface AnalysisSummary {
+  averageScores: CategoryRatings;
+  discrepancies: DiscrepancyAnalysis[];
+  insights: string[];
+}
+
+export interface ValidationResult {
+  consistency: {
+    [category: string]: {
+      score: number; // 0-1
+      confidence: number; // 0-1
+      flags: string[];
+    };
+  };
+  reliability: number; // 0-1
+  completeness: number; // 0-1
+  recommendations: string[];
+}
+
+export interface CommunicationRecord {
+  date: string;
+  type: 'daily' | 'consensus' | 'discussion';
+  content: {
+    topics: string[];
+    quality: number; // 1-5
+    resolution: number; // 1-5
+    emotionalTone: number; // 1-5
+  };
+  participants: {
+    user: boolean;
+    partner: boolean;
+  };
+}
+
+export interface CommunicationQualityAnalysis {
+  overall: {
+    score: number;
+    trend: string;
+    patterns: string[];
+  };
+  byTopic: {
+    [topic: string]: {
+      frequency: number;
+      quality: number;
+      resolution: number;
+      emotionalTone: number;
+    };
+  };
+  recommendations: {
+    immediate: string[];
+    shortTerm: string[];
+    longTerm: string[];
+  };
+}
+
+export interface DiscrepancyAnalysis {
+  category: string;
+  userScore: number;
+  partnerScore: number;
+  difference: number;
+  weightedDifference: number;
+  significance: 'high' | 'medium' | 'low';
+  insights: string[];
+  recommendations: string[];
+}

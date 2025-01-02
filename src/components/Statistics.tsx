@@ -47,7 +47,7 @@ export const Statistics = () => {
         if (history.length >= 2) {
           const userAssessment = history[0];
           const partnerAssessment = history[1];
-          const discrepancyAnalysis = analyzeDiscrepancies(
+          const discrepancyAnalysis = await analyzeDiscrepancies(
             userAssessment.ratings,
             partnerAssessment.ratings
           );

@@ -24,6 +24,7 @@ import { alpha } from '@mui/material/styles';
 import { getRelationshipContext } from '../services/relationshipContextService';
 import type { RelationshipContext } from '../types';
 import { saveAnalysis } from '../services/analysisHistoryService';
+import { AnalysisTabs } from '../components/AnalysisTabs';
 
 const categories = [
   {
@@ -129,7 +130,26 @@ const convertToGPTAnalysis = (
     recommendations: analysis.communicationSuggestions,
     categories: analysis.categories,
     relationshipDynamics: analysis.relationshipDynamics,
-    actionItems: analysis.actionItems
+    actionItems: analysis.actionItems,
+    emotionalDynamics: analysis.emotionalDynamics
+      ? { ...analysis.emotionalDynamics }
+      : {
+          emotionalSecurity: 0,
+          intimacyBalance: {
+            score: 0,
+            areas: {
+              emotional: 0,
+              physical: 0,
+              intellectual: 0,
+              shared: 0
+            }
+          },
+          conflictResolution: {
+            style: '',
+            effectiveness: 0,
+            patterns: []
+          }
+        }
   },
   createdAt: new Date().toISOString()
 });
@@ -251,6 +271,23 @@ const DailyAssessment = () => {
                           positivePatterns: [],
                           concerningPatterns: [],
                           growthAreas: []
+                        },
+                        emotionalDynamics: existingGptAnalysis.emotionalDynamics || {
+                          emotionalSecurity: 0,
+                          intimacyBalance: {
+                            score: 0,
+                            areas: {
+                              emotional: 0,
+                              physical: 0,
+                              intellectual: 0,
+                              shared: 0
+                            }
+                          },
+                          conflictResolution: {
+                            style: '',
+                            effectiveness: 0,
+                            patterns: []
+                          }
                         }
                       };
                   
@@ -266,15 +303,36 @@ const DailyAssessment = () => {
                   
                   // Convert GPTAnalysis back to RelationshipAnalysis format for display
                   const displayAnalysis: RelationshipAnalysis = {
-                    overallHealth: gptAnalysis.analysis.overallHealth,
-                    categories: gptAnalysis.analysis.categories,
+                    overallHealth: gptAnalysis.analysis.overallHealth || { score: 0, trend: '' },
+                    categories: gptAnalysis.analysis.categories || {},
                     strengthsAndChallenges: {
-                      strengths: gptAnalysis.analysis.strengths,
-                      challenges: gptAnalysis.analysis.challenges
+                      strengths: gptAnalysis.analysis.strengths ?? [] as string[],
+                      challenges: gptAnalysis.analysis.challenges ?? [] as string[]
                     },
-                    communicationSuggestions: gptAnalysis.analysis.recommendations,
-                    actionItems: gptAnalysis.analysis.actionItems,
-                    relationshipDynamics: gptAnalysis.analysis.relationshipDynamics
+                    communicationSuggestions: gptAnalysis.analysis.recommendations ?? [] as string[],
+                    actionItems: gptAnalysis.analysis.actionItems ?? [] as string[],
+                    relationshipDynamics: gptAnalysis.analysis.relationshipDynamics ?? {
+                      positivePatterns: [] as string[],
+                      concerningPatterns: [] as string[],
+                      growthAreas: [] as string[]
+                    },
+                    emotionalDynamics: {
+                      emotionalSecurity: 0,
+                      intimacyBalance: {
+                        score: 0,
+                        areas: {
+                          emotional: 0,
+                          physical: 0,
+                          intellectual: 0,
+                          shared: 0
+                        }
+                      },
+                      conflictResolution: {
+                        style: 'collaborative',
+                        effectiveness: 0,
+                        patterns: [] as string[]
+                      }
+                    }
                   };
                   
                   setAnalysis(displayAnalysis);
@@ -371,7 +429,7 @@ const DailyAssessment = () => {
           savedAssessment,
           relationshipContext || undefined
         );
-        setDailyInsight(insight);
+        setDailyInsight(JSON.stringify(insight));
 
         // Save individual analysis
         const gptAnalysis: Omit<GPTAnalysis, 'id'> = {
@@ -390,75 +448,92 @@ const DailyAssessment = () => {
             challenges: Object.entries(ratings)
               .filter(([_, score]) => score <= 4)
               .map(([category]) => categories.find(c => c.id === category)?.label || category),
-            recommendations: [insight],
+            recommendations: [JSON.stringify(insight)],
             categories: {
               comunicacao: { 
                 score: ratings.comunicacao || 0, 
                 trend: 'stable', 
-                insights: [] 
+                insights: [] as string[]
               },
               conexaoEmocional: { 
                 score: ratings.conexaoEmocional || 0, 
                 trend: 'stable', 
-                insights: [] 
+                insights: [] as string[]
               },
               apoioMutuo: { 
                 score: ratings.apoioMutuo || 0, 
                 trend: 'stable', 
-                insights: [] 
+                insights: [] as string[]
               },
               transparenciaConfianca: { 
                 score: ratings.transparenciaConfianca || 0, 
                 trend: 'stable', 
-                insights: [] 
+                insights: [] as string[]
               },
               intimidadeFisica: { 
                 score: ratings.intimidadeFisica || 0, 
                 trend: 'stable', 
-                insights: [] 
+                insights: [] as string[]
               },
               saudeMental: { 
                 score: ratings.saudeMental || 0, 
                 trend: 'stable', 
-                insights: [] 
+                insights: [] as string[]
               },
               resolucaoConflitos: { 
                 score: ratings.resolucaoConflitos || 0, 
                 trend: 'stable', 
-                insights: [] 
+                insights: [] as string[]
               },
               segurancaRelacionamento: { 
                 score: ratings.segurancaRelacionamento || 0, 
                 trend: 'stable', 
-                insights: [] 
+                insights: [] as string[]
               },
               alinhamentoObjetivos: { 
                 score: ratings.alinhamentoObjetivos || 0, 
                 trend: 'stable', 
-                insights: [] 
+                insights: [] as string[]
               },
               autocuidado: { 
                 score: ratings.autocuidado || 0, 
                 trend: 'stable', 
-                insights: [] 
+                insights: [] as string[]
               },
               gratidao: { 
                 score: ratings.gratidao || 0, 
                 trend: 'stable', 
-                insights: [] 
+                insights: [] as string[]
               },
               qualidadeTempo: { 
                 score: ratings.qualidadeTempo || 0, 
                 trend: 'stable', 
-                insights: [] 
+                insights: [] as string[]
               }
             },
             relationshipDynamics: {
-              positivePatterns: [],
-              concerningPatterns: [],
-              growthAreas: []
+              positivePatterns: [] as string[],
+              concerningPatterns: [] as string[],
+              growthAreas: [] as string[]
             },
-            actionItems: []
+            actionItems: [] as string[],
+            emotionalDynamics: {
+              emotionalSecurity: 0,
+              intimacyBalance: {
+                score: 0,
+                areas: {
+                  emotional: 0,
+                  physical: 0,
+                  intellectual: 0,
+                  shared: 0
+                }
+              },
+              conflictResolution: {
+                style: 'collaborative',
+                effectiveness: 0,
+                patterns: [] as string[]
+              }
+            }
           },
           createdAt: new Date().toISOString()
         };
@@ -468,12 +543,35 @@ const DailyAssessment = () => {
           overallHealth: gptAnalysis.analysis.overallHealth,
           categories: gptAnalysis.analysis.categories,
           strengthsAndChallenges: {
-            strengths: gptAnalysis.analysis.strengths,
-            challenges: gptAnalysis.analysis.challenges
+            strengths: gptAnalysis.analysis.strengths || [] as string[],
+            challenges: gptAnalysis.analysis.challenges || [] as string[]
           },
-          communicationSuggestions: gptAnalysis.analysis.recommendations,
-          actionItems: gptAnalysis.analysis.actionItems,
-          relationshipDynamics: gptAnalysis.analysis.relationshipDynamics
+          communicationSuggestions: gptAnalysis.analysis.recommendations || [] as string[],
+          actionItems: gptAnalysis.analysis.actionItems || [] as string[],
+          relationshipDynamics: {
+            positivePatterns: gptAnalysis.analysis.relationshipDynamics?.positivePatterns || [] as string[],
+            concerningPatterns: gptAnalysis.analysis.relationshipDynamics?.concerningPatterns || [] as string[],
+            growthAreas: gptAnalysis.analysis.relationshipDynamics?.growthAreas || [] as string[]
+          },
+          emotionalDynamics: {
+            emotionalSecurity: ratings.segurancaRelacionamento / 2,
+            intimacyBalance: {
+              score: ratings.intimidadeFisica,
+              areas: {
+                emotional: ratings.conexaoEmocional / 2,
+                physical: ratings.intimidadeFisica / 2,
+                intellectual: ratings.comunicacao / 2,
+                shared: ratings.qualidadeTempo / 2
+              }
+            },
+            conflictResolution: {
+              style: ratings.resolucaoConflitos >= 7 ? 'collaborative' : 
+                     ratings.resolucaoConflitos >= 5 ? 'compromising' : 
+                     ratings.resolucaoConflitos >= 3 ? 'avoiding' : 'confrontational',
+              effectiveness: ratings.resolucaoConflitos / 2,
+              patterns: [] as string[]
+            }
+          }
         };
 
         // Save to analysis history
@@ -519,12 +617,33 @@ const DailyAssessment = () => {
               overallHealth: gptAnalysis.analysis.overallHealth,
               categories: gptAnalysis.analysis.categories,
               strengthsAndChallenges: {
-                strengths: gptAnalysis.analysis.strengths,
-                challenges: gptAnalysis.analysis.challenges
+                strengths: gptAnalysis.analysis.strengths || [] as string[],
+                challenges: gptAnalysis.analysis.challenges || [] as string[]
               },
-              communicationSuggestions: gptAnalysis.analysis.recommendations,
-              actionItems: gptAnalysis.analysis.actionItems,
-              relationshipDynamics: gptAnalysis.analysis.relationshipDynamics
+              communicationSuggestions: gptAnalysis.analysis.recommendations || [] as string[],
+              actionItems: gptAnalysis.analysis.actionItems || [] as string[],
+              relationshipDynamics: gptAnalysis.analysis.relationshipDynamics || {
+                positivePatterns: [] as string[],
+                concerningPatterns: [] as string[],
+                growthAreas: [] as string[]
+              },
+              emotionalDynamics: analysis.emotionalDynamics || {
+                emotionalSecurity: 0,
+                intimacyBalance: {
+                  score: 0,
+                  areas: {
+                    emotional: 0,
+                    physical: 0,
+                    intellectual: 0,
+                    shared: 0
+                  }
+                },
+                conflictResolution: {
+                  style: 'collaborative',
+                  effectiveness: 0,
+                  patterns: [] as string[]
+                }
+              }
             };
             
             setAnalysis(combinedAnalysis);
@@ -614,7 +733,23 @@ const DailyAssessment = () => {
                 </Typography>
               </Paper>
             )}
-            
+
+            {analysis && (
+              <Box sx={{ mt: { xs: 2, sm: 3 } }}>
+                <Typography 
+                  variant="h6" 
+                  gutterBottom
+                  sx={{
+                    fontSize: { xs: '1.125rem', sm: '1.25rem' },
+                    mb: { xs: 1, sm: 2 }
+                  }}
+                >
+                  Análise do Relacionamento
+                </Typography>
+                <RelationshipAnalysisComponent analysis={analysis} />
+              </Box>
+            )}
+
             {analysisLoading && (
               <Box sx={{ mt: { xs: 2, sm: 3 } }}>
                 <Typography 
@@ -631,21 +766,9 @@ const DailyAssessment = () => {
               </Box>
             )}
 
-            {analysis && (
-              <Box sx={{ mt: { xs: 2, sm: 3 } }}>
-                <Typography 
-                  variant="h5" 
-                  gutterBottom
-                  sx={{
-                    fontSize: { xs: '1.5rem', sm: '1.75rem' },
-                    mb: { xs: 2, sm: 3 }
-                  }}
-                >
-                  Análise do Relacionamento
-                </Typography>
-                <RelationshipAnalysisComponent analysis={analysis} />
-              </Box>
-            )}
+            <Box sx={{ mt: { xs: 2, sm: 3 } }}>
+              <AnalysisTabs />
+            </Box>
             
             <Button
               variant="contained"

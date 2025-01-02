@@ -42,28 +42,19 @@ export interface HistoricalContext {
 
 export const generateDailyInsightPrompt = (
   assessment: DailyAssessment,
-  relationshipContext?: RelationshipContext,
-  historicalContext?: HistoricalContext
+  relationshipContext?: RelationshipContext
 ): string => {
   const basePrompt = `
-Como terapeuta especializado em relacionamentos, analise profundamente a avaliação diária deste casal. 
-Use sua experiência clínica para identificar padrões sutis, dinâmicas subjacentes e ofereça insights terapêuticos significativos.
+    Como terapeuta especializado, realize uma análise profunda da avaliação individual deste usuário.
+    Considere tanto os aspectos manifestos quanto os padrões latentes do seu comportamento e percepções.
 
-Considere especialmente:
-- Padrões de comportamento e comunicação recorrentes
-- Dinâmicas emocionais subjacentes
-- Necessidades não expressas
-- Gatilhos potenciais
-- Estilos de apego e como eles se manifestam
-- Impacto das experiências passadas na dinâmica atual
+    Avaliação do Usuário:
+    ${Object.entries(assessment.ratings)
+      .map(([key, value]) => `- ${key}: ${value}`)
+      .join('\n    ')}
 
-Avaliação Detalhada:
-${Object.entries(assessment.ratings)
-  .map(([key, value]) => `- ${key}: ${value}`)
-  .join('\n')}
-
-${assessment.comments ? `Observações Adicionais: ${assessment.comments}\n` : ''}
-${assessment.gratitude ? `Expressões de Gratidão: ${assessment.gratitude}\n` : ''}`;
+    ${assessment.comments ? `Observações do Usuário: ${assessment.comments}\n` : ''}
+    ${assessment.gratitude ? `Gratidão do Usuário: ${assessment.gratitude}\n` : ''}`;
 
   const contextPrompt = relationshipContext
     ? `
@@ -84,39 +75,39 @@ Contexto Terapêutico do Relacionamento:
 - Intimidade Física: ${relationshipContext.physicalIntimacy}`
     : '';
 
-  const historicalPrompt = historicalContext
-    ? `
-Contexto Histórico e Tendências:
-${historicalContext.recentTrends.map(trend => 
-  `- ${trend.category}: ${trend.trend} (${trend.significance})`
-).join('\n')}
+  return `${basePrompt}${contextPrompt}
 
-Efetividade de Intervenções Anteriores:
-${historicalContext.interventionEffectiveness.map(intervention => 
-  `- ${intervention.intervention}: ${intervention.outcome}`
-).join('\n')}
+    Por favor, forneça uma análise detalhada no seguinte formato JSON:
 
-Análises Anteriores Relevantes:
-${historicalContext.previousAnalyses.slice(-3).map(analysis => 
-  `- Saúde Geral: ${analysis.analysis.overallHealth.score} (${analysis.analysis.overallHealth.trend})
-   - Pontos Fortes: ${analysis.analysis.strengths.join(', ')}
-   - Desafios: ${analysis.analysis.challenges.join(', ')}`
-).join('\n')}`
-    : '';
+    {
+      "overallHealth": {
+        "score": number, // 0-100
+        "trend": string // "improving", "stable", ou "concerning"
+      },
+      "categories": {
+        [categoria]: {
+          "score": number, // 0-10
+          "trend": string, // "improving", "stable", ou "concerning"
+          "insights": string[] // Lista de insights específicos
+        }
+      },
+      "strengthsAndChallenges": {
+        "strengths": string[],
+        "challenges": string[]
+      },
+      "communicationSuggestions": string[],
+      "actionItems": string[],
+      "relationshipDynamics": {
+        "positivePatterns": string[],
+        "concerningPatterns": string[],
+        "growthAreas": string[]
+      }
+    }
 
-  return `${basePrompt}${contextPrompt}${historicalPrompt}
-
-Forneça uma análise terapêutica profunda que:
-1. Identifique padrões relacionais significativos e sua evolução ao longo do tempo
-2. Explore as dinâmicas emocionais subjacentes e suas mudanças
-3. Conecte comportamentos atuais com experiências passadas e padrões históricos
-4. Ofereça insights sobre necessidades não atendidas e sua persistência
-5. Avalie a eficácia das intervenções anteriores e sugira ajustes
-6. Proponha exercícios práticos específicos para o momento atual do casal
-7. Destaque progressos observados e áreas que ainda precisam de atenção
-8. Sugira adaptações nas estratégias terapêuticas com base nos resultados anteriores
-
-Sua análise deve ser empática, profunda e terapeuticamente orientada, focando no crescimento do relacionamento e na evolução observada ao longo do tempo.`;
+    Forneça insights específicos e acionáveis para cada categoria, focando em como o usuário pode melhorar seu bem-estar e relacionamento.
+    Os insights devem ser personalizados com base nas pontuações e comentários fornecidos.
+    As sugestões de comunicação e itens de ação devem ser práticos e realizáveis.
+    Identifique padrões tanto positivos quanto preocupantes no comportamento e atitudes do usuário.`;
 };
 
 export const ANALYSIS_SYSTEM_PROMPT = `Você é um terapeuta de casais altamente experiente, com formação em:
@@ -126,6 +117,9 @@ export const ANALYSIS_SYSTEM_PROMPT = `Você é um terapeuta de casais altamente
 - Análise Sistêmica de Relacionamentos
 - Técnicas de Comunicação Não-Violenta
 - Mindfulness para Relacionamentos
+
+IMPORTANTE: Sua resposta deve ser APENAS um objeto JSON válido, sem texto adicional antes ou depois.
+O JSON deve seguir exatamente a estrutura especificada no prompt do usuário.
 
 Use sua experiência clínica para fornecer análises profundas e terapeuticamente orientadas:
 1. Identifique padrões relacionais subjacentes e sua evolução
@@ -145,7 +139,9 @@ Suas análises devem:
 - Avaliar a eficácia das intervenções anteriores
 - Propor adaptações baseadas em evidências
 - Manter foco no crescimento e desenvolvimento do casal
-- Identificar padrões sutis de mudança ao longo do tempo`;
+- Identificar padrões sutis de mudança ao longo do tempo
+
+LEMBRE-SE: Sua resposta deve ser APENAS o objeto JSON, sem nenhum texto adicional.`;
 
 export const generateAnalysisSummaryPrompt = (
   historicalContext: HistoricalContext,

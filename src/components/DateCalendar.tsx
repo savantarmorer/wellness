@@ -3,30 +3,32 @@ import {
   Box,
   Paper,
   Typography,
-  IconButton,
-  Grid,
+  TextField,
+  Button,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Button,
-  TextField,
-  FormControlLabel,
-  Switch,
-  MenuItem,
+  useTheme,
 } from '@mui/material';
-import { Add } from '@mui/icons-material';
+import { Calendar as BigCalendar, dateFnsLocalizer } from 'react-big-calendar';
+import { format, parse, startOfWeek, getDay } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 export interface DateEvent {
   id: string;
   title: string;
-  date: Date;
-  time: string;
-  location?: string;
-  isRecurring: boolean;
-  recurringDay?: string;
-  createdBy: string;
-  accepted?: boolean;
+  description: string;
+  start: Date;
+  end: Date;
+  location?: {
+    lat: number;
+    lng: number;
+    address: string;
+  };
+  category: string;
+  userId: string;
 }
 
 interface DateCalendarProps {
@@ -35,189 +37,180 @@ interface DateCalendarProps {
   userId: string;
 }
 
+const locales = {
+  'pt-BR': ptBR,
+};
+
+const localizer = dateFnsLocalizer({
+  format,
+  parse,
+  startOfWeek,
+  getDay,
+  locales,
+});
+
 export const DateCalendar: React.FC<DateCalendarProps> = ({ events, onAddEvent, userId }) => {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [isAddEventOpen, setIsAddEventOpen] = useState(false);
-  const [newEvent, setNewEvent] = useState({
-    title: '',
-    date: new Date(),
-    time: '',
-    location: '',
-    isRecurring: false,
-    recurringDay: '',
-  });
+  const theme = useTheme();
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [eventTitle, setEventTitle] = useState('');
+  const [eventDescription, setEventDescription] = useState('');
+  const [eventTime, setEventTime] = useState('');
+  const [eventCategory, setEventCategory] = useState('');
+  const [selectedEvent, setSelectedEvent] = useState<DateEvent | null>(null);
 
-  const handleAddEventClick = () => {
-    setIsAddEventOpen(true);
+  const handleDateClick = (date: Date) => {
+    setSelectedDate(date);
+    setShowAddDialog(true);
   };
 
-  const handleCloseAddEvent = () => {
-    setIsAddEventOpen(false);
-    setNewEvent({
-      title: '',
-      date: new Date(),
-      time: '',
-      location: '',
-      isRecurring: false,
-      recurringDay: '',
+  const handleAddEvent = () => {
+    if (!selectedDate || !eventTitle || !eventTime) return;
+
+    const [hours, minutes] = eventTime.split(':').map(Number);
+    const start = new Date(selectedDate);
+    start.setHours(hours, minutes);
+
+    const end = new Date(start);
+    end.setHours(hours + 1, minutes); // Default duration: 1 hour
+
+    const newEvent: Omit<DateEvent, 'id'> = {
+      title: eventTitle,
+      description: eventDescription,
+      start,
+      end,
+      category: eventCategory,
+      userId,
+    };
+
+    onAddEvent(newEvent);
+    setShowAddDialog(false);
+    resetForm();
+  };
+
+  const resetForm = () => {
+    setEventTitle('');
+    setEventDescription('');
+    setEventTime('');
+    setEventCategory('');
+    setSelectedDate(null);
+  };
+
+  const formatEventTime = (date: Date) => {
+    return date.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
     });
-  };
-
-  const handleSubmitEvent = () => {
-    onAddEvent({
-      ...newEvent,
-      date: selectedDate,
-      createdBy: userId,
-    });
-    handleCloseAddEvent();
-  };
-
-  const getDayEvents = (date: Date) => {
-    return events.filter(event => {
-      const eventDate = new Date(event.date);
-      return (
-        eventDate.getDate() === date.getDate() &&
-        eventDate.getMonth() === date.getMonth() &&
-        eventDate.getFullYear() === date.getFullYear()
-      );
-    });
-  };
-
-  const selectedDateEvents = getDayEvents(selectedDate);
-
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSelectedDate(new Date(e.target.value));
   };
 
   return (
-    <Paper elevation={3} sx={{ p: 2, height: '100%' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6">Calendário de Encontros</Typography>
-        <IconButton onClick={handleAddEventClick} color="primary">
-          <Add />
-        </IconButton>
-      </Box>
+    <Box>
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <BigCalendar
+          localizer={localizer}
+          events={events.map(event => ({
+            ...event,
+            start: new Date(event.start),
+            end: new Date(event.end),
+          }))}
+          startAccessor="start"
+          endAccessor="end"
+          style={{ height: 500 }}
+          onSelectSlot={({ start }: { start: Date }) => handleDateClick(start)}
+          selectable
+          eventPropGetter={() => ({
+            style: {
+              backgroundColor: theme.palette.primary.light,
+              color: theme.palette.primary.contrastText,
+              borderRadius: '4px',
+              border: 'none',
+              padding: '2px 5px',
+            },
+          })}
+          onSelectEvent={(event: DateEvent) => setSelectedEvent(event)}
+          messages={{
+            next: 'Próximo',
+            previous: 'Anterior',
+            today: 'Hoje',
+            month: 'Mês',
+            week: 'Semana',
+            day: 'Dia',
+            agenda: 'Agenda',
+            date: 'Data',
+            time: 'Hora',
+            event: 'Evento',
+            noEventsInRange: 'Não há eventos neste período',
+          }}
+        />
+      </Paper>
 
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={8}>
-          <TextField
-            type="date"
-            value={selectedDate.toISOString().split('T')[0]}
-            onChange={handleDateChange}
-            fullWidth
-            InputLabelProps={{
-              shrink: true,
-            }}
-          />
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <Box>
-            <Typography variant="subtitle1" sx={{ mb: 1 }}>
-              Eventos do dia {selectedDate.toLocaleDateString('pt-BR')}
-            </Typography>
-            {selectedDateEvents.length > 0 ? (
-              selectedDateEvents.map((event) => (
-                <Paper
-                  key={event.id}
-                  sx={{
-                    p: 1,
-                    mb: 1,
-                    backgroundColor: event.accepted === false ? 'grey.100' : 'primary.light',
-                  }}
-                >
-                  <Typography variant="subtitle2">{event.title}</Typography>
-                  <Typography variant="body2">{event.time}</Typography>
-                  {event.location && (
-                    <Typography variant="body2" color="text.secondary">
-                      {event.location}
-                    </Typography>
-                  )}
-                </Paper>
-              ))
-            ) : (
-              <Typography variant="body2" color="text.secondary">
-                Nenhum evento para este dia
-              </Typography>
-            )}
-          </Box>
-        </Grid>
-      </Grid>
-
-      <Dialog open={isAddEventOpen} onClose={handleCloseAddEvent}>
-        <DialogTitle>Adicionar Novo Evento</DialogTitle>
+      <Dialog open={showAddDialog} onClose={() => setShowAddDialog(false)}>
+        <DialogTitle>Adicionar Evento</DialogTitle>
         <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Título do Evento"
-            fullWidth
-            value={newEvent.title}
-            onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-          />
-          <TextField
-            margin="dense"
-            label="Data"
-            type="date"
-            fullWidth
-            value={selectedDate.toISOString().split('T')[0]}
-            onChange={(e) => setSelectedDate(new Date(e.target.value))}
-            InputLabelProps={{
-              shrink: true,
-            }}
-          />
-          <TextField
-            margin="dense"
-            label="Horário"
-            type="time"
-            fullWidth
-            value={newEvent.time}
-            onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
-            InputLabelProps={{
-              shrink: true,
-            }}
-          />
-          <TextField
-            margin="dense"
-            label="Local (opcional)"
-            fullWidth
-            value={newEvent.location}
-            onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
-          />
-          <FormControlLabel
-            control={
-              <Switch
-                checked={newEvent.isRecurring}
-                onChange={(e) => setNewEvent({ ...newEvent, isRecurring: e.target.checked })}
-              />
-            }
-            label="Evento Recorrente"
-          />
-          {newEvent.isRecurring && (
+          <Box sx={{ pt: 2 }}>
             <TextField
-              select
-              margin="dense"
-              label="Repetir a cada"
               fullWidth
-              value={newEvent.recurringDay}
-              onChange={(e) => setNewEvent({ ...newEvent, recurringDay: e.target.value })}
-            >
-              <MenuItem value="monday">Segunda-feira</MenuItem>
-              <MenuItem value="tuesday">Terça-feira</MenuItem>
-              <MenuItem value="wednesday">Quarta-feira</MenuItem>
-              <MenuItem value="thursday">Quinta-feira</MenuItem>
-              <MenuItem value="friday">Sexta-feira</MenuItem>
-              <MenuItem value="saturday">Sábado</MenuItem>
-              <MenuItem value="sunday">Domingo</MenuItem>
-            </TextField>
-          )}
+              label="Título"
+              value={eventTitle}
+              onChange={(e) => setEventTitle(e.target.value)}
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              fullWidth
+              label="Descrição"
+              value={eventDescription}
+              onChange={(e) => setEventDescription(e.target.value)}
+              multiline
+              rows={3}
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              fullWidth
+              label="Horário"
+              type="time"
+              value={eventTime}
+              onChange={(e) => setEventTime(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              fullWidth
+              label="Categoria"
+              value={eventCategory}
+              onChange={(e) => setEventCategory(e.target.value)}
+              sx={{ mb: 2 }}
+            />
+          </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseAddEvent}>Cancelar</Button>
-          <Button onClick={handleSubmitEvent} variant="contained" color="primary">
+          <Button onClick={() => setShowAddDialog(false)}>Cancelar</Button>
+          <Button onClick={handleAddEvent} variant="contained">
             Adicionar
           </Button>
         </DialogActions>
       </Dialog>
-    </Paper>
+
+      <Dialog open={!!selectedEvent} onClose={() => setSelectedEvent(null)}>
+        <DialogTitle>{selectedEvent?.title}</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Typography variant="body1" paragraph>
+              {selectedEvent?.description}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {selectedEvent?.start && formatEventTime(new Date(selectedEvent.start))}
+            </Typography>
+            {selectedEvent?.location && (
+              <Typography variant="body2" color="text.secondary">
+                {selectedEvent.location.address}
+              </Typography>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSelectedEvent(null)}>Fechar</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 }; 

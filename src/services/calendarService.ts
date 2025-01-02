@@ -14,42 +14,41 @@ import type { DateEvent } from '../components/DateCalendar';
 
 const COLLECTION_NAME = 'calendar_events';
 
-export const addEvent = async (event: Omit<DateEvent, 'id'>) => {
+export const addEvent = async (event: Omit<DateEvent, 'id'>): Promise<DateEvent> => {
   try {
-    const eventData = {
-      title: event.title,
-      date: Timestamp.fromDate(event.date),
-      time: event.time || '',
-      location: event.location || '',
-      isRecurring: event.isRecurring || false,
-      recurringDay: event.recurringDay || '',
-      createdBy: event.createdBy,
-      createdAt: Timestamp.now(),
-      accepted: event.accepted ?? null,
-    };
+    const docRef = await addDoc(collection(db, COLLECTION_NAME), {
+      ...event,
+      start: Timestamp.fromDate(event.start),
+      end: Timestamp.fromDate(event.end),
+    });
 
-    const docRef = await addDoc(collection(db, COLLECTION_NAME), eventData);
-    return docRef.id;
+    return {
+      ...event,
+      id: docRef.id,
+    };
   } catch (error) {
     console.error('Error adding event:', error);
     throw error;
   }
 };
 
-export const getEvents = async (userId: string, partnerId?: string) => {
+export const getEvents = async (userId: string): Promise<DateEvent[]> => {
   try {
-    const eventsRef = collection(db, COLLECTION_NAME);
     const q = query(
-      eventsRef,
-      where('createdBy', 'in', partnerId ? [userId, partnerId] : [userId])
+      collection(db, COLLECTION_NAME),
+      where('userId', '==', userId)
     );
+
     const querySnapshot = await getDocs(q);
-    
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      date: doc.data().date.toDate(),
-    })) as DateEvent[];
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        ...data,
+        id: doc.id,
+        start: data.start.toDate(),
+        end: data.end.toDate(),
+      } as DateEvent;
+    });
   } catch (error) {
     console.error('Error getting events:', error);
     throw error;

@@ -1,287 +1,367 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Paper,
   Typography,
-  Grid,
+  Button,
   Card,
   CardContent,
-  CardActions,
-  Button,
+  CardMedia,
+  Grid,
   Chip,
-  IconButton,
+  CircularProgress,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
-  Rating,
-  Tooltip,
-  Alert,
+  alpha,
+  useTheme,
 } from '@mui/material';
-import {
-  Favorite,
-  LocationOn,
-  AccessTime,
-  AttachMoney,
-  Add,
-  ThumbUp,
-  ThumbDown,
-} from '@mui/icons-material';
-import { getCurrentLocation, getNearbyPlaces, categoryToPlaceType, type Location, type NearbyPlace } from '../services/locationService';
-
-export interface DateSuggestion {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  location?: string;
-  duration?: string;
-  cost: number;
-  rating?: number;
-  likes?: number;
-  dislikes?: number;
-  userRating?: 'like' | 'dislike';
-  imageUrl?: string;
-  address?: string;
-  distance?: number;
-}
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs, { Dayjs } from 'dayjs';
+import 'dayjs/locale/pt-br';
+import { useAuth } from '../contexts/AuthContext';
+import { getNearbyPlaces, initializeGoogleMaps, type Location, type NearbyPlace } from '../services/locationService';
+import { useNotification } from '../contexts/NotificationContext';
+import { addEvent } from '../services/calendarService';
+import { sendDateInvite } from '../services/notificationService';
 
 interface DateSuggestionsProps {
-  userInterests?: string[];
-  onAddToCalendar: (suggestion: DateSuggestion) => void;
+  userLocation: Location;
 }
 
-export const DateSuggestions: React.FC<DateSuggestionsProps> = ({
-  userInterests = [],
-  onAddToCalendar,
-}) => {
-  const [selectedSuggestion, setSelectedSuggestion] = useState<DateSuggestion | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [eventDate, setEventDate] = useState('');
-  const [eventTime, setEventTime] = useState('');
-  const [userLocation, setUserLocation] = useState<Location | null>(null);
-  const [suggestions, setSuggestions] = useState<DateSuggestion[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const categories = [
+  { value: 'romantic', label: 'Romântico', icon: '💑' },
+  { value: 'outdoor', label: 'Ao Ar Livre', icon: '🌳' },
+  { value: 'cultural', label: 'Cultural', icon: '🎭' },
+  { value: 'active', label: 'Ativo', icon: '🏃' },
+  { value: 'relaxing', label: 'Relaxante', icon: '🧘' },
+  { value: 'food', label: 'Gastronômico', icon: '🍽️' },
+  { value: 'nightlife', label: 'Vida Noturna', icon: '🌙' },
+  { value: 'shopping', label: 'Compras', icon: '🛍️' },
+];
+
+export const DateSuggestions: React.FC<DateSuggestionsProps> = ({ userLocation }) => {
+  const [loading, setLoading] = useState(false);
+  const [suggestions, setSuggestions] = useState<NearbyPlace[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [showMore, setShowMore] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(null);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState<NearbyPlace | null>(null);
+  const [notes, setNotes] = useState('');
+  const { showNotification } = useNotification();
+  const { currentUser, userData } = useAuth();
+  const theme = useTheme();
 
   useEffect(() => {
-    const fetchLocation = async () => {
+    const initMaps = async () => {
       try {
-        const location = await getCurrentLocation();
-        setUserLocation(location);
-        await fetchSuggestions(location);
+        await initializeGoogleMaps();
       } catch (error) {
-        console.error('Error getting location:', error);
-        setError('Não foi possível obter sua localização. Verifique se você permitiu o acesso à localização.');
-      } finally {
-        setLoading(false);
+        console.error('Error initializing Google Maps:', error);
+        showNotification('Erro ao carregar o Google Maps. Por favor, verifique sua conexão e recarregue a página.', 'error');
       }
     };
 
-    fetchLocation();
-  }, []);
+    initMaps();
+  }, [showNotification]);
 
-  const fetchSuggestions = async (location: Location) => {
+  const handleCategoryChange = (event: any) => {
+    setSelectedCategory(event.target.value);
+  };
+
+  const handleFetchSuggestions = async () => {
+    if (!selectedCategory) {
+      showNotification('Por favor, selecione uma categoria primeiro.', 'warning');
+      return;
+    }
+
     try {
-      const allSuggestions: DateSuggestion[] = [];
-
-      // Para cada interesse do usuário, busca lugares próximos
-      for (const interest of userInterests) {
-        const placeType = categoryToPlaceType[interest];
-        if (placeType) {
-          const places = await getNearbyPlaces(location, placeType);
-          
-          // Converte os lugares em sugestões
-          const newSuggestions = places.map((place): DateSuggestion => ({
-            id: place.id,
-            title: place.name,
-            description: `${place.name} - A ${(place.distance / 1000).toFixed(1)}km de distância`,
-            category: interest,
-            location: place.address,
-            cost: Math.floor(Math.random() * 3) + 1, // Simula um custo aleatório por enquanto
-            rating: place.rating,
-            likes: 0,
-            dislikes: 0,
-            address: place.address,
-            distance: place.distance,
-          }));
-
-          allSuggestions.push(...newSuggestions);
-        }
+      setLoading(true);
+      const places = await getNearbyPlaces(userLocation, selectedCategory);
+      setSuggestions(places);
+      if (places.length === 0) {
+        showNotification('Nenhuma sugestão encontrada para esta categoria na sua região.', 'info');
       }
-
-      // Ordena por distância e limita a 9 sugestões
-      const sortedSuggestions = allSuggestions
-        .sort((a, b) => (a.distance || 0) - (b.distance || 0))
-        .slice(0, 9);
-
-      setSuggestions(sortedSuggestions);
     } catch (error) {
       console.error('Error fetching suggestions:', error);
-      setError('Erro ao buscar sugestões de lugares próximos.');
+      showNotification('Erro ao buscar sugestões. Por favor, tente novamente.', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleAddToCalendar = (suggestion: DateSuggestion) => {
-    setSelectedSuggestion(suggestion);
-    setEventDate(new Date().toISOString().split('T')[0]);
-    setEventTime('');
-    setIsDialogOpen(true);
+  const displayedSuggestions = showMore ? suggestions : suggestions.slice(0, 20);
+
+  const handleScheduleDate = (place: NearbyPlace) => {
+    setSelectedPlace(place);
+    setSelectedDate(null);
+    setNotes('');
+    setOpenDialog(true);
   };
 
-  const handleConfirmAdd = () => {
-    if (selectedSuggestion && eventDate && eventTime) {
-      const [year, month, day] = eventDate.split('-').map(Number);
-      const [hours, minutes] = eventTime.split(':').map(Number);
-      const eventDateTime = new Date(year, month - 1, day, hours, minutes);
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setSelectedPlace(null);
+    setSelectedDate(null);
+    setNotes('');
+  };
 
-      onAddToCalendar({
-        ...selectedSuggestion,
-        date: eventDateTime,
-        time: eventTime,
+  const handleConfirmDate = async () => {
+    if (!selectedPlace || !selectedDate || !currentUser || !userData?.partnerId) {
+      showNotification('Erro ao marcar encontro. Verifique os dados e tente novamente.', 'error');
+      return;
+    }
+
+    try {
+      const dateValue = selectedDate.toDate();
+      const endDateValue = new Date(dateValue.getTime() + 2 * 60 * 60 * 1000); // 2 horas de duração
+
+      // Prepare place data without undefined fields
+      const placeData: NearbyPlace = {
+        id: selectedPlace.id,
+        name: selectedPlace.name,
+        address: selectedPlace.address,
+        location: selectedPlace.location,
+        category: selectedPlace.category,
+        photoUrl: selectedPlace.photoUrl || '',
+        description: selectedPlace.description || '',
+        rating: selectedPlace.rating || 0,
+        priceLevel: selectedPlace.priceLevel || 0,
+        website: selectedPlace.website || '',
+        openNow: selectedPlace.openNow || false,
+        distance: selectedPlace.distance || 0
+      };
+
+      // Cria o evento no calendário do usuário
+      const event = {
+        title: `Encontro em ${selectedPlace.name}`,
+        description: `${notes || 'Encontro marcado!'}\n\nLocal: ${selectedPlace.name}\nEndereço: ${selectedPlace.address}\n${selectedPlace.description ? `\nSobre o local: ${selectedPlace.description}` : ''}\n${selectedPlace.website ? `\nSite: ${selectedPlace.website}` : ''}`,
+        start: dateValue,
+        end: endDateValue,
+        location: {
+          lat: selectedPlace.location.lat,
+          lng: selectedPlace.location.lng,
+          address: selectedPlace.address
+        },
+        category: 'date',
+        userId: currentUser.uid,
+      };
+
+      const createdEvent = await addEvent(event);
+
+      // Envia convite para o parceiro
+      await sendDateInvite({
+        fromUserId: currentUser.uid,
+        toUserId: userData.partnerId,
+        place: placeData,
+        date: dateValue,
+        notes: notes,
       });
-      setIsDialogOpen(false);
-      setSelectedSuggestion(null);
-      setEventDate('');
-      setEventTime('');
+
+      showNotification('Convite de encontro enviado! Aguarde a confirmação do seu parceiro.', 'success');
+      handleCloseDialog();
+    } catch (error) {
+      console.error('Error scheduling date:', error);
+      showNotification('Erro ao marcar encontro. Por favor, tente novamente.', 'error');
     }
   };
-
-  const getCostSymbol = (cost: number) => {
-    return '💰'.repeat(cost);
-  };
-
-  if (loading) {
-    return (
-      <Box sx={{ mt: 3 }}>
-        <Typography>Carregando sugestões...</Typography>
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Box sx={{ mt: 3 }}>
-        <Alert severity="error">{error}</Alert>
-      </Box>
-    );
-  }
 
   return (
-    <Box sx={{ mt: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        Sugestões de Encontros Próximos
+    <Box sx={{ py: 4 }}>
+      <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
+        Sugestões de Encontro
       </Typography>
-      {userLocation && (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Mostrando lugares próximos à sua localização
-        </Typography>
-      )}
-      <Grid container spacing={3}>
-        {suggestions.map((suggestion) => (
-          <Grid item xs={12} md={4} key={suggestion.id}>
-            <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-              <CardContent sx={{ flexGrow: 1 }}>
-                <Typography variant="h6" gutterBottom>
-                  {suggestion.title}
-                </Typography>
-                <Chip
-                  icon={<Favorite />}
-                  label={suggestion.category}
-                  size="small"
-                  color="primary"
-                  sx={{ mb: 1 }}
-                />
-                <Typography variant="body2" color="text.secondary" paragraph>
-                  {suggestion.description}
-                </Typography>
-                {suggestion.distance && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <LocationOn sx={{ fontSize: 'small', mr: 0.5 }} />
-                    <Typography variant="body2" color="text.secondary">
-                      {(suggestion.distance / 1000).toFixed(1)}km de distância
-                    </Typography>
-                  </Box>
-                )}
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <AttachMoney sx={{ fontSize: 'small', mr: 0.5 }} />
-                  <Typography variant="body2" color="text.secondary">
-                    {getCostSymbol(suggestion.cost)}
-                  </Typography>
-                </Box>
-                {suggestion.rating && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Rating value={suggestion.rating} readOnly size="small" />
-                    <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                      ({suggestion.rating})
-                    </Typography>
-                  </Box>
-                )}
-              </CardContent>
-              <CardActions>
-                <Button
-                  size="small"
-                  variant="contained"
-                  startIcon={<Add />}
-                  onClick={() => handleAddToCalendar(suggestion)}
-                  fullWidth
-                >
-                  Adicionar ao Calendário
-                </Button>
-              </CardActions>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
 
-      <Dialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)}>
-        <DialogTitle>Agendar Encontro</DialogTitle>
+      <Box sx={{ mb: 4 }}>
+        <FormControl fullWidth sx={{ mb: 2 }}>
+          <InputLabel>Categoria</InputLabel>
+          <Select
+            value={selectedCategory}
+            onChange={handleCategoryChange}
+            label="Categoria"
+          >
+            {categories.map((category) => (
+              <MenuItem key={category.value} value={category.value}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <span style={{ marginRight: '8px' }}>{category.icon}</span>
+                  {category.label}
+                </Box>
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleFetchSuggestions}
+          disabled={loading || !selectedCategory}
+          fullWidth
+        >
+          {loading ? <CircularProgress size={24} /> : 'Buscar Sugestões'}
+        </Button>
+      </Box>
+
+      {suggestions.length > 0 && (
+        <Grid container spacing={3}>
+          {displayedSuggestions.map((suggestion, index) => (
+            <Grid item xs={12} sm={6} md={4} key={index}>
+              <Card
+                sx={{
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  background: alpha(theme.palette.background.paper, 0.8),
+                  backdropFilter: 'blur(8px)',
+                  transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: `0 12px 20px -5px ${alpha(theme.palette.primary.main, 0.2)}`,
+                  },
+                }}
+              >
+                {suggestion.photoUrl && (
+                  <CardMedia
+                    component="img"
+                    height="140"
+                    image={suggestion.photoUrl}
+                    alt={suggestion.name}
+                  />
+                )}
+                <CardContent sx={{ flexGrow: 1 }}>
+                  <Typography variant="h6" gutterBottom>
+                    {suggestion.name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    {suggestion.address}
+                  </Typography>
+                  {suggestion.description && (
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      {suggestion.description}
+                    </Typography>
+                  )}
+                  <Box sx={{ mt: 1, mb: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {suggestion.rating && (
+                      <Chip
+                        label={`${suggestion.rating} ⭐`}
+                        size="small"
+                      />
+                    )}
+                    {suggestion.distance && (
+                      <Chip
+                        label={`${(suggestion.distance / 1000).toFixed(1)}km`}
+                        size="small"
+                        variant="outlined"
+                      />
+                    )}
+                    {suggestion.openNow !== undefined && (
+                      <Chip
+                        label={suggestion.openNow ? 'Aberto agora' : 'Fechado'}
+                        size="small"
+                        color={suggestion.openNow ? 'success' : 'default'}
+                        variant="outlined"
+                      />
+                    )}
+                    {suggestion.priceLevel !== undefined && (
+                      <Chip
+                        label={'$'.repeat(suggestion.priceLevel + 1)}
+                        size="small"
+                        variant="outlined"
+                      />
+                    )}
+                  </Box>
+                  <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+                    {suggestion.website && (
+                      <Button
+                        href={suggestion.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant="outlined"
+                        size="small"
+                        sx={{ flex: 1 }}
+                      >
+                        Visitar site
+                      </Button>
+                    )}
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      size="small"
+                      sx={{ flex: 1 }}
+                      onClick={() => handleScheduleDate(suggestion)}
+                    >
+                      Marcar Encontro
+                    </Button>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
+
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Marcar Encontro</DialogTitle>
         <DialogContent>
-          <Typography variant="subtitle1" gutterBottom>
-            {selectedSuggestion?.title}
-          </Typography>
-          {selectedSuggestion?.address && (
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              Local: {selectedSuggestion.address}
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Local: {selectedPlace?.name}
             </Typography>
-          )}
-          <TextField
-            margin="dense"
-            label="Data"
-            type="date"
-            fullWidth
-            value={eventDate}
-            onChange={(e) => setEventDate(e.target.value)}
-            InputLabelProps={{
-              shrink: true,
-            }}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="Horário"
-            type="time"
-            fullWidth
-            value={eventTime}
-            onChange={(e) => setEventTime(e.target.value)}
-            InputLabelProps={{
-              shrink: true,
-            }}
-          />
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Endereço: {selectedPlace?.address}
+            </Typography>
+            <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="pt-br">
+              <DateTimePicker
+                label="Data e Hora"
+                value={selectedDate}
+                onChange={(newValue) => setSelectedDate(newValue)}
+                sx={{ mt: 2, width: '100%' }}
+                minDateTime={dayjs()}
+              />
+            </LocalizationProvider>
+            <TextField
+              label="Observações"
+              multiline
+              rows={3}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              fullWidth
+              sx={{ mt: 2 }}
+              placeholder="Adicione uma mensagem para seu parceiro..."
+            />
+          </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={handleCloseDialog}>Cancelar</Button>
           <Button
-            onClick={handleConfirmAdd}
+            onClick={handleConfirmDate}
             variant="contained"
-            color="primary"
-            disabled={!eventDate || !eventTime}
+            disabled={!selectedDate}
           >
-            Confirmar
+            Enviar Convite
           </Button>
         </DialogActions>
       </Dialog>
+
+      {suggestions.length > 20 && !showMore && (
+        <Box sx={{ mt: 3, textAlign: 'center' }}>
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={() => setShowMore(true)}
+          >
+            Ver Mais Sugestões
+          </Button>
+        </Box>
+      )}
     </Box>
   );
 }; 

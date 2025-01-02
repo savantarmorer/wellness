@@ -1,5 +1,3 @@
-import { RelationshipAnalysis } from '../services/gptService';
-
 export interface User {
   id: string;
   name: string;
@@ -103,16 +101,67 @@ export interface ConsensusFormData {
   analysis?: RelationshipAnalysis;
 }
 
+export interface CategoryAnalysis {
+  score: number;
+  partnerScore?: number;
+  trend: 'improving' | 'stable' | 'declining';
+  insights: string[];
+}
+
+export interface RelationshipDynamics {
+  positivePatterns: string[];
+  concerningPatterns: string[];
+  growthAreas: string[];
+  discrepancyInsights?: string;
+}
+
 export interface RelationshipAnalysis {
-  summary: string;
-  relationshipDynamics: {
-    positivePatterns: string[];
-    concerningPatterns: string[];
-    growthAreas: string[];
+  overallHealth: {
+    score: number;
+    trend: 'improving' | 'stable' | 'declining';
   };
-  recommendations: string[];
-  moodTrend: 'improving' | 'stable' | 'declining';
-  communicationQuality: 'strong' | 'moderate' | 'needs_improvement';
+  categories: Record<string, CategoryAnalysis>;
+  strengthsAndChallenges: {
+    strengths: string[];
+    challenges: string[];
+  };
+  communicationSuggestions: string[];
+  actionItems: string[];
+  relationshipDynamics: RelationshipDynamics;
+  emotionalDynamics: {
+    emotionalSecurity: number;
+    intimacyBalance: {
+      score: number;
+      areas: {
+        emotional: number;
+        physical: number;
+        intellectual: number;
+        shared: number;
+      };
+    };
+    conflictResolution: {
+      style: string;
+      effectiveness: number;
+      patterns: string[];
+    };
+  };
+  discrepancyAnalysis?: {
+    daily?: {
+      insights: string[];
+      recommendations: string[];
+    };
+    weekly?: {
+      insights: string[];
+      recommendations: string[];
+      trends: string[];
+    };
+    monthly?: {
+      insights: string[];
+      recommendations: string[];
+      trends: string[];
+      longTermPatterns: string[];
+    };
+  };
 }
 
 export interface GPTAnalysisContent {
@@ -126,8 +175,39 @@ export interface GPTAnalysisContent {
     concerningPatterns: string[];
     growthAreas: string[];
   };
+  strengthsAndChallenges?: {
+    strengths: string[];
+    challenges: string[];
+  };
+  communicationSuggestions?: string[];
   actionItems?: string[];
   textReport?: string;
+  emotionalDynamics?: {
+    emotionalSecurity: number;
+    intimacyBalance: {
+      score: number;
+      areas: {
+        emotional: number;
+        physical: number;
+        intellectual: number;
+        shared: number;
+      };
+    };
+    conflictResolution: {
+      style: string;
+      effectiveness: number;
+      patterns: string[];
+    };
+  };
+  analysis?: {
+    strengthsAndChallenges?: {
+      strengths: string[];
+      challenges: string[];
+    };
+    communicationSuggestions?: string[];
+    recommendations?: string[];
+    actionItems?: string[];
+  };
 }
 
 export interface GPTAnalysis {
@@ -136,6 +216,6 @@ export interface GPTAnalysis {
   partnerId?: string;
   date: string;
   type: 'individual' | 'collective';
-  analysis: GPTAnalysisContent;
+  analysis: GPTAnalysisContent | string;
   createdAt: any;
 } 

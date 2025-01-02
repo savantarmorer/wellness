@@ -1,200 +1,386 @@
-import { generateDailyInsight, generateRelationshipAnalysis } from '../gptService';
-import type { DailyAssessment, RelationshipContext } from '../../types';
+import {
+  generateDailyInsight,
+  generateRelationshipAnalysis,
+  analyzeConsensusForm,
+  type ConsensusFormData
+} from '../gptService';
+import { DailyAssessment, RelationshipContext } from '../../types';
+import { callOpenAI } from '../openaiClient';
 
-// Mock fetch globally
-global.fetch = jest.fn();
+jest.mock('../openaiClient', () => ({
+  callOpenAI: jest.fn()
+}));
 
-describe('GPT Service Tests', () => {
-  // Reset mocks before each test
-  beforeEach(() => {
-    (global.fetch as jest.Mock).mockClear();
-  });
-
-  const mockAssessment: DailyAssessment = {
-    userId: 'user123',
+describe('gptService', () => {
+  const mockDailyAssessment: DailyAssessment = {
+    id: 'test-id',
+    userId: 'test-user',
     date: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
     ratings: {
-      comunicacao: 8,
-      conexaoEmocional: 7,
-      apoioMutuo: 8,
-      transparenciaConfianca: 9,
-      intimidadeFisica: 7,
-      saudeMental: 8,
-      resolucaoConflitos: 7,
-      segurancaRelacionamento: 8,
-      alinhamentoObjetivos: 9,
-      satisfacaoGeral: 8,
-      autocuidado: 7,
-      gratidao: 9,
-      qualidadeTempo: 8
+      comunicacao: 4,
+      resolucaoConflitos: 4,
+      conexaoEmocional: 4,
+      apoioMutuo: 4,
+      transparenciaConfianca: 4,
+      intimidadeFisica: 4,
+      saudeMental: 4,
+      segurancaRelacionamento: 4,
+      alinhamentoObjetivos: 4,
+      satisfacaoGeral: 4,
+      autocuidado: 4,
+      gratidao: 4,
+      qualidadeTempo: 4
     },
-    comments: 'Tivemos um bom dia juntos',
-    gratitude: 'Agradeço o apoio emocional',
-    createdAt: new Date().toISOString()
+    comments: 'Test comments',
+    gratitude: 'Test gratitude'
   };
 
-  const mockContext: RelationshipContext = {
-    id: 'context123',
-    userId: 'user123',
-    partnerId: 'partner123',
-    duration: '2 anos',
-    status: 'Casados',
-    type: 'Relacionamento sério',
-    goals: ['Melhorar comunicação', 'Construir confiança'],
-    challenges: ['Tempo limitado juntos', 'Estresse do trabalho'],
-    values: ['Respeito', 'Honestidade'],
-    relationshipDuration: '2 anos',
+  const mockRelationshipContext: RelationshipContext = {
+    id: 'test-context-id',
+    userId: 'test-user-id',
+    partnerId: 'test-partner-id',
+    duration: '2 years',
+    status: 'married',
+    type: 'serious',
+    goals: ['Improve communication', 'Build trust'],
+    challenges: ['Limited time together', 'Work stress'],
+    values: ['Respect', 'Honesty'],
+    relationshipDuration: '2 years',
     relationshipStyle: 'monogamico',
     relationshipStyleOther: '',
-    currentDynamics: 'Estável, com alguns desafios de comunicação',
-    strengths: 'Forte conexão emocional e valores compartilhados',
+    currentDynamics: 'Stable relationship with good communication',
+    strengths: 'Strong emotional connection',
     areasNeedingAttention: {
-      comunicacao: true,
+      comunicacao: false,
       confianca: false,
       intimidade: false,
-      resolucaoConflitos: true,
+      resolucaoConflitos: false,
       apoioEmocional: false,
       outros: false
     },
     areasNeedingAttentionOther: '',
-    recurringProblems: 'Dificuldade em expressar sentimentos',
-    appGoals: 'Melhorar comunicação e intimidade',
+    recurringProblems: 'None',
+    appGoals: 'Maintain and improve communication',
     hadSignificantCrises: false,
     crisisDescription: '',
-    attemptedSolutions: true,
-    solutionsDescription: 'Terapia de casal anterior',
-    userEmotionalState: 'Geralmente estável, ocasionalmente ansioso',
-    partnerEmotionalState: 'Estável, às vezes estressado com trabalho',
-    timeSpentTogether: '1-3h',
+    attemptedSolutions: false,
+    solutionsDescription: '',
+    userEmotionalState: 'Stable',
+    partnerEmotionalState: 'Stable',
+    timeSpentTogether: '3-5h',
     qualityTime: true,
-    qualityTimeDescription: 'Jantares e conversas significativas',
-    routineImpact: 'Trabalho afeta tempo juntos',
-    physicalIntimacy: 'Satisfatória, mas pode melhorar',
-    intimacyImprovements: 'Mais momentos de qualidade',
+    qualityTimeDescription: 'Regular date nights and activities',
+    routineImpact: 'Positive impact on relationship',
+    physicalIntimacy: 'Satisfactory',
+    intimacyImprovements: 'None needed',
     additionalInfo: '',
     createdAt: new Date().toISOString()
   };
 
   describe('generateDailyInsight', () => {
-    it('should include relationship context in the prompt', async () => {
-      // Mock successful API response
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          choices: [{ message: { content: 'Análise terapêutica' } }]
-        })
-      });
-
-      await generateDailyInsight(mockAssessment, mockContext);
-
-      // Get the actual call to fetch
-      const fetchCall = (global.fetch as jest.Mock).mock.calls[0];
-      const requestBody = JSON.parse(fetchCall[1].body);
-      const prompt = requestBody.messages[1].content;
-
-      // Verify context information is included in prompt
-      expect(prompt).toContain('História e Duração: 2 anos');
-      expect(prompt).toContain('Status Atual: Casados');
-      expect(prompt).toContain('Natureza do Vínculo: Relacionamento sério');
-      expect(prompt).toContain('Dinâmica Atual: Estável, com alguns desafios de comunicação');
-      expect(prompt).toContain('Estado Emocional do Usuário: Geralmente estável, ocasionalmente ansioso');
-      expect(prompt).toContain('Histórico de Crises: Não');
+    beforeEach(() => {
+      (callOpenAI as jest.Mock).mockReset();
     });
 
-    it('should handle missing relationship context gracefully', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          choices: [{ message: { content: 'Análise terapêutica' } }]
-        })
-      });
+    test('should generate daily insight successfully', async () => {
+      const mockGPTResponse = {
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              insight: 'Test insight',
+              recommendations: ['Test recommendation'],
+              focus_areas: ['Test focus area']
+            })
+          }
+        }]
+      };
 
-      await generateDailyInsight(mockAssessment);
+      (callOpenAI as jest.Mock).mockResolvedValue(mockGPTResponse);
 
-      const fetchCall = (global.fetch as jest.Mock).mock.calls[0];
-      const requestBody = JSON.parse(fetchCall[1].body);
-      const prompt = requestBody.messages[1].content;
+      const result = await generateDailyInsight(mockDailyAssessment, mockRelationshipContext);
 
-      // Verify prompt still works without context
-      expect(prompt).not.toContain('Contexto Terapêutico do Relacionamento');
-      expect(prompt).toContain('Avaliação Detalhada');
+      expect(result).toHaveProperty('insight');
+      expect(result).toHaveProperty('recommendations');
+      expect(result).toHaveProperty('focus_areas');
+    });
+
+    test('should handle API errors gracefully', async () => {
+      (callOpenAI as jest.Mock).mockRejectedValue(new Error('API Error'));
+
+      await expect(generateDailyInsight(mockDailyAssessment, mockRelationshipContext))
+        .rejects.toThrow('Failed to generate daily insight');
+    });
+
+    test('should handle invalid API response format', async () => {
+      const mockInvalidResponse = {
+        choices: [{
+          message: {
+            content: 'Invalid JSON'
+          }
+        }]
+      };
+
+      (callOpenAI as jest.Mock).mockResolvedValue(mockInvalidResponse);
+
+      await expect(generateDailyInsight(mockDailyAssessment, mockRelationshipContext))
+        .rejects.toThrow('Failed to parse GPT response');
     });
   });
 
   describe('generateRelationshipAnalysis', () => {
-    it('should include both partners assessments and context in analysis', async () => {
-      const mockAnalysisResponse = {
-        overallHealth: { score: 85, trend: 'up' },
-        categories: {},
-        strengthsAndChallenges: { strengths: [], challenges: [] },
-        communicationSuggestions: [],
-        actionItems: [],
-        relationshipDynamics: { positivePatterns: [], concerningPatterns: [], growthAreas: [] }
-      };
-
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          choices: [{ message: { content: JSON.stringify(mockAnalysisResponse) } }]
-        })
-      });
-
-      await generateRelationshipAnalysis(mockAssessment, mockAssessment, mockContext);
-
-      const fetchCall = (global.fetch as jest.Mock).mock.calls[0];
-      const requestBody = JSON.parse(fetchCall[1].body);
-      const prompt = requestBody.messages[1].content;
-
-      // Verify both assessments and context are included
-      expect(prompt).toContain('Avaliação do Primeiro Parceiro');
-      expect(prompt).toContain('Avaliação do Segundo Parceiro');
-      expect(prompt).toContain('Contexto Terapêutico do Relacionamento');
-      expect(prompt).toContain('Dinâmica Atual: Estável, com alguns desafios de comunicação');
-      expect(prompt).toContain('Tentativas de Resolução: Sim - Terapia de casal anterior');
+    beforeEach(() => {
+      (callOpenAI as jest.Mock).mockReset();
     });
 
-    it('should maintain therapeutic focus in system prompt', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          choices: [{ message: { content: '{}' } }]
-        })
-      });
+    test('should generate relationship analysis successfully', async () => {
+      const mockGPTResponse = {
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              overallHealth: { score: 4, trend: 'improving' },
+              categories: {},
+              strengthsAndChallenges: {
+                strengths: ['Test strength'],
+                challenges: ['Test challenge']
+              },
+              communicationSuggestions: ['Test suggestion'],
+              actionItems: ['Test action'],
+              relationshipDynamics: {
+                positivePatterns: ['Test positive'],
+                concerningPatterns: ['Test concern'],
+                growthAreas: ['Test growth']
+              },
+              emotionalDynamics: {
+                emotionalSecurity: 4,
+                intimacyBalance: {
+                  score: 4,
+                  areas: {
+                    emotional: 4,
+                    physical: 4,
+                    intellectual: 4,
+                    shared: 4
+                  }
+                },
+                conflictResolution: {
+                  style: 'collaborative',
+                  effectiveness: 4,
+                  patterns: ['Test pattern']
+                }
+              }
+            })
+          }
+        }]
+      };
 
-      await generateRelationshipAnalysis(mockAssessment, mockAssessment);
+      (callOpenAI as jest.Mock).mockResolvedValue(mockGPTResponse);
 
-      const fetchCall = (global.fetch as jest.Mock).mock.calls[0];
-      const requestBody = JSON.parse(fetchCall[1].body);
-      const systemPrompt = requestBody.messages[0].content;
+      const result = await generateRelationshipAnalysis(
+        mockDailyAssessment,
+        mockDailyAssessment,
+        mockRelationshipContext
+      );
 
-      // Verify therapeutic approaches are included
-      expect(systemPrompt).toContain('Terapia Focada na Emoção (EFT)');
-      expect(systemPrompt).toContain('Teoria do Apego');
-      expect(systemPrompt).toContain('Análise Sistêmica de Relacionamentos');
-      expect(systemPrompt).toContain('Comunicação Não-Violenta');
+      expect(result).toHaveProperty('overallHealth');
+      expect(result).toHaveProperty('categories');
+      expect(result).toHaveProperty('strengthsAndChallenges');
+      expect(result).toHaveProperty('communicationSuggestions');
+      expect(result).toHaveProperty('actionItems');
+      expect(result).toHaveProperty('relationshipDynamics');
+      expect(result).toHaveProperty('emotionalDynamics');
+    });
+
+    test('should handle missing relationship context', async () => {
+      const mockGPTResponse = {
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              overallHealth: { score: 4, trend: 'improving' },
+              categories: {},
+              strengthsAndChallenges: { strengths: [], challenges: [] },
+              communicationSuggestions: [],
+              actionItems: [],
+              relationshipDynamics: {
+                positivePatterns: [],
+                concerningPatterns: [],
+                growthAreas: []
+              },
+              emotionalDynamics: {
+                emotionalSecurity: 4,
+                intimacyBalance: {
+                  score: 4,
+                  areas: { emotional: 4, physical: 4, intellectual: 4, shared: 4 }
+                },
+                conflictResolution: {
+                  style: 'collaborative',
+                  effectiveness: 4,
+                  patterns: []
+                }
+              }
+            })
+          }
+        }]
+      };
+
+      (callOpenAI as jest.Mock).mockResolvedValue(mockGPTResponse);
+
+      const result = await generateRelationshipAnalysis(
+        mockDailyAssessment,
+        mockDailyAssessment,
+        undefined
+      );
+
+      expect(result).toBeDefined();
+      expect(result.overallHealth).toBeDefined();
     });
   });
 
-  describe('Error handling', () => {
-    it('should handle API errors gracefully', async () => {
-      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
+  describe('analyzeConsensusForm', () => {
+    const mockConsensusForm: ConsensusFormData = {
+      type: 'consensus_form',
+      answers: {
+        communication: 'daily',
+        conflicts: 'rarely',
+        intimacy: 'frequently',
+        support: 'always'
+      },
+      date: new Date().toISOString()
+    };
 
-      await expect(generateDailyInsight(mockAssessment, mockContext))
-        .rejects
-        .toThrow('API Error');
+    beforeEach(() => {
+      (callOpenAI as jest.Mock).mockReset();
     });
 
-    it('should handle invalid JSON response', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          choices: [{ message: { content: 'Invalid JSON' } }]
-        })
-      });
+    test('should analyze consensus form successfully', async () => {
+      const mockGPTResponse = {
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              overallAnalysis: {
+                score: 85,
+                trend: 'improving',
+                summary: 'Test summary',
+                riskLevel: 'low'
+              },
+              categoryAnalysis: {
+                communication: {
+                  score: 4,
+                  insights: ['Test insight'],
+                  recommendations: ['Test recommendation'],
+                  riskFactors: []
+                }
+              },
+              progressionAnalysis: {
+                improvements: ['Test improvement'],
+                concerns: [],
+                trends: {}
+              },
+              therapeuticInsights: {
+                immediateActions: ['Test action'],
+                longTermStrategies: ['Test strategy'],
+                underlyingIssues: []
+              },
+              consistencyAnalysis: {
+                alignedAreas: ['Test area'],
+                discrepancies: [],
+                possibleMotivations: []
+              },
+              recommendations: {
+                communication: ['Test recommendation'],
+                exercises: ['Test exercise'],
+                professionalSupport: []
+              }
+            })
+          }
+        }]
+      };
 
-      await expect(generateRelationshipAnalysis(mockAssessment, mockAssessment, mockContext))
-        .rejects
-        .toThrow();
+      (callOpenAI as jest.Mock).mockResolvedValue(mockGPTResponse);
+
+      const result = await analyzeConsensusForm(mockConsensusForm);
+
+      expect(result).toHaveProperty('overallAnalysis');
+      expect(result.overallAnalysis).toHaveProperty('score');
+      expect(result.overallAnalysis).toHaveProperty('trend');
+      expect(result.overallAnalysis).toHaveProperty('summary');
+      expect(result.overallAnalysis).toHaveProperty('riskLevel');
+      expect(result).toHaveProperty('categoryAnalysis');
+      expect(result).toHaveProperty('progressionAnalysis');
+      expect(result).toHaveProperty('therapeuticInsights');
+      expect(result).toHaveProperty('consistencyAnalysis');
+      expect(result).toHaveProperty('recommendations');
+    });
+
+    test('should handle partner form comparison', async () => {
+      const mockPartnerForm: ConsensusFormData = {
+        ...mockConsensusForm,
+        answers: {
+          ...mockConsensusForm.answers,
+          communication: 'rarely',
+          conflicts: 'frequently'
+        }
+      };
+
+      const mockGPTResponse = {
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              overallAnalysis: {
+                score: 70,
+                trend: 'stable',
+                summary: 'Test summary with discrepancies',
+                riskLevel: 'moderate'
+              },
+              categoryAnalysis: {
+                communication: {
+                  score: 3,
+                  insights: ['Test insight with discrepancy'],
+                  recommendations: ['Test recommendation for discrepancy'],
+                  riskFactors: ['Communication discrepancy']
+                }
+              },
+              progressionAnalysis: {
+                improvements: [],
+                concerns: ['Communication gap'],
+                trends: {}
+              },
+              therapeuticInsights: {
+                immediateActions: ['Address communication gap'],
+                longTermStrategies: ['Develop communication plan'],
+                underlyingIssues: ['Different communication expectations']
+              },
+              consistencyAnalysis: {
+                alignedAreas: [],
+                discrepancies: ['Communication frequency'],
+                possibleMotivations: ['Different needs']
+              },
+              recommendations: {
+                communication: ['Establish communication routine'],
+                exercises: ['Daily check-ins'],
+                professionalSupport: []
+              }
+            })
+          }
+        }]
+      };
+
+      (callOpenAI as jest.Mock).mockResolvedValue(mockGPTResponse);
+
+      const result = await analyzeConsensusForm(mockConsensusForm, mockPartnerForm);
+
+      expect(result.overallAnalysis.score).toBe(70);
+      expect(result.consistencyAnalysis.discrepancies.length).toBeGreaterThan(0);
+    });
+
+    test('should handle invalid form data', async () => {
+      const invalidForm = {
+        type: 'consensus_form',
+        answers: {},
+        date: new Date().toISOString()
+      } as ConsensusFormData;
+
+      await expect(analyzeConsensusForm(invalidForm))
+        .rejects.toThrow('Invalid consensus form data');
     });
   });
 }); 

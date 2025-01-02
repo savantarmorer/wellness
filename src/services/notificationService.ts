@@ -1,14 +1,15 @@
 import { db } from './firebase';
-import { collection, query, where, onSnapshot, addDoc, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, getDocs, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { app } from './firebase';
+import type { NearbyPlace } from './locationService';
 
 const messaging = getMessaging(app);
 
 export interface Notification {
   id?: string;
   userId: string;
-  type: 'assessment_completed' | 'analysis_ready' | 'reminder' | 'goal_achieved' | 'partner_invitation';
+  type: 'assessment_completed' | 'analysis_ready' | 'reminder' | 'goal_achieved' | 'partner_invitation' | 'dateInvite';
   title: string;
   message: string;
   read: boolean;
@@ -17,6 +18,10 @@ export interface Notification {
     assessmentId?: string;
     inviterId?: string;
     inviterEmail?: string;
+    place?: NearbyPlace;
+    date?: string;
+    fromUserId?: string;
+    notes?: string;
   };
 }
 
@@ -174,5 +179,63 @@ export const showWelcomeBack = () => {
       badge: '/icons/icon-72x72.png',
       tag: 'welcome-back'
     });
+  }
+};
+
+interface DateInvite {
+  fromUserId: string;
+  toUserId: string;
+  place: NearbyPlace;
+  date: Date;
+  notes?: string;
+  status: 'pending' | 'accepted' | 'declined';
+  createdAt: Date;
+}
+
+export const sendDateInvite = async ({
+  fromUserId,
+  toUserId,
+  place,
+  date,
+  notes,
+}: Omit<DateInvite, 'status' | 'createdAt'>) => {
+  try {
+    const invite: DateInvite = {
+      fromUserId,
+      toUserId,
+      place,
+      date,
+      notes,
+      status: 'pending',
+      createdAt: new Date(),
+    };
+
+    // Adiciona o convite ao Firestore
+    const invitesRef = collection(db, 'dateInvites');
+    await addDoc(invitesRef, {
+      ...invite,
+      date: date.toISOString(),
+      createdAt: serverTimestamp(),
+    });
+
+    // Adiciona uma notificação para o parceiro
+    const notificationsRef = collection(db, 'notifications');
+    await addDoc(notificationsRef, {
+      userId: toUserId,
+      type: 'dateInvite',
+      title: 'Novo convite de encontro!',
+      message: `Você recebeu um convite para um encontro em ${place.name}`,
+      read: false,
+      createdAt: serverTimestamp(),
+      data: {
+        place,
+        date: date.toISOString(),
+        fromUserId,
+        notes,
+      },
+    });
+  } catch (error) {
+    console.error('Error sending date invite:', error);
+    throw error;
   }
 }; 

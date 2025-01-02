@@ -42,7 +42,7 @@ import { Psychology as PsychologyIcon, Group as GroupIcon } from '@mui/icons-mat
 import { saveAnalysis, getAnalysisForDate } from '../services/analysisHistoryService';
 import { RelationshipAnalysis } from '../components/RelationshipAnalysis';
 import type { RelationshipAnalysis as RelationshipAnalysisType } from '../services/gptService';
-import { ConsensusFormData } from '../services/analysisHistoryService';
+import { ConsensusFormData } from '../services/gptService';
 
 const METRICS = {
   comunicacao: 'Comunicação',
@@ -67,6 +67,7 @@ export default function Statistics() {
   const { currentUser, userData } = useAuth();
   const [chartData, setChartData] = useState<any[]>([]);
   const [radarData, setRadarData] = useState<any[]>([]);
+  const [intimacyBalanceData, setIntimacyBalanceData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [generatingAnalysis, setGeneratingAnalysis] = useState(false);
@@ -91,9 +92,10 @@ export default function Statistics() {
         const partnerAssessments = await getAssessmentHistory(userData.partnerId);
 
         // Combine and process data for charts
-        const { timeSeriesData, radarChartData } = processAssessmentData(userAssessments, partnerAssessments);
+        const { timeSeriesData, radarChartData, intimacyBalanceData } = processAssessmentData(userAssessments, partnerAssessments);
         setChartData(timeSeriesData);
         setRadarData(radarChartData);
+        setIntimacyBalanceData(intimacyBalanceData);
       } catch (error) {
         console.error('Failed to load data:', error);
         setError(new Error('Failed to load data'));
@@ -125,6 +127,13 @@ export default function Statistics() {
         userResolucaoConflitos: assessment.ratings.resolucaoConflitos,
         userSegurancaRelacionamento: assessment.ratings.segurancaRelacionamento,
         userSatisfacaoGeral: assessment.ratings.satisfacaoGeral,
+        userEmotionalSecurity: assessment.ratings.segurancaRelacionamento / 2,
+        userIntimacyBalance: assessment.ratings.intimidadeFisica,
+        userEmotionalConnection: assessment.ratings.conexaoEmocional / 2,
+        userPhysicalIntimacy: assessment.ratings.intimidadeFisica / 2,
+        userIntellectualConnection: assessment.ratings.comunicacao / 2,
+        userSharedTime: assessment.ratings.qualidadeTempo / 2,
+        userConflictResolution: assessment.ratings.resolucaoConflitos / 2,
       });
     });
 
@@ -143,6 +152,13 @@ export default function Statistics() {
         partnerResolucaoConflitos: assessment.ratings.resolucaoConflitos,
         partnerSegurancaRelacionamento: assessment.ratings.segurancaRelacionamento,
         partnerSatisfacaoGeral: assessment.ratings.satisfacaoGeral,
+        partnerEmotionalSecurity: assessment.ratings.segurancaRelacionamento / 2,
+        partnerIntimacyBalance: assessment.ratings.intimidadeFisica,
+        partnerEmotionalConnection: assessment.ratings.conexaoEmocional / 2,
+        partnerPhysicalIntimacy: assessment.ratings.intimidadeFisica / 2,
+        partnerIntellectualConnection: assessment.ratings.comunicacao / 2,
+        partnerSharedTime: assessment.ratings.qualidadeTempo / 2,
+        partnerConflictResolution: assessment.ratings.resolucaoConflitos / 2,
       });
     });
 
@@ -158,7 +174,31 @@ export default function Statistics() {
       partner: latestData[`partner${key.charAt(0).toUpperCase() + key.slice(1)}`] || 0,
     }));
 
-    return { timeSeriesData, radarChartData };
+    // Calculate intimacy balance radar data
+    const intimacyBalanceData = [
+      {
+        subject: 'Emotional',
+        user: latestData.userEmotionalConnection || 0,
+        partner: latestData.partnerEmotionalConnection || 0,
+      },
+      {
+        subject: 'Physical',
+        user: latestData.userPhysicalIntimacy || 0,
+        partner: latestData.partnerPhysicalIntimacy || 0,
+      },
+      {
+        subject: 'Intellectual',
+        user: latestData.userIntellectualConnection || 0,
+        partner: latestData.partnerIntellectualConnection || 0,
+      },
+      {
+        subject: 'Shared Time',
+        user: latestData.userSharedTime || 0,
+        partner: latestData.partnerSharedTime || 0,
+      },
+    ];
+
+    return { timeSeriesData, radarChartData, intimacyBalanceData };
   };
 
   const handleGenerateIndividualAnalysis = async () => {
@@ -171,11 +211,12 @@ export default function Statistics() {
       // Check if analysis already exists for today
       const existingAnalysis = await getAnalysisForDate(currentUser.uid, today, 'individual');
       if (existingAnalysis) {
-        setAnalysisDialog({
+        setAnalysisDialog(prev => ({
+          ...prev,
           open: true,
           title: 'Análise Individual',
-          content: existingAnalysis.analysis,
-        });
+          content: existingAnalysis.analysis as RelationshipAnalysisType
+        }));
         return;
       }
 
@@ -206,11 +247,12 @@ export default function Statistics() {
       const insight = await generateDailyInsight(userAssessment);
       await saveAnalysis(currentUser.uid, 'individual', insight);
       
-      setAnalysisDialog({
+      setAnalysisDialog(prev => ({
+        ...prev,
         open: true,
         title: 'Análise Individual',
-        content: insight,
-      });
+        content: insight
+      }));
     } catch (error) {
       console.error('Error generating individual analysis:', error);
       setSnackbarMessage('Erro ao gerar análise individual');
@@ -298,6 +340,23 @@ export default function Statistics() {
           positivePatterns: [],
           concerningPatterns: [],
           growthAreas: []
+        },
+        emotionalDynamics: analysis.emotionalDynamics || {
+          emotionalSecurity: 0,
+          intimacyBalance: {
+            score: 0,
+            areas: {
+              emotional: 0,
+              physical: 0,
+              intellectual: 0,
+              shared: 0
+            }
+          },
+          conflictResolution: {
+            style: 'collaborative',
+            effectiveness: 0,
+            patterns: []
+          }
         }
       };
 
@@ -424,12 +483,12 @@ export default function Statistics() {
 
           <Grid container spacing={3}>
             {/* Radar Chart - Overview */}
-            <Grid item xs={12}>
+            <Grid item xs={12} md={6}>
               <Paper sx={{ p: 3 }}>
                 <Typography variant="h6" gutterBottom>
                   Visão Geral do Relacionamento
                 </Typography>
-                <Box sx={{ height: 500 }}>
+                <Box sx={{ height: 400 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <RadarChart data={radarData}>
                       <PolarGrid />
@@ -457,11 +516,117 @@ export default function Statistics() {
               </Paper>
             </Grid>
 
-            {/* Line Charts */}
+            {/* Intimacy Balance Radar Chart */}
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  Intimacy Balance
+                </Typography>
+                <Box sx={{ height: 400 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart data={intimacyBalanceData}>
+                      <PolarGrid />
+                      <PolarAngleAxis dataKey="subject" />
+                      <PolarRadiusAxis domain={[0, 5]} />
+                      <Radar
+                        name="You"
+                        dataKey="user"
+                        stroke={theme.palette.primary.main}
+                        fill={theme.palette.primary.main}
+                        fillOpacity={0.3}
+                      />
+                      <Radar
+                        name="Partner"
+                        dataKey="partner"
+                        stroke={theme.palette.secondary.main}
+                        fill={theme.palette.secondary.main}
+                        fillOpacity={0.3}
+                      />
+                      <Legend />
+                      <Tooltip />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </Box>
+              </Paper>
+            </Grid>
+
+            {/* Emotional Security Line Chart */}
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  Emotional Security Over Time
+                </Typography>
+                <Box sx={{ height: 400 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis domain={[0, 5]} />
+                      <Tooltip />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="userEmotionalSecurity"
+                        name="Your Emotional Security"
+                        stroke={theme.palette.primary.main}
+                        strokeWidth={2}
+                        dot={{ r: 4 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="partnerEmotionalSecurity"
+                        name="Partner's Emotional Security"
+                        stroke={theme.palette.secondary.main}
+                        strokeWidth={2}
+                        dot={{ r: 4 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </Box>
+              </Paper>
+            </Grid>
+
+            {/* Conflict Resolution Line Chart */}
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  Conflict Resolution Effectiveness
+                </Typography>
+                <Box sx={{ height: 400 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis domain={[0, 5]} />
+                      <Tooltip />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="userConflictResolution"
+                        name="Your Conflict Resolution"
+                        stroke={theme.palette.primary.main}
+                        strokeWidth={2}
+                        dot={{ r: 4 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="partnerConflictResolution"
+                        name="Partner's Conflict Resolution"
+                        stroke={theme.palette.secondary.main}
+                        strokeWidth={2}
+                        dot={{ r: 4 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </Box>
+              </Paper>
+            </Grid>
+
+            {/* Overall Satisfaction Line Chart */}
             <Grid item xs={12}>
               <Paper sx={{ p: 3 }}>
                 <Typography variant="h6" gutterBottom>
-                  Evolução do Relacionamento
+                  Overall Satisfaction
                 </Typography>
                 <Box sx={{ height: 400 }}>
                   <ResponsiveContainer width="100%" height="100%">

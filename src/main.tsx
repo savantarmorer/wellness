@@ -1,26 +1,24 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { theme } from './theme';
 import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
-import { UserDataProvider } from './context/UserDataContext';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
+import './index.css';
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <React.StrictMode>
+const container = document.getElementById('root');
+const root = createRoot(container!);
+
+root.render(
+  <ThemeProvider theme={theme}>
+    <CssBaseline />
     <BrowserRouter>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <AuthProvider>
-          <UserDataProvider>
-            <App />
-          </UserDataProvider>
-        </AuthProvider>
-      </ThemeProvider>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
     </BrowserRouter>
-  </React.StrictMode>
+  </ThemeProvider>
 );
 
 serviceWorkerRegistration.register(); 

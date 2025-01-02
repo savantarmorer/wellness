@@ -289,6 +289,33 @@ export const RelationshipInsights: React.FC<Props> = ({ discrepancies }): React.
                 </Box>
               </Box>
             </Paper>
+
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2, fontStyle: 'italic' }}>
+              {discrepancy.recommendation}
+            </Typography>
+            {discrepancy.gptCommentary && (
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  mt: 2,
+                  p: 1.5,
+                  borderRadius: 1,
+                  backgroundColor: alpha(theme.palette.info.main, 0.05),
+                  border: `1px solid ${alpha(theme.palette.info.main, 0.1)}`,
+                  fontStyle: 'italic'
+                }}
+              >
+                <LightbulbIcon 
+                  sx={{ 
+                    fontSize: '1rem', 
+                    verticalAlign: 'middle', 
+                    mr: 1,
+                    color: theme.palette.info.main
+                  }} 
+                />
+                {discrepancy.gptCommentary}
+              </Typography>
+            )}
           </CardContent>
         </Card>
       ))}

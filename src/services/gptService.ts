@@ -7,7 +7,8 @@ import {
   generateDailyInsightPrompt,
   CONSENSUS_FORM_ANALYSIS_PROMPT,
 } from './prompts';
-import { ConsensusFormData } from './analysisHistoryService';
+import { analyzeEmotionalDynamics, EmotionalDynamics } from './psychologicalAnalysisService';
+import { CategoryAverages } from './analysisUtils';
 
 export interface RelationshipAnalysis {
   overallHealth: {
@@ -17,6 +18,7 @@ export interface RelationshipAnalysis {
   categories: {
     [key: string]: {
       score: number;
+      partnerScore?: number;
       trend: string;
       insights: string[];
     };
@@ -31,7 +33,25 @@ export interface RelationshipAnalysis {
     positivePatterns: string[];
     concerningPatterns: string[];
     growthAreas: string[];
+    discrepancyInsights?: string;
   };
+  emotionalDynamics: EmotionalDynamics;
+}
+
+export interface ConsensusFormData {
+  type: 'consensus_form';
+  answers: Record<string, string>;
+  date: string;
+  scores?: {
+    consensus: number;
+    affection: number;
+    cohesion: number;
+    satisfaction: number;
+    conflict: number;
+    general: number;
+    overall: number;
+  };
+  analysis?: ConsensusFormAnalysis;
 }
 
 export interface ConsensusFormAnalysis {
@@ -42,7 +62,7 @@ export interface ConsensusFormAnalysis {
     riskLevel: 'low' | 'moderate' | 'high';
   };
   categoryAnalysis: {
-    [key: string]: {
+    [category: string]: {
       score: number;
       insights: string[];
       recommendations: string[];
@@ -53,7 +73,7 @@ export interface ConsensusFormAnalysis {
     improvements: string[];
     concerns: string[];
     trends: {
-      [key: string]: {
+      [area: string]: {
         direction: string;
         significance: string;
       };
@@ -88,17 +108,157 @@ export const getApiKey = () => {
 export const generateDailyInsight = async (
   assessment: DailyAssessment,
   relationshipContext?: RelationshipContext
-): Promise<string> => {
+): Promise<RelationshipAnalysis> => {
   try {
-    const prompt = generateDailyInsightPrompt(assessment, relationshipContext);
-    return await callOpenAI(THERAPIST_SYSTEM_PROMPT, prompt);
+    const prompt = `
+Por favor, forneça uma análise do relacionamento no seguinte formato JSON:
+{
+  "overallHealth": {
+    "score": number,
+    "trend": string
+  },
+  "categories": {
+    "comunicacao": {
+      "score": number,
+      "trend": string,
+      "insights": string[]
+    },
+    "conexaoEmocional": {
+      "score": number,
+      "trend": string,
+      "insights": string[]
+    }
+    // ... outros campos
+  },
+  "strengthsAndChallenges": {
+    "strengths": string[],
+    "challenges": string[]
+  },
+  "communicationSuggestions": string[],
+  "actionItems": string[],
+  "relationshipDynamics": {
+    "positivePatterns": string[],
+    "concerningPatterns": string[],
+    "growthAreas": string[]
+  }
+}
+
+Baseado na seguinte avaliação:
+${JSON.stringify(assessment, null, 2)}
+${relationshipContext ? `\nContexto do relacionamento:\n${JSON.stringify(relationshipContext, null, 2)}` : ''}`;
+
+    const response = await callOpenAI(THERAPIST_SYSTEM_PROMPT, prompt);
+    
+    // Calculate emotional dynamics
+    const averages: CategoryAverages = {
+      satisfaction: assessment.ratings.satisfacaoGeral,
+      affection: assessment.ratings.conexaoEmocional,
+      consensus: assessment.ratings.alinhamentoObjetivos,
+      cohesion: assessment.ratings.apoioMutuo,
+      conflict: assessment.ratings.resolucaoConflitos,
+      general: assessment.ratings.satisfacaoGeral
+    };
+
+    const emotionalDynamics = analyzeEmotionalDynamics(averages, assessment, assessment);
+
+    // Try to parse insights from the GPT response
+    try {
+      const gptAnalysis = JSON.parse(response);
+      if (gptAnalysis) {
+        return {
+          overallHealth: gptAnalysis.overallHealth || {
+            score: assessment.ratings.satisfacaoGeral * 10,
+            trend: "stable"
+          },
+          categories: gptAnalysis.categories || {
+            comunicacao: {
+              score: assessment.ratings.comunicacao,
+              trend: "stable",
+              insights: []
+            },
+            conexaoEmocional: {
+              score: assessment.ratings.conexaoEmocional,
+              trend: "stable",
+              insights: []
+            },
+            apoioMutuo: {
+              score: assessment.ratings.apoioMutuo,
+              trend: "stable",
+              insights: []
+            },
+            transparenciaConfianca: {
+              score: assessment.ratings.transparenciaConfianca,
+              trend: "stable",
+              insights: []
+            }
+          },
+          strengthsAndChallenges: gptAnalysis.strengthsAndChallenges || {
+            strengths: [],
+            challenges: []
+          },
+          communicationSuggestions: gptAnalysis.communicationSuggestions || [],
+          actionItems: gptAnalysis.actionItems || [],
+          relationshipDynamics: gptAnalysis.relationshipDynamics || {
+            positivePatterns: [],
+            concerningPatterns: [],
+            growthAreas: []
+          },
+          emotionalDynamics
+        };
+      }
+    } catch (error) {
+      console.error('Error parsing GPT response:', error);
+      console.log('Raw GPT response:', response);
+    }
+
+    // Fallback analysis if parsing fails
+    return {
+      overallHealth: {
+        score: assessment.ratings.satisfacaoGeral * 10,
+        trend: "stable"
+      },
+      categories: {
+        comunicacao: {
+          score: assessment.ratings.comunicacao,
+          trend: "stable",
+          insights: []
+        },
+        conexaoEmocional: {
+          score: assessment.ratings.conexaoEmocional,
+          trend: "stable",
+          insights: []
+        },
+        apoioMutuo: {
+          score: assessment.ratings.apoioMutuo,
+          trend: "stable",
+          insights: []
+        },
+        transparenciaConfianca: {
+          score: assessment.ratings.transparenciaConfianca,
+          trend: "stable",
+          insights: []
+        }
+      },
+      strengthsAndChallenges: {
+        strengths: [],
+        challenges: []
+      },
+      communicationSuggestions: [],
+      actionItems: [],
+      relationshipDynamics: {
+        positivePatterns: [],
+        concerningPatterns: [],
+        growthAreas: []
+      },
+      emotionalDynamics
+    };
   } catch (error) {
     console.error('Error generating daily insight:', error);
-    throw new Error('Failed to generate daily insight. Please try again later.');
+    throw error;
   }
 };
 
-const generateAnalysisPrompt = (
+export const generateAnalysisPrompt = (
   userAssessment: DailyAssessment,
   partnerAssessment: DailyAssessment,
   relationshipContext?: RelationshipContext
@@ -182,76 +342,86 @@ export const generateRelationshipAnalysis = async (
     const existingAnalysis = await getAnalysisForDate(userAssessment.userId, today, 'collective');
     
     if (existingAnalysis && typeof existingAnalysis.analysis !== 'string' && 'overallHealth' in existingAnalysis.analysis) {
-      return existingAnalysis.analysis as RelationshipAnalysis;
+      const analysis = existingAnalysis.analysis as RelationshipAnalysis;
+      console.log('[generateRelationshipAnalysis] Found existing analysis:', {
+        hasEmotionalDynamics: !!analysis.emotionalDynamics,
+        emotionalDynamicsStructure: analysis.emotionalDynamics
+      });
+      
+      // Ensure emotionalDynamics exists in existing analysis
+      if (!analysis.emotionalDynamics) {
+        console.log('[generateRelationshipAnalysis] Initializing missing emotionalDynamics in existing analysis');
+        const averages: CategoryAverages = {
+          satisfaction: Math.min(5, (userAssessment.ratings.satisfacaoGeral + partnerAssessment.ratings.satisfacaoGeral) / 2),
+          affection: Math.min(5, (userAssessment.ratings.conexaoEmocional + partnerAssessment.ratings.conexaoEmocional) / 2),
+          consensus: Math.min(5, (userAssessment.ratings.alinhamentoObjetivos + partnerAssessment.ratings.alinhamentoObjetivos) / 2),
+          cohesion: Math.min(5, (userAssessment.ratings.apoioMutuo + partnerAssessment.ratings.apoioMutuo) / 2),
+          conflict: Math.min(5, (userAssessment.ratings.resolucaoConflitos + partnerAssessment.ratings.resolucaoConflitos) / 2),
+          general: Math.min(5, (userAssessment.ratings.satisfacaoGeral + partnerAssessment.ratings.satisfacaoGeral) / 2)
+        };
+        analysis.emotionalDynamics = analyzeEmotionalDynamics(averages, userAssessment, partnerAssessment);
+        console.log('[generateRelationshipAnalysis] Initialized emotionalDynamics:', analysis.emotionalDynamics);
+      }
+      return analysis;
     }
 
+    // Calculate averages for emotional dynamics analysis
+    const averages: CategoryAverages = {
+      satisfaction: Math.min(5, (userAssessment.ratings.satisfacaoGeral + partnerAssessment.ratings.satisfacaoGeral) / 2),
+      affection: Math.min(5, (userAssessment.ratings.conexaoEmocional + partnerAssessment.ratings.conexaoEmocional) / 2),
+      consensus: Math.min(5, (userAssessment.ratings.alinhamentoObjetivos + partnerAssessment.ratings.alinhamentoObjetivos) / 2),
+      cohesion: Math.min(5, (userAssessment.ratings.apoioMutuo + partnerAssessment.ratings.apoioMutuo) / 2),
+      conflict: Math.min(5, (userAssessment.ratings.resolucaoConflitos + partnerAssessment.ratings.resolucaoConflitos) / 2),
+      general: Math.min(5, (userAssessment.ratings.satisfacaoGeral + partnerAssessment.ratings.satisfacaoGeral) / 2)
+    };
+
+    // Analyze emotional dynamics
+    const emotionalDynamics = analyzeEmotionalDynamics(averages, userAssessment, partnerAssessment);
+    console.log('[generateRelationshipAnalysis] Generated new emotionalDynamics:', emotionalDynamics);
+    
+    // Use the comprehensive analysis prompt
     const prompt = generateAnalysisPrompt(userAssessment, partnerAssessment, relationshipContext);
-    const analysisText = await callOpenAI(ANALYSIS_SYSTEM_PROMPT, prompt, 0.7);
+    
+    // Call OpenAI with the analysis prompt
+    const response = await callOpenAI(ANALYSIS_SYSTEM_PROMPT, prompt);
+    console.log('[generateRelationshipAnalysis] Raw OpenAI response:', response);
 
     try {
-      // Remove any potential text before the first { and after the last }
-      const jsonStart = analysisText.indexOf('{');
-      const jsonEnd = analysisText.lastIndexOf('}') + 1;
-      const jsonString = analysisText.slice(jsonStart, jsonEnd);
-      
-      const parsedAnalysis = JSON.parse(jsonString);
-      
-      // Validate and ensure all required fields exist with proper structure
-      const validatedAnalysis: RelationshipAnalysis = {
-        overallHealth: {
-          score: Number(parsedAnalysis.overallHealth?.score) || 75,
-          trend: parsedAnalysis.overallHealth?.trend || 'stable'
-        },
-        categories: parsedAnalysis.categories || {},
-        strengthsAndChallenges: {
-          strengths: Array.isArray(parsedAnalysis.strengthsAndChallenges?.strengths) 
-            ? parsedAnalysis.strengthsAndChallenges.strengths 
-            : [],
-          challenges: Array.isArray(parsedAnalysis.strengthsAndChallenges?.challenges)
-            ? parsedAnalysis.strengthsAndChallenges.challenges
-            : []
-        },
-        communicationSuggestions: Array.isArray(parsedAnalysis.communicationSuggestions)
-          ? parsedAnalysis.communicationSuggestions
-          : [],
-        actionItems: Array.isArray(parsedAnalysis.actionItems)
-          ? parsedAnalysis.actionItems
-          : [],
-        relationshipDynamics: {
-          positivePatterns: Array.isArray(parsedAnalysis.relationshipDynamics?.positivePatterns)
-            ? parsedAnalysis.relationshipDynamics.positivePatterns
-            : [],
-          concerningPatterns: Array.isArray(parsedAnalysis.relationshipDynamics?.concerningPatterns)
-            ? parsedAnalysis.relationshipDynamics.concerningPatterns
-            : [],
-          growthAreas: Array.isArray(parsedAnalysis.relationshipDynamics?.growthAreas)
-            ? parsedAnalysis.relationshipDynamics.growthAreas
-            : []
-        }
-      };
+      // Try to find JSON in the response
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error('[generateRelationshipAnalysis] No JSON found in response');
+        throw new Error('Invalid response format');
+      }
 
-      // Ensure all category objects have the required structure
-      Object.keys(validatedAnalysis.categories).forEach(key => {
-        validatedAnalysis.categories[key] = {
-          score: Number(validatedAnalysis.categories[key]?.score) || 75,
-          trend: validatedAnalysis.categories[key]?.trend || 'stable',
-          insights: Array.isArray(validatedAnalysis.categories[key]?.insights)
-            ? validatedAnalysis.categories[key].insights
-            : []
-        };
+      const jsonString = jsonMatch[0];
+      console.log('[generateRelationshipAnalysis] Extracted JSON:', jsonString);
+
+      const analysis = JSON.parse(jsonString) as RelationshipAnalysis;
+      
+      // Validate required fields
+      if (!analysis.overallHealth || !analysis.categories || !analysis.strengthsAndChallenges) {
+        console.error('[generateRelationshipAnalysis] Missing required fields in analysis');
+        throw new Error('Invalid analysis structure');
+      }
+
+      // Add emotional dynamics to the analysis
+      analysis.emotionalDynamics = emotionalDynamics;
+      
+      console.log('[generateRelationshipAnalysis] Final analysis:', {
+        hasEmotionalDynamics: !!analysis.emotionalDynamics,
+        emotionalDynamicsStructure: analysis.emotionalDynamics
       });
 
-      return validatedAnalysis;
-    } catch (parseError) {
-      console.error('Failed to parse analysis response:', analysisText);
-      throw new Error('Failed to parse analysis response. The AI response was not in the expected format.');
+      return analysis;
+    } catch (error) {
+      console.error('[generateRelationshipAnalysis] Failed to parse analysis response:', error);
+      console.error('[generateRelationshipAnalysis] Response that failed:', response);
+      throw new Error('Failed to parse analysis response. Please try again later.');
     }
   } catch (error) {
-    console.error('Error generating relationship analysis:', error);
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error('An unexpected error occurred while generating the relationship analysis.');
+    console.error('[generateRelationshipAnalysis] Error generating analysis:', error);
+    throw new Error('Failed to generate relationship analysis. Please try again later.');
   }
 };
 

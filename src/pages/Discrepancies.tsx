@@ -33,7 +33,7 @@ export default function Discrepancies() {
 
         // Analisar discrepâncias
         if (userAssessments.length > 0 && partnerAssessments.length > 0) {
-          const discrepancyAnalysis = analyzeDiscrepancies(
+          const discrepancyAnalysis = await analyzeDiscrepancies(
             userAssessments[0].ratings,
             partnerAssessments[0].ratings
           );
