@@ -11,6 +11,22 @@ jest.mock('../openaiClient', () => ({
   callOpenAI: jest.fn()
 }));
 
+jest.mock('../../config', () => ({
+  config: {
+    firebase: {
+      apiKey: 'mock-api-key',
+      authDomain: 'mock-auth-domain',
+      projectId: 'mock-project-id',
+      storageBucket: 'mock-storage-bucket',
+      messagingSenderId: 'mock-sender-id',
+      appId: 'mock-app-id'
+    },
+    openai: {
+      apiKey: 'mock-openai-key'
+    }
+  }
+}));
+
 describe('gptService', () => {
   const mockDailyAssessment: DailyAssessment = {
     id: 'test-id',
@@ -88,9 +104,28 @@ describe('gptService', () => {
         choices: [{
           message: {
             content: JSON.stringify({
-              insight: 'Test insight',
-              recommendations: ['Test recommendation'],
-              focus_areas: ['Test focus area']
+              overallHealth: {
+                score: 8,
+                trend: "improving"
+              },
+              categories: {
+                comunicacao: {
+                  score: 8,
+                  trend: "stable",
+                  insights: ["Good communication"]
+                }
+              },
+              strengthsAndChallenges: {
+                strengths: ["Strong bond"],
+                challenges: ["Time management"]
+              },
+              communicationSuggestions: ["Practice active listening"],
+              actionItems: ["Schedule weekly check-ins"],
+              relationshipDynamics: {
+                positivePatterns: ["Regular quality time"],
+                concerningPatterns: [],
+                growthAreas: ["Emotional expression"]
+              }
             })
           }
         }]
@@ -100,9 +135,13 @@ describe('gptService', () => {
 
       const result = await generateDailyInsight(mockDailyAssessment, mockRelationshipContext);
 
-      expect(result).toHaveProperty('insight');
-      expect(result).toHaveProperty('recommendations');
-      expect(result).toHaveProperty('focus_areas');
+      expect(result).toHaveProperty('overallHealth');
+      expect(result).toHaveProperty('categories');
+      expect(result).toHaveProperty('strengthsAndChallenges');
+      expect(result).toHaveProperty('communicationSuggestions');
+      expect(result).toHaveProperty('actionItems');
+      expect(result).toHaveProperty('relationshipDynamics');
+      expect(result).toHaveProperty('emotionalDynamics');
     });
 
     test('should handle API errors gracefully', async () => {

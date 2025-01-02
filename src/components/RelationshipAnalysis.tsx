@@ -12,6 +12,10 @@ import {
   CircularProgress,
   Divider,
   useTheme,
+  Card,
+  Stack,
+  alpha,
+  useMediaQuery,
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon,
@@ -67,6 +71,7 @@ const CATEGORY_LABELS: { [key: string]: string } = {
 
 export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = false }) => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // Type guard to check if analysis is RelationshipAnalysisType and has required properties
   const isRelationshipAnalysis = (analysis: RelationshipAnalysisType | string): analysis is RelationshipAnalysisType => {
@@ -222,172 +227,313 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
   };
 
   return (
-    <Box>
+    <Stack 
+      spacing={{ xs: 2, sm: 3 }}
+      sx={{
+        width: '100%',
+        maxWidth: '100%',
+        overflowX: 'hidden',
+        '& *': {
+          maxWidth: '100%',
+          boxSizing: 'border-box',
+        }
+      }}
+    >
       {/* Overall Health Score */}
-      <Paper sx={{ p: 3, mb: 3 }}>
+      <Card 
+        id="saude-geral"
+        elevation={0}
+        sx={{ 
+          p: { xs: 1.5, sm: 3 },
+          background: (theme) => alpha(theme.palette.background.paper, 0.6),
+          backdropFilter: 'blur(10px)',
+          scrollMarginTop: { xs: '56px', sm: '64px' },
+          maxWidth: '100%',
+        }}
+      >
         <Box sx={{ textAlign: 'center' }}>
-          <Typography variant="h6" gutterBottom>
+          <Typography 
+            variant="h6" 
+            gutterBottom
+            sx={{ 
+              fontSize: { xs: '1.125rem', sm: '1.25rem' },
+              fontWeight: 600,
+            }}
+          >
             Saúde Geral do Relacionamento
           </Typography>
-          <Box sx={{ position: 'relative', display: 'inline-flex', mb: 2 }}>
-            <CircularProgress
-              variant="determinate"
-              value={overallHealth.score}
-              size={80}
-              thickness={4}
-              sx={{
-                color: (theme) =>
-                  overallHealth.score >= 70
-                    ? theme.palette.success.main
-                    : overallHealth.score >= 40
-                    ? theme.palette.warning.main
-                    : theme.palette.error.main,
-              }}
-            />
-            <Box
-              sx={{
-                top: 0,
-                left: 0,
-                bottom: 0,
-                right: 0,
-                position: 'absolute',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            flexWrap: 'wrap',
+            gap: { xs: 1, sm: 2 },
+            mt: { xs: 1, sm: 2 }
+          }}>
+            <Typography 
+              variant="h4" 
+              color="primary"
+              sx={{ 
+                fontSize: { xs: '2rem', sm: '2.5rem' },
+                fontWeight: 700,
               }}
             >
-              <Typography variant="h6">
-                {overallHealth.score}%
-              </Typography>
-            </Box>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-            <Typography variant="body2" color="text.secondary">
-              Tendência:
+              {overallHealth.score}%
             </Typography>
-            {overallHealth.trend === 'up' ? (
-              <TrendingUpIcon color="success" />
-            ) : overallHealth.trend === 'down' ? (
-              <TrendingDownIcon color="error" />
-            ) : (
-              <span>→</span>
-            )}
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center',
+              color: overallHealth.trend === 'up' 
+                ? 'success.main' 
+                : overallHealth.trend === 'down' 
+                ? 'error.main' 
+                : 'text.secondary'
+            }}>
+              {overallHealth.trend === 'up' ? (
+                <TrendingUpIcon sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }} />
+              ) : overallHealth.trend === 'down' ? (
+                <TrendingDownIcon sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }} />
+              ) : null}
+            </Box>
           </Box>
         </Box>
-      </Paper>
+      </Card>
 
       {/* Strengths and Challenges */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 2, height: '100%' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <StarIcon color="success" sx={{ mr: 1 }} />
-              <Typography variant="h6">Pontos Fortes</Typography>
+      <Grid id="pontos-fortes" container spacing={{ xs: 2, sm: 3 }} sx={{ scrollMarginTop: { xs: '56px', sm: '64px' } }}>
+        <Grid item xs={12} sm={6}>
+          <Card 
+            elevation={0}
+            sx={{ 
+              p: { xs: 2, sm: 3 },
+              height: '100%',
+              background: (theme) => alpha(theme.palette.background.paper, 0.6),
+              backdropFilter: 'blur(10px)',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 1.5, sm: 2 } }}>
+              <StarIcon color="success" sx={{ mr: 1, fontSize: { xs: '1.25rem', sm: '1.5rem' } }} />
+              <Typography 
+                variant="h6" 
+                sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}
+              >
+                Pontos Fortes
+              </Typography>
             </Box>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            <Box sx={{ 
+              display: 'flex', 
+              flexWrap: 'wrap', 
+              gap: { xs: 0.5, sm: 0.75 } 
+            }}>
               {strengthsAndChallenges.strengths.map((strength, index) => (
                 <Chip
                   key={index}
                   label={strength}
                   color="success"
                   variant="outlined"
-                  size="small"
+                  size={isMobile ? "small" : "medium"}
+                  sx={{ 
+                    fontSize: { xs: '0.75rem', sm: '0.813rem' },
+                    height: { xs: 24, sm: 32 },
+                    m: 0.25,
+                  }}
                 />
               ))}
             </Box>
-          </Paper>
+          </Card>
         </Grid>
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 2, height: '100%' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <WarningIcon color="error" sx={{ mr: 1 }} />
-              <Typography variant="h6">Desafios</Typography>
+        <Grid item xs={12} sm={6}>
+          <Card 
+            elevation={0}
+            sx={{ 
+              p: { xs: 2, sm: 3 },
+              height: '100%',
+              background: (theme) => alpha(theme.palette.background.paper, 0.6),
+              backdropFilter: 'blur(10px)',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 1.5, sm: 2 } }}>
+              <WarningIcon color="error" sx={{ mr: 1, fontSize: { xs: '1.25rem', sm: '1.5rem' } }} />
+              <Typography 
+                variant="h6" 
+                sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}
+              >
+                Desafios
+              </Typography>
             </Box>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            <Box sx={{ 
+              display: 'flex', 
+              flexWrap: 'wrap', 
+              gap: { xs: 0.5, sm: 0.75 } 
+            }}>
               {strengthsAndChallenges.challenges.map((challenge, index) => (
                 <Chip
                   key={index}
                   label={challenge}
                   color="error"
                   variant="outlined"
-                  size="small"
+                  size={isMobile ? "small" : "medium"}
+                  sx={{ 
+                    fontSize: { xs: '0.75rem', sm: '0.813rem' },
+                    height: { xs: 24, sm: 32 },
+                    m: 0.25,
+                  }}
                 />
               ))}
             </Box>
-          </Paper>
+          </Card>
         </Grid>
       </Grid>
 
       {/* Categories Analysis */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
+      <Card 
+        id="categorias"
+        elevation={0}
+        sx={{ 
+          p: { xs: 1.5, sm: 3 },
+          background: (theme) => alpha(theme.palette.background.paper, 0.6),
+          backdropFilter: 'blur(10px)',
+          scrollMarginTop: { xs: '56px', sm: '64px' },
+          maxWidth: '100%',
+        }}
+      >
+        <Typography 
+          variant="h6" 
+          sx={{ 
+            fontSize: { xs: '1rem', sm: '1.25rem' },
+            mb: { xs: 2, sm: 3 },
+          }}
+        >
           Análise por Categoria
         </Typography>
-        <Grid container spacing={2}>
+        <Grid container spacing={{ xs: 1, sm: 2 }}>
           {Object.entries(categories).map(([key, category]) => (
             <Grid item xs={12} sm={6} md={4} key={key}>
-              <Paper variant="outlined" sx={{ p: 2 }}>
-                <Typography variant="subtitle1" gutterBottom>
+              <Card 
+                variant="outlined" 
+                sx={{ 
+                  p: { xs: 1.5, sm: 3 },
+                  background: 'transparent',
+                  maxWidth: '100%',
+                }}
+              >
+                <Typography 
+                  variant="subtitle1" 
+                  gutterBottom
+                  sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                >
                   {CATEGORY_LABELS[key] || key}
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
+                  <Typography 
+                    variant="body2" 
+                    color="text.secondary"
+                    sx={{ 
+                      mr: 1,
+                      fontSize: { xs: '0.75rem', sm: '0.813rem' },
+                    }}
+                  >
                     Score: {category.score}
                   </Typography>
                   {category.trend === 'up' ? (
-                    <TrendingUpIcon color="success" fontSize="small" />
+                    <TrendingUpIcon color="success" sx={{ fontSize: '1rem' }} />
                   ) : category.trend === 'down' ? (
-                    <TrendingDownIcon color="error" fontSize="small" />
+                    <TrendingDownIcon color="error" sx={{ fontSize: '1rem' }} />
                   ) : (
                     <span>→</span>
                   )}
                 </Box>
-                <List dense>
-                  {category.insights.map((insight, index) => (
-                    <ListItem key={index}>
+                <List dense sx={{ py: 0 }}>
+                  {category.insights?.map((insight, index) => (
+                    <ListItem key={index} sx={{ px: 0, py: 0.5 }}>
                       <ListItemText
                         primary={insight}
                         primaryTypographyProps={{
                           variant: 'body2',
                           color: 'text.secondary',
+                          sx: { fontSize: { xs: '0.75rem', sm: '0.813rem' } },
                         }}
                       />
                     </ListItem>
                   ))}
                 </List>
-              </Paper>
+              </Card>
             </Grid>
           ))}
         </Grid>
-      </Paper>
+      </Card>
 
-      {/* Action Items and Suggestions */}
-      <Grid container spacing={3}>
-        {/* Sugestões de Comunicação */}
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 2, height: '100%' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, bgcolor: theme.palette.primary.main, color: 'white', p: 1, borderRadius: 1 }}>
-              <RecommendIcon sx={{ mr: 1 }} />
-              <Typography variant="h6">Sugestões de Comunicação</Typography>
+      {/* Communication Suggestions */}
+      <Grid container spacing={{ xs: 1.5, sm: 3 }}>
+        <Grid item xs={12} sm={6}>
+          <Card 
+            id="comunicacao"
+            elevation={0}
+            sx={{ 
+              height: '100%',
+              background: (theme) => alpha(theme.palette.background.paper, 0.6),
+              backdropFilter: 'blur(10px)',
+              scrollMarginTop: { xs: '56px', sm: '64px' },
+              maxWidth: '100%',
+            }}
+          >
+            <Box 
+              sx={{ 
+                display: 'flex',
+                alignItems: 'center',
+                p: { xs: 1.5, sm: 3 },
+                bgcolor: theme.palette.primary.main, 
+                color: 'white',
+                borderRadius: '8px 8px 0 0',
+                maxWidth: '100%',
+                '& > *': {
+                  maxWidth: '100%',
+                }
+              }}
+            >
+              <RecommendIcon sx={{ mr: 1, fontSize: { xs: '1.25rem', sm: '1.5rem' } }} />
+              <Typography 
+                variant="h6"
+                sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}
+              >
+                Sugestões de Comunicação
+              </Typography>
             </Box>
-            <List sx={{ p: 0 }}>
-              {Array.isArray(communicationSuggestions) && communicationSuggestions.map((suggestion, index) => (
-                <React.Fragment key={index}>
-                  {index > 0 && <Divider />}
-                  <ListItem sx={{ py: 2 }}>
+            <Box sx={{ p: { xs: 1.5, sm: 3 } }}>
+              <Stack spacing={{ xs: 1.5, sm: 2 }}>
+                {Array.isArray(communicationSuggestions) && communicationSuggestions.map((suggestion, index) => (
+                  <Box key={index} sx={{ maxWidth: '100%' }}>
                     {typeof suggestion === 'string' ? (
-                      <Box sx={{ width: '100%' }}>
-                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                      <Box>
+                        <Typography 
+                          variant="body1" 
+                          sx={{ 
+                            fontWeight: 'medium',
+                            fontSize: { xs: '0.875rem', sm: '1rem' },
+                            mb: 0.5,
+                          }}
+                        >
                           Sugestão {index + 1}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography 
+                          variant="body2" 
+                          color="text.secondary"
+                          sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}
+                        >
                           {suggestion}
                         </Typography>
                       </Box>
                     ) : (
-                      <Box sx={{ width: '100%' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', flex: 1 }}>
+                      <Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                          <Typography 
+                            variant="subtitle1" 
+                            sx={{ 
+                              fontWeight: 'bold', 
+                              flex: 1,
+                              fontSize: { xs: '0.875rem', sm: '1rem' },
+                            }}
+                          >
                             {(suggestion as CommunicationSuggestion).title}
                           </Typography>
                           {(suggestion as CommunicationSuggestion).priority && (
@@ -398,247 +544,469 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
                                 bgcolor: getPriorityColor((suggestion as CommunicationSuggestion).priority),
                                 color: 'white',
                                 ml: 1,
-                                textTransform: 'capitalize'
+                                textTransform: 'capitalize',
+                                height: { xs: 20, sm: 24 },
+                                fontSize: { xs: '0.688rem', sm: '0.75rem' },
                               }}
                             />
                           )}
                         </Box>
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        <Typography 
+                          variant="body2" 
+                          color="text.secondary"
+                          sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}
+                        >
                           {(suggestion as CommunicationSuggestion).description}
                         </Typography>
                       </Box>
                     )}
-                  </ListItem>
-                </React.Fragment>
-              ))}
-            </List>
-          </Paper>
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+          </Card>
         </Grid>
 
-        {/* Ações Sugeridas */}
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 2, height: '100%' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, bgcolor: theme.palette.secondary.main, color: 'white', p: 1, borderRadius: 1 }}>
-              <AssignmentIcon sx={{ mr: 1 }} />
-              <Typography variant="h6">Ações Sugeridas</Typography>
+        {/* Action Items */}
+        <Grid item xs={12} sm={6}>
+          <Card 
+            id="acoes"
+            elevation={0}
+            sx={{ 
+              height: '100%',
+              background: (theme) => alpha(theme.palette.background.paper, 0.6),
+              backdropFilter: 'blur(10px)',
+              scrollMarginTop: { xs: '56px', sm: '64px' },
+              maxWidth: '100%',
+            }}
+          >
+            <Box 
+              sx={{ 
+                display: 'flex',
+                alignItems: 'center',
+                p: { xs: 1.5, sm: 3 },
+                bgcolor: theme.palette.secondary.main, 
+                color: 'white',
+                borderRadius: '8px 8px 0 0',
+                maxWidth: '100%',
+                '& > *': {
+                  maxWidth: '100%',
+                }
+              }}
+            >
+              <AssignmentIcon sx={{ mr: 1, fontSize: { xs: '1.25rem', sm: '1.5rem' } }} />
+              <Typography 
+                variant="h6"
+                sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}
+              >
+                Ações Sugeridas
+              </Typography>
             </Box>
-            <List sx={{ p: 0 }}>
-              {Array.isArray(actionItems) && actionItems.map((action, index) => (
-                <React.Fragment key={index}>
-                  {index > 0 && <Divider />}
-                  <ListItem sx={{ py: 2 }}>
+            <Box sx={{ p: { xs: 1.5, sm: 3 } }}>
+              <Stack spacing={{ xs: 1.5, sm: 2 }}>
+                {Array.isArray(actionItems) && actionItems.map((action, index) => (
+                  <Box key={index} sx={{ maxWidth: '100%' }}>
                     {typeof action === 'string' ? (
-                      <Box sx={{ width: '100%' }}>
-                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                      <Box>
+                        <Typography 
+                          variant="body1" 
+                          sx={{ 
+                            fontWeight: 'medium',
+                            fontSize: { xs: '0.875rem', sm: '1rem' },
+                            mb: 0.5,
+                          }}
+                        >
                           Ação {index + 1}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography 
+                          variant="body2" 
+                          color="text.secondary"
+                          sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}
+                        >
                           {action}
                         </Typography>
                       </Box>
                     ) : (
-                      <Box sx={{ width: '100%' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
                             {(action as ActionItem).category && (
-                              <Box sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
+                              <Box 
+                                sx={{ 
+                                  mr: 1, 
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  '& .MuiSvgIcon-root': {
+                                    fontSize: { xs: '1.125rem', sm: '1.25rem' },
+                                  },
+                                }}
+                              >
                                 {getCategoryIcon((action as ActionItem).category!)}
                               </Box>
                             )}
-                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                            <Typography 
+                              variant="subtitle1" 
+                              sx={{ 
+                                fontWeight: 'bold',
+                                fontSize: { xs: '0.875rem', sm: '1rem' },
+                              }}
+                            >
                               {(action as ActionItem).title}
                             </Typography>
                           </Box>
                           {(action as ActionItem).timeframe && (
-                            <Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}>
+                            <Box 
+                              sx={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                ml: 1,
+                                '& .MuiSvgIcon-root': {
+                                  fontSize: { xs: '1.125rem', sm: '1.25rem' },
+                                },
+                              }}
+                            >
                               {getTimeframeIcon((action as ActionItem).timeframe!)}
-                              <Typography variant="caption" sx={{ ml: 0.5, textTransform: 'capitalize' }}>
+                              <Typography 
+                                variant="caption" 
+                                sx={{ 
+                                  ml: 0.5, 
+                                  textTransform: 'capitalize',
+                                  fontSize: { xs: '0.688rem', sm: '0.75rem' },
+                                }}
+                              >
                                 {(action as ActionItem).timeframe}
                               </Typography>
                             </Box>
                           )}
                         </Box>
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        <Typography 
+                          variant="body2" 
+                          color="text.secondary"
+                          sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}
+                        >
                           {(action as ActionItem).description}
                         </Typography>
                       </Box>
                     )}
-                  </ListItem>
-                </React.Fragment>
-              ))}
-            </List>
-          </Paper>
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+          </Card>
         </Grid>
       </Grid>
 
       {/* Relationship Dynamics */}
-      <Paper sx={{ p: 2, mt: 3 }}>
-        <Typography variant="h6" gutterBottom>
+      <Card 
+        id="dinamicas"
+        elevation={0}
+        sx={{ 
+          p: { xs: 1.5, sm: 3 },
+          background: (theme) => alpha(theme.palette.background.paper, 0.6),
+          backdropFilter: 'blur(10px)',
+          scrollMarginTop: { xs: '56px', sm: '64px' },
+          maxWidth: '100%',
+        }}
+      >
+        <Typography 
+          variant="h6" 
+          gutterBottom
+          sx={{ 
+            fontSize: { xs: '1rem', sm: '1.25rem' },
+            mb: { xs: 2, sm: 3 },
+          }}
+        >
           Dinâmicas do Relacionamento
         </Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={4}>
-            <Paper variant="outlined" sx={{ p: 2 }}>
-              <Typography variant="subtitle1" color="success.main" gutterBottom>
+        <Grid container spacing={{ xs: 1, sm: 2 }}>
+          <Grid item xs={12} sm={4}>
+            <Card 
+              variant="outlined" 
+              sx={{ 
+                p: { xs: 2, sm: 3 },
+                background: 'transparent',
+              }}
+            >
+              <Typography 
+                variant="subtitle1" 
+                color="success.main" 
+                gutterBottom
+                sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+              >
                 Padrões Positivos
               </Typography>
-              <List dense>
+              <List dense sx={{ py: 0 }}>
                 {relationshipDynamics.positivePatterns.map((pattern, index) => (
-                  <ListItem key={index}>
-                    <ListItemIcon>
-                      <StarIcon color="success" fontSize="small" />
+                  <ListItem key={index} sx={{ px: 0, py: 0.5 }}>
+                    <ListItemIcon sx={{ minWidth: 32 }}>
+                      <StarIcon color="success" sx={{ fontSize: '1.125rem' }} />
                     </ListItemIcon>
-                    <ListItemText primary={pattern} />
+                    <ListItemText 
+                      primary={pattern}
+                      primaryTypographyProps={{
+                        sx: { fontSize: { xs: '0.75rem', sm: '0.813rem' } },
+                      }}
+                    />
                   </ListItem>
                 ))}
               </List>
-            </Paper>
+            </Card>
           </Grid>
-          <Grid item xs={12} md={4}>
-            <Paper variant="outlined" sx={{ p: 2 }}>
-              <Typography variant="subtitle1" color="warning.main" gutterBottom>
+          <Grid item xs={12} sm={4}>
+            <Card 
+              variant="outlined" 
+              sx={{ 
+                p: { xs: 2, sm: 3 },
+                background: 'transparent',
+              }}
+            >
+              <Typography 
+                variant="subtitle1" 
+                color="warning.main" 
+                gutterBottom
+                sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+              >
                 Áreas de Crescimento
               </Typography>
-              <List dense>
+              <List dense sx={{ py: 0 }}>
                 {relationshipDynamics.growthAreas.map((area, index) => (
-                  <ListItem key={index}>
-                    <ListItemIcon>
-                      <PsychologyIcon color="warning" fontSize="small" />
+                  <ListItem key={index} sx={{ px: 0, py: 0.5 }}>
+                    <ListItemIcon sx={{ minWidth: 32 }}>
+                      <PsychologyIcon color="warning" sx={{ fontSize: '1.125rem' }} />
                     </ListItemIcon>
-                    <ListItemText primary={area} />
+                    <ListItemText 
+                      primary={area}
+                      primaryTypographyProps={{
+                        sx: { fontSize: { xs: '0.75rem', sm: '0.813rem' } },
+                      }}
+                    />
                   </ListItem>
                 ))}
               </List>
-            </Paper>
+            </Card>
           </Grid>
-          <Grid item xs={12} md={4}>
-            <Paper variant="outlined" sx={{ p: 2 }}>
-              <Typography variant="subtitle1" color="error.main" gutterBottom>
+          <Grid item xs={12} sm={4}>
+            <Card 
+              variant="outlined" 
+              sx={{ 
+                p: { xs: 2, sm: 3 },
+                background: 'transparent',
+              }}
+            >
+              <Typography 
+                variant="subtitle1" 
+                color="error.main" 
+                gutterBottom
+                sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+              >
                 Padrões Preocupantes
               </Typography>
-              <List dense>
+              <List dense sx={{ py: 0 }}>
                 {relationshipDynamics.concerningPatterns.map((pattern, index) => (
-                  <ListItem key={index}>
-                    <ListItemIcon>
-                      <WarningIcon color="error" fontSize="small" />
+                  <ListItem key={index} sx={{ px: 0, py: 0.5 }}>
+                    <ListItemIcon sx={{ minWidth: 32 }}>
+                      <WarningIcon color="error" sx={{ fontSize: '1.125rem' }} />
                     </ListItemIcon>
-                    <ListItemText primary={pattern} />
+                    <ListItemText 
+                      primary={pattern}
+                      primaryTypographyProps={{
+                        sx: { fontSize: { xs: '0.75rem', sm: '0.813rem' } },
+                      }}
+                    />
                   </ListItem>
                 ))}
               </List>
-            </Paper>
+            </Card>
           </Grid>
         </Grid>
-      </Paper>
+      </Card>
 
       {/* Emotional Dynamics */}
       {isRelationshipAnalysis(analysis) && hasEmotionalDynamics(analysis) && (
-        <Paper sx={{ p: 2, mt: 3 }}>
-          <Typography variant="h6" gutterBottom>
+        <Card 
+          id="emocional"
+          elevation={0}
+          sx={{ 
+            p: { xs: 1.5, sm: 3 },
+            background: (theme) => alpha(theme.palette.background.paper, 0.6),
+            backdropFilter: 'blur(10px)',
+            scrollMarginTop: { xs: '56px', sm: '64px' },
+            maxWidth: '100%',
+          }}
+        >
+          <Typography 
+            variant="h6" 
+            gutterBottom
+            sx={{ 
+              fontSize: { xs: '1rem', sm: '1.25rem' },
+              mb: { xs: 2, sm: 3 },
+            }}
+          >
             Dinâmicas Emocionais
           </Typography>
-          <Grid container spacing={2}>
-            {/* Emotional Security */}
-            <Grid item xs={12} md={4}>
-              <Paper variant="outlined" sx={{ p: 2 }}>
+          <Grid container spacing={{ xs: 1, sm: 2 }}>
+            <Grid item xs={12} sm={4}>
+              <Card 
+                variant="outlined" 
+                sx={{ 
+                  p: { xs: 2, sm: 3 },
+                  background: 'transparent',
+                }}
+              >
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <SecurityIcon color="primary" sx={{ mr: 1 }} />
-                  <Typography variant="subtitle1">
+                  <SecurityIcon 
+                    color="primary" 
+                    sx={{ 
+                      mr: 1,
+                      fontSize: { xs: '1.25rem', sm: '1.5rem' },
+                    }} 
+                  />
+                  <Typography 
+                    variant="subtitle1"
+                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                  >
                     Segurança Emocional
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', my: 2 }}>
                   <CircularProgress
                     variant="determinate"
-                    value={analysis.emotionalDynamics.emotionalSecurity * 20}
-                    size={60}
+                    value={analysis.emotionalDynamics.emotionalSecurity}
+                    size={isMobile ? 48 : 60}
                     thickness={4}
                     sx={{
                       color: (theme) => {
                         const security = analysis.emotionalDynamics.emotionalSecurity;
-                        return security >= 4
+                        return security >= 70
                           ? theme.palette.success.main
-                          : security >= 3
+                          : security >= 40
                           ? theme.palette.warning.main
                           : theme.palette.error.main;
                       },
                     }}
                   />
-                  <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                    {analysis.emotionalDynamics.emotionalSecurity.toFixed(1)}/5
+                  <Typography 
+                    variant="body2" 
+                    color="text.secondary" 
+                    sx={{ 
+                      ml: 1,
+                      fontSize: { xs: '0.75rem', sm: '0.813rem' },
+                    }}
+                  >
+                    {analysis.emotionalDynamics.emotionalSecurity}%
                   </Typography>
                 </Box>
-              </Paper>
+              </Card>
             </Grid>
 
-            {/* Intimacy Balance */}
-            <Grid item xs={12} md={4}>
-              <Paper variant="outlined" sx={{ p: 2 }}>
+            <Grid item xs={12} sm={4}>
+              <Card 
+                variant="outlined" 
+                sx={{ 
+                  p: { xs: 2, sm: 3 },
+                  background: 'transparent',
+                }}
+              >
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <FavoriteIcon color="primary" sx={{ mr: 1 }} />
-                  <Typography variant="subtitle1">
+                  <FavoriteIcon 
+                    color="primary" 
+                    sx={{ 
+                      mr: 1,
+                      fontSize: { xs: '1.25rem', sm: '1.5rem' },
+                    }} 
+                  />
+                  <Typography 
+                    variant="subtitle1"
+                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                  >
                     Equilíbrio de Intimidade
                   </Typography>
                 </Box>
-                <List dense>
-                  <ListItem>
-                    <ListItemText 
-                      primary="Emocional" 
-                      secondary={`${analysis.emotionalDynamics.intimacyBalance.areas.emotional.toFixed(1)}/5`} 
-                    />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText 
-                      primary="Física" 
-                      secondary={`${analysis.emotionalDynamics.intimacyBalance.areas.physical.toFixed(1)}/5`} 
-                    />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText 
-                      primary="Intelectual" 
-                      secondary={`${analysis.emotionalDynamics.intimacyBalance.areas.intellectual.toFixed(1)}/5`} 
-                    />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText 
-                      primary="Compartilhada" 
-                      secondary={`${analysis.emotionalDynamics.intimacyBalance.areas.shared.toFixed(1)}/5`} 
-                    />
-                  </ListItem>
-                </List>
-              </Paper>
-            </Grid>
-
-            {/* Conflict Resolution */}
-            <Grid item xs={12} md={4}>
-              <Paper variant="outlined" sx={{ p: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <BalanceIcon color="primary" sx={{ mr: 1 }} />
-                  <Typography variant="subtitle1">
-                    Resolução de Conflitos
-                  </Typography>
-                </Box>
-                <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 1 }}>
-                  Estilo: {analysis.emotionalDynamics.conflictResolution.style}
-                </Typography>
-                <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 1 }}>
-                  Efetividade: {analysis.emotionalDynamics.conflictResolution.effectiveness.toFixed(1)}/5
-                </Typography>
-                <List dense>
-                  {analysis.emotionalDynamics.conflictResolution.patterns.map((pattern, index) => (
-                    <ListItem key={index}>
-                      <ListItemIcon>
-                        <TimelineIcon fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText primary={pattern} />
+                <List dense sx={{ py: 0 }}>
+                  {Object.entries(analysis.emotionalDynamics.intimacyBalance.areas).map(([key, value]) => (
+                    <ListItem key={key} sx={{ px: 0, py: 0.5 }}>
+                      <ListItemText 
+                        primary={key.charAt(0).toUpperCase() + key.slice(1)} 
+                        secondary={`${value}%`}
+                        primaryTypographyProps={{
+                          sx: { fontSize: { xs: '0.75rem', sm: '0.813rem' } },
+                        }}
+                        secondaryTypographyProps={{
+                          sx: { fontSize: { xs: '0.688rem', sm: '0.75rem' } },
+                        }}
+                      />
                     </ListItem>
                   ))}
                 </List>
-              </Paper>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} sm={4}>
+              <Card 
+                variant="outlined" 
+                sx={{ 
+                  p: { xs: 2, sm: 3 },
+                  background: 'transparent',
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <BalanceIcon 
+                    color="primary" 
+                    sx={{ 
+                      mr: 1,
+                      fontSize: { xs: '1.25rem', sm: '1.5rem' },
+                    }} 
+                  />
+                  <Typography 
+                    variant="subtitle1"
+                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                  >
+                    Resolução de Conflitos
+                  </Typography>
+                </Box>
+                <Typography 
+                  variant="subtitle2" 
+                  color="text.secondary" 
+                  sx={{ 
+                    mt: 1,
+                    fontSize: { xs: '0.75rem', sm: '0.813rem' },
+                  }}
+                >
+                  Estilo: {analysis.emotionalDynamics.conflictResolution.style}
+                </Typography>
+                <Typography 
+                  variant="subtitle2" 
+                  color="text.secondary" 
+                  sx={{ 
+                    mt: 1,
+                    fontSize: { xs: '0.75rem', sm: '0.813rem' },
+                  }}
+                >
+                  Efetividade: {analysis.emotionalDynamics.conflictResolution.effectiveness}%
+                </Typography>
+                <List dense sx={{ py: 0 }}>
+                  {analysis.emotionalDynamics.conflictResolution.patterns.map((pattern, index) => (
+                    <ListItem key={index} sx={{ px: 0, py: 0.5 }}>
+                      <ListItemIcon sx={{ minWidth: 32 }}>
+                        <TimelineIcon 
+                          fontSize="small" 
+                          sx={{ fontSize: '1.125rem' }}
+                        />
+                      </ListItemIcon>
+                      <ListItemText 
+                        primary={pattern}
+                        primaryTypographyProps={{
+                          sx: { fontSize: { xs: '0.75rem', sm: '0.813rem' } },
+                        }}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </Card>
             </Grid>
           </Grid>
-        </Paper>
+        </Card>
       )}
-    </Box>
+    </Stack>
   );
 }; 

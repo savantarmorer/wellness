@@ -7,7 +7,24 @@ import {
   Paper,
   CircularProgress,
   Alert,
+  useTheme,
+  useMediaQuery,
+  alpha,
+  Divider,
+  Card,
+  Stack,
+  Button
 } from '@mui/material';
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import StarIcon from '@mui/icons-material/Star';
+import CategoryIcon from '@mui/icons-material/Category';
+import ChatIcon from '@mui/icons-material/Chat';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import PsychologyIcon from '@mui/icons-material/Psychology';
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 
 import { DiscrepancyAnalysis } from './DiscrepancyAnalysis';
 import { RelationshipAnalysis as RelationshipAnalysisComponent } from './RelationshipAnalysis';
@@ -33,7 +50,13 @@ function TabPanel(props: TabPanelProps) {
       {...other}
     >
       {value === index && (
-        <Box sx={{ p: 3 }}>
+        <Box sx={{ 
+          p: { xs: 1.5, sm: 3 },
+          '& > *': {
+            maxWidth: '100%',
+            overflowX: 'hidden',
+          }
+        }}>
           {children}
         </Box>
       )}
@@ -49,7 +72,8 @@ function a11yProps(index: number) {
 }
 
 export const AnalysisTabs = () => {
-  
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { currentUser } = useAuth();
   const [value, setValue] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -276,153 +300,267 @@ export const AnalysisTabs = () => {
     );
   }
 
+  const renderTabIcon = (index: number) => {
+    switch (index) {
+      case 0:
+        return <AssessmentIcon sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }} />;
+      case 1:
+        return <TrendingUpIcon sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }} />;
+      case 2:
+        return <CalendarMonthIcon sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }} />;
+      default:
+        return null;
+    }
+  };
+
+  const renderAnalysisContent = (analysis: RelationshipAnalysis | null, title: string) => {
+    if (!analysis) {
+      return (
+        <Card 
+          elevation={0}
+          sx={{ 
+            p: { xs: 2, sm: 3 },
+            background: (theme) => alpha(theme.palette.background.paper, 0.6),
+            backdropFilter: 'blur(10px)',
+            borderRadius: 2,
+          }}
+        >
+          <Typography 
+            color="text.secondary"
+            sx={{ 
+              fontSize: { xs: '0.875rem', sm: '1rem' },
+              textAlign: 'center',
+            }}
+          >
+            Nenhuma análise {title.toLowerCase()} disponível.
+          </Typography>
+        </Card>
+      );
+    }
+
+    const sections = [
+      { id: 'saude-geral', label: 'Saúde Geral', icon: <AssessmentIcon fontSize="small" /> },
+      { id: 'pontos-fortes', label: 'Pontos Fortes e Desafios', icon: <StarIcon fontSize="small" /> },
+      { id: 'categorias', label: 'Análise por Categorias', icon: <CategoryIcon fontSize="small" /> },
+      { id: 'comunicacao', label: 'Sugestões de Comunicação', icon: <ChatIcon fontSize="small" /> },
+      { id: 'acoes', label: 'Ações Sugeridas', icon: <AssignmentIcon fontSize="small" /> },
+      { id: 'dinamicas', label: 'Dinâmicas do Relacionamento', icon: <TimelineIcon fontSize="small" /> },
+      { id: 'emocional', label: 'Dinâmicas Emocionais', icon: <PsychologyIcon fontSize="small" /> },
+      { id: 'discrepancias', label: 'Análise de Discrepâncias', icon: <CompareArrowsIcon fontSize="small" /> },
+    ];
+
+    return (
+      <Stack spacing={3}>
+        <Card 
+          elevation={0}
+          sx={{ 
+            p: { xs: 2, sm: 3 },
+            background: (theme) => alpha(theme.palette.background.paper, 0.6),
+            backdropFilter: 'blur(10px)',
+          }}
+        >
+          <Typography 
+            variant="h6" 
+            gutterBottom
+            sx={{ 
+              fontSize: { xs: '1rem', sm: '1.25rem' },
+              fontWeight: 600,
+              mb: { xs: 1.5, sm: 2 },
+            }}
+          >
+            Índice Rápido
+          </Typography>
+          <Box sx={{ 
+            display: 'grid',
+            gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' },
+            gap: { xs: 1, sm: 2 },
+          }}>
+            {sections.map((section) => (
+              <Button
+                key={section.id}
+                variant="outlined"
+                size="small"
+                startIcon={section.icon}
+                onClick={() => {
+                  const element = document.getElementById(section.id);
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                }}
+                sx={{
+                  justifyContent: 'flex-start',
+                  textAlign: 'left',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  px: { xs: 1, sm: 2 },
+                  py: { xs: 0.75, sm: 1 },
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                }}
+              >
+                {section.label}
+              </Button>
+            ))}
+          </Box>
+        </Card>
+
+        <Box>
+          <Typography 
+            variant="h6" 
+            gutterBottom
+            sx={{ 
+              fontSize: { xs: '1.125rem', sm: '1.5rem' },
+              mb: { xs: 1.5, sm: 2.5 },
+              color: theme.palette.primary.main,
+              fontWeight: 600,
+            }}
+          >
+            Análise {title}
+          </Typography>
+          <RelationshipAnalysisComponent analysis={analysis} />
+        </Box>
+
+        <Divider sx={{ my: { xs: 2, sm: 3 } }} />
+
+        <Box id="discrepancias">
+          <Typography 
+            variant="h6" 
+            gutterBottom
+            sx={{ 
+              fontSize: { xs: '1.125rem', sm: '1.5rem' },
+              mb: { xs: 1.5, sm: 2.5 },
+              color: theme.palette.primary.main,
+              fontWeight: 600,
+            }}
+          >
+            Análise de Discrepâncias
+          </Typography>
+          <DiscrepancyAnalysis 
+            analysis={analysis} 
+            period={value === 0 ? 'daily' : value === 1 ? 'weekly' : 'monthly'} 
+          />
+        </Box>
+      </Stack>
+    );
+  };
+
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ 
+      width: '100%',
+      maxWidth: '100vw',
+      overflowX: 'hidden',
+      position: 'relative',
+      '& *': {
+        maxWidth: '100vw',
+        boxSizing: 'border-box',
+      }
+    }}>
       <Paper 
         elevation={0}
         sx={{ 
           borderRadius: { xs: 2, sm: 3 },
-          overflow: 'hidden'
+          overflow: 'hidden',
+          background: (theme) => alpha(theme.palette.background.paper, 0.8),
+          backdropFilter: 'blur(10px)',
+          width: '100%',
+          maxWidth: '100vw',
         }}
       >
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+        <Box sx={{ 
+          borderBottom: 1, 
+          borderColor: 'divider',
+          background: (theme) => alpha(theme.palette.background.paper, 0.6),
+          width: '100%',
+          maxWidth: '100vw',
+          overflowX: 'hidden',
+        }}>
           <Tabs 
             value={value} 
             onChange={handleChange} 
             aria-label="analysis tabs"
-            variant="fullWidth"
+            variant={isMobile ? "scrollable" : "fullWidth"}
+            scrollButtons={isMobile ? "auto" : false}
+            allowScrollButtonsMobile
+            sx={{
+              minHeight: { xs: 48, sm: 56 },
+              width: '100%',
+              maxWidth: '100vw',
+              '& .MuiTabs-indicator': {
+                height: 3,
+                borderRadius: '3px 3px 0 0',
+              },
+              '& .MuiTabs-scrollButtons': {
+                color: 'primary.main',
+              },
+              '& .MuiTab-root': {
+                minWidth: isMobile ? 'auto' : undefined,
+                px: { xs: 1, sm: 2 },
+                maxWidth: isMobile ? '33.33%' : undefined,
+              },
+            }}
           >
-            <Tab 
-              label="Diário" 
-              {...a11yProps(0)}
-              sx={{ 
-                fontSize: { xs: '0.875rem', sm: '1rem' },
-                py: { xs: 1.5, sm: 2 }
-              }}
-            />
-            <Tab 
-              label="Semanal" 
-              {...a11yProps(1)}
-              sx={{ 
-                fontSize: { xs: '0.875rem', sm: '1rem' },
-                py: { xs: 1.5, sm: 2 }
-              }}
-            />
-            <Tab 
-              label="Mensal" 
-              {...a11yProps(2)}
-              sx={{ 
-                fontSize: { xs: '0.875rem', sm: '1rem' },
-                py: { xs: 1.5, sm: 2 }
-              }}
-            />
+            {['Diário', 'Semanal', 'Mensal'].map((label, index) => (
+              <Tab 
+                key={label}
+                label={
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: { xs: 0.5, sm: 1 },
+                    flexDirection: isMobile ? 'column' : 'row',
+                    py: isMobile ? 0.5 : 0,
+                    minWidth: isMobile ? 'auto' : undefined,
+                    maxWidth: '100%',
+                  }}>
+                    {renderTabIcon(index)}
+                    <Typography 
+                      sx={{ 
+                        fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                        fontWeight: value === index ? 600 : 400,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: '100%',
+                      }}
+                    >
+                      {label}
+                    </Typography>
+                  </Box>
+                }
+                {...a11yProps(index)}
+                sx={{ 
+                  minHeight: { xs: 48, sm: 56 },
+                  p: { xs: 1, sm: 2 },
+                  minWidth: isMobile ? 'auto' : undefined,
+                  flex: isMobile ? 'none' : 1,
+                  maxWidth: isMobile ? '33.33%' : undefined,
+                }}
+              />
+            ))}
           </Tabs>
         </Box>
 
-        <TabPanel value={value} index={0}>
-          {dailyAnalysis ? (
-            <Box>
-              <Typography 
-                variant="h6" 
-                gutterBottom
-                sx={{ 
-                  fontSize: { xs: '1.25rem', sm: '1.5rem' },
-                  mb: { xs: 2, sm: 3 }
-                }}
-              >
-                Análise Diária
-              </Typography>
-              <RelationshipAnalysisComponent analysis={dailyAnalysis} />
-              <Box sx={{ mt: 4 }}>
-                <Typography 
-                  variant="h6" 
-                  gutterBottom
-                  sx={{ 
-                    fontSize: { xs: '1.25rem', sm: '1.5rem' },
-                    mb: { xs: 2, sm: 3 }
-                  }}
-                >
-                  Análise de Discrepâncias
-                </Typography>
-                <DiscrepancyAnalysis analysis={dailyAnalysis} period="daily" />
-              </Box>
-            </Box>
-          ) : (
-            <Typography color="text.secondary">
-              Nenhuma análise diária disponível.
-            </Typography>
-          )}
-        </TabPanel>
+        <Box sx={{ 
+          p: { xs: 0, sm: 1 },
+          '& .MuiTabPanel-root': {
+            p: { xs: 0, sm: 1 },
+          },
+          width: '100%',
+          maxWidth: '100vw',
+          overflowX: 'hidden',
+        }}>
+          <TabPanel value={value} index={0}>
+            {renderAnalysisContent(dailyAnalysis, 'Diária')}
+          </TabPanel>
 
-        <TabPanel value={value} index={1}>
-          {weeklyAnalysis ? (
-            <Box>
-              <Typography 
-                variant="h6" 
-                gutterBottom
-                sx={{ 
-                  fontSize: { xs: '1.25rem', sm: '1.5rem' },
-                  mb: { xs: 2, sm: 3 }
-                }}
-              >
-                Análise Semanal
-              </Typography>
-              <RelationshipAnalysisComponent analysis={weeklyAnalysis} />
-              <Box sx={{ mt: 4 }}>
-                <Typography 
-                  variant="h6" 
-                  gutterBottom
-                  sx={{ 
-                    fontSize: { xs: '1.25rem', sm: '1.5rem' },
-                    mb: { xs: 2, sm: 3 }
-                  }}
-                >
-                  Análise de Discrepâncias
-                </Typography>
-                <DiscrepancyAnalysis analysis={weeklyAnalysis} period="weekly" />
-              </Box>
-            </Box>
-          ) : (
-            <Typography color="text.secondary">
-              Nenhuma análise semanal disponível.
-            </Typography>
-          )}
-        </TabPanel>
+          <TabPanel value={value} index={1}>
+            {renderAnalysisContent(weeklyAnalysis, 'Semanal')}
+          </TabPanel>
 
-        <TabPanel value={value} index={2}>
-          {monthlyAnalysis ? (
-            <Box>
-              <Typography 
-                variant="h6" 
-                gutterBottom
-                sx={{ 
-                  fontSize: { xs: '1.25rem', sm: '1.5rem' },
-                  mb: { xs: 2, sm: 3 }
-                }}
-              >
-                Análise Mensal
-              </Typography>
-              <RelationshipAnalysisComponent analysis={monthlyAnalysis} />
-              <Box sx={{ mt: 4 }}>
-                <Typography 
-                  variant="h6" 
-                  gutterBottom
-                  sx={{ 
-                    fontSize: { xs: '1.25rem', sm: '1.5rem' },
-                    mb: { xs: 2, sm: 3 }
-                  }}
-                >
-                  Análise de Discrepâncias
-                </Typography>
-                <DiscrepancyAnalysis analysis={monthlyAnalysis} period="monthly" />
-              </Box>
-            </Box>
-          ) : (
-            <Typography color="text.secondary">
-              Nenhuma análise mensal disponível.
-            </Typography>
-          )}
-        </TabPanel>
+          <TabPanel value={value} index={2}>
+            {renderAnalysisContent(monthlyAnalysis, 'Mensal')}
+          </TabPanel>
+        </Box>
       </Paper>
     </Box>
   );

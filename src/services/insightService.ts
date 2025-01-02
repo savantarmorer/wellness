@@ -12,6 +12,24 @@ import {
 } from 'firebase/firestore';
 import { CategoryRatings } from '../types';
 import { callOpenAI } from './openaiClient';
+import { THERAPIST_SYSTEM_PROMPT } from './prompts';
+import OpenAI from 'openai';
+
+interface OpenAIResponse {
+  choices: Array<{
+    message: {
+      content: string;
+    };
+  }>;
+}
+
+interface Discrepancy {
+  category: string;
+  userScore: number;
+  partnerScore: number;
+  difference: number;
+  significance: string;
+}
 
 export interface DiscrepancyAnalysis {
   category: string;
@@ -20,7 +38,7 @@ export interface DiscrepancyAnalysis {
   difference: number;
   significance: 'high' | 'medium' | 'low';
   recommendation: string;
-  gptCommentary?: string;
+  gptCommentary: string;
 }
 
 export interface CommunicationExercise {
@@ -55,7 +73,7 @@ export const analyzeDiscrepancies = async (
     comunicacao: {
       high: 'Existe uma diferença significativa na percepção da comunicação. Sugerimos: 1) Agendar uma "reunião semanal" de 30 minutos para discutir preocupações e expectativas; 2) Praticar a técnica do "espelho" - repetir o que o parceiro disse para garantir entendimento; 3) Considerar terapia de casal para desenvolver habilidades de comunicação.',
       medium: 'Há espaço para melhorar a comunicação. Recomendamos: 1) Criar um "diário de gratidão" compartilhado; 2) Implementar a regra dos "5 minutos de escuta ativa" diários, sem interrupções; 3) Usar "eu me sinto" em vez de acusações ao discutir problemas.',
-      low: 'Pequenos ajustes podem aprimorar ainda mais a comunicação: 1) Fazer uma pergunta significativa por dia sobre o dia do parceiro; 2) Compartilhar uma apreciação específica diariamente; 3) Evitar distrações (celular, TV) durante conversas importantes.',
+      low: 'Pequenos ajustes podem aprimorar ainda mais a comunicação: 1) Fazer uma pergunta significativa por dia sobre o dia do parceiro; 2) Compartilhar uma apreciação específica diariamente; 3) Evitar distrações (celular, TV) durante conversas importantes.'
     },
     conexaoEmocional: {
       high: 'A conexão emocional precisa de atenção especial. Sugerimos: 1) Criar um "ritual de conexão" diário de 10 minutos (ex: abraço mindful); 2) Compartilhar três memórias felizes juntos por semana; 3) Escrever cartas mensais expressando sentimentos profundos; 4) Buscar acompanhamento terapêutico para fortalecer o vínculo.',
@@ -83,9 +101,9 @@ export const analyzeDiscrepancies = async (
       low: 'Mantenha o equilíbrio mental: 1) Fazer atividades relaxantes juntos; 2) Respeitar momentos de solidão; 3) Celebrar pequenas vitórias diárias.',
     },
     resolucaoConflitos: {
-      high: 'Os conflitos precisam ser melhor gerenciados: 1) Estabelecer "regras de briga justa"; 2) Implementar tempo limite de 30 minutos em discussões intensas; 3) Criar um "espaço seguro" físico para discussões; 4) Buscar mediação profissional se necessário.',
-      medium: 'Para melhorar a resolução de conflitos: 1) Usar a técnica "problema vs. parceria"; 2) Estabelecer palavras-chave para pausar discussões; 3) Fazer "reuniões de resolução" estruturadas.',
-      low: 'Mantenha a boa resolução: 1) Abordar desacordos rapidamente; 2) Praticar escuta ativa durante conflitos; 3) Focar em soluções, não em culpa.',
+      high: 'Existe uma diferença significativa na resolução de conflitos. Os conflitos precisam ser melhor gerenciados: 1) Estabelecer "regras de briga justa"; 2) Implementar tempo limite de 30 minutos em discussões intensas; 3) Criar um "espaço seguro" físico para discussões; 4) Buscar mediação profissional se necessário.',
+      medium: 'Há espaço para melhorar a resolução de conflitos: 1) Usar a técnica "problema vs. parceria"; 2) Estabelecer palavras-chave para pausar discussões; 3) Fazer "reuniões de resolução" estruturadas.',
+      low: 'Pequenos ajustes podem aprimorar a resolução de conflitos: 1) Abordar desacordos rapidamente; 2) Praticar escuta ativa durante conflitos; 3) Focar em soluções, não em culpa.'
     },
     segurancaRelacionamento: {
       high: 'A segurança do relacionamento precisa ser fortalecida: 1) Desenvolver um "plano de futuro" conjunto; 2) Estabelecer compromissos claros e realistas; 3) Criar rituais de conexão diários; 4) Considerar aconselhamento para trabalhar inseguranças.',
@@ -106,7 +124,7 @@ export const analyzeDiscrepancies = async (
       const difference = Math.abs(userRating - partnerRating);
 
       if (difference >= 2) {
-        const significance = difference >= 4 ? 'high' : difference >= 3 ? 'medium' : 'low';
+        const significance = difference >= 2 ? 'high' : difference >= 1.5 ? 'medium' : 'low';
 
         // Generate GPT commentary for the discrepancy
         const gptCommentary = await generateGPTCommentary({
@@ -134,29 +152,32 @@ export const analyzeDiscrepancies = async (
   return discrepancies.sort((a, b) => b.difference - a.difference);
 };
 
-const generateGPTCommentary = async ({
-  category,
-  userRating,
-  partnerRating,
-  difference,
-  significance
-}: Omit<DiscrepancyAnalysis, 'recommendation' | 'gptCommentary'>): Promise<string> => {
-  const prompt = `Analise a seguinte discrepância em um relacionamento:
-  - Categoria: ${category}
-  - Avaliação do usuário: ${userRating}
-  - Avaliação do parceiro: ${partnerRating}
-  - Diferença: ${difference}
-  - Significância: ${significance}
-  
-  Forneça um breve comentário (máximo 2 frases) sobre o que essa diferença pode indicar e como isso pode afetar o relacionamento.`;
-
+export const generateGPTCommentary = async (
+  { category, userRating, partnerRating, difference, significance }: Omit<DiscrepancyAnalysis, 'recommendation' | 'gptCommentary'>
+): Promise<string> => {
   try {
-    const response = await callOpenAI(
-      'Você é um terapeuta especializado em relacionamentos, focado em fornecer insights concisos e práticos.',
-      prompt,
-      0.7
-    );
-    return response.trim();
+    const response = await callOpenAI({
+      messages: [
+        { role: 'system', content: THERAPIST_SYSTEM_PROMPT },
+        {
+          role: 'user',
+          content: `Analyze this discrepancy in the relationship assessment:
+            Category: ${category}
+            User Score: ${userRating}
+            Partner Score: ${partnerRating}
+            Difference: ${difference}
+            Significance: ${significance}
+            
+            Please provide a brief, empathetic commentary about this discrepancy and its potential impact on the relationship.`
+        }
+      ]
+    });
+
+    if (!response || !response.choices || !response.choices[0] || !response.choices[0].message) {
+      throw new Error('Invalid response from OpenAI');
+    }
+
+    return response.choices[0].message.content || 'Não foi possível gerar um comentário para esta discrepância.';
   } catch (error) {
     console.error('Error generating GPT commentary:', error);
     return 'Não foi possível gerar um comentário para esta discrepância.';

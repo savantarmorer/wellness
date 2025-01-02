@@ -19,7 +19,7 @@ interface Props {
   onNavigateToAnalysis: () => void;
 }
 
-export const DailyAnalysisStatus: React.FC<Props> = ({
+export const MonthlyAnalysisStatus: React.FC<Props> = ({
   userSubmitted,
   partnerSubmitted,
   onNavigateToAnalysis,
@@ -46,7 +46,7 @@ export const DailyAnalysisStatus: React.FC<Props> = ({
             textAlign: 'center',
           }}
         >
-          Status da Análise Diária
+          Status da Análise Mensal
         </Typography>
 
         <Stack

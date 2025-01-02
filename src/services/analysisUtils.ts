@@ -344,7 +344,11 @@ export const detectConsistentDiscrepancy = (userScores: number[], partnerScores:
 
   const differences = userScores.map((score, i) => score - partnerScores[i]);
   const avgDifference = average(differences);
-  const isConsistent = differences.every(diff => Math.sign(diff) === Math.sign(avgDifference));
+  
+  // Check if all differences are in the same direction (all positive or all negative)
+  // and the magnitude is significant (> 0.5)
+  const isConsistent = Math.abs(avgDifference) > 0.5 && 
+    differences.every(diff => Math.sign(diff) === Math.sign(avgDifference));
 
   if (!isConsistent) return null;
 
@@ -396,6 +400,14 @@ export const calculateAverageScores = (
   const categories = Object.keys(CATEGORY_WEIGHTS);
   const result = {} as CategoryAverages;
   
+  // If both histories are empty, return default values
+  if (userHistory.length === 0 && partnerHistory.length === 0) {
+    categories.forEach(category => {
+      result[category as keyof CategoryAverages] = 0;
+    });
+    return result;
+  }
+
   categories.forEach(category => {
     const userScores = userHistory.map(h => h.ratings[category as keyof CategoryRatings]);
     const partnerScores = partnerHistory.map(h => h.ratings[category as keyof CategoryRatings]);

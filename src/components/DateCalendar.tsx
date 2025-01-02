@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -10,8 +10,11 @@ import {
   DialogContent,
   DialogActions,
   useTheme,
+  useMediaQuery,
+  alpha,
 } from '@mui/material';
 import { Calendar as BigCalendar, dateFnsLocalizer } from 'react-big-calendar';
+import type { View, ToolbarProps } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -49,8 +52,24 @@ const localizer = dateFnsLocalizer({
   locales,
 });
 
+const calendarMessages = {
+  next: 'Próximo',
+  previous: 'Anterior',
+  today: 'Hoje',
+  month: 'Mês',
+  week: 'Semana',
+  day: 'Dia',
+  agenda: 'Agenda',
+  date: 'Data',
+  time: 'Hora',
+  event: 'Evento',
+  noEventsInRange: 'Não há eventos neste período',
+  showMore: (total: number) => `+${total} mais`,
+};
+
 export const DateCalendar: React.FC<DateCalendarProps> = ({ events, onAddEvent, userId }) => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [eventTitle, setEventTitle] = useState('');
@@ -58,6 +77,13 @@ export const DateCalendar: React.FC<DateCalendarProps> = ({ events, onAddEvent, 
   const [eventTime, setEventTime] = useState('');
   const [eventCategory, setEventCategory] = useState('');
   const [selectedEvent, setSelectedEvent] = useState<DateEvent | null>(null);
+  const [view, setView] = useState<View>('month');
+
+  useEffect(() => {
+    if (isMobile) {
+      setView('agenda');
+    }
+  }, [isMobile]);
 
   const handleDateClick = (date: Date) => {
     setSelectedDate(date);
@@ -105,7 +131,96 @@ export const DateCalendar: React.FC<DateCalendarProps> = ({ events, onAddEvent, 
 
   return (
     <Box>
-      <Paper sx={{ p: 2, mb: 2 }}>
+      <Paper 
+        elevation={0}
+        sx={{ 
+          p: { xs: 1, sm: 2 }, 
+          mb: 2,
+          background: alpha(theme.palette.background.paper, 0.8),
+          backdropFilter: 'blur(10px)',
+          borderRadius: 2,
+          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          transition: 'all 0.2s ease-in-out',
+          '&:hover': {
+            transform: 'translateY(-4px)',
+            boxShadow: (theme) => `0 12px 20px -5px ${alpha(theme.palette.primary.main, 0.2)}`,
+          },
+          '& .rbc-calendar': {
+            minHeight: { xs: 400, sm: 500 },
+          },
+          '& .rbc-toolbar': {
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            gap: 1,
+            mb: { xs: 1, sm: 2 },
+          },
+          '& .rbc-toolbar-label': {
+            margin: { xs: '4px 0', sm: '0 10px' },
+            width: { xs: '100%', sm: 'auto' },
+            textAlign: 'center',
+            order: { xs: -1, sm: 0 },
+            fontSize: { xs: '1rem', sm: '1.25rem' },
+            fontWeight: 600,
+            color: theme.palette.text.primary,
+          },
+          '& .rbc-btn-group': {
+            margin: '4px',
+            '& button': {
+              padding: { xs: '4px 8px', sm: '6px 12px' },
+              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              background: 'transparent',
+              color: theme.palette.text.primary,
+              border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+              '&:hover': {
+                background: alpha(theme.palette.primary.main, 0.1),
+                borderColor: theme.palette.primary.main,
+              },
+              '&.rbc-active': {
+                background: alpha(theme.palette.primary.main, 0.2),
+                borderColor: theme.palette.primary.main,
+                color: theme.palette.primary.main,
+              },
+            },
+          },
+          '& .rbc-header': {
+            padding: { xs: '4px', sm: '8px' },
+            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+            fontWeight: 600,
+          },
+          '& .rbc-date-cell': {
+            padding: { xs: '2px', sm: '4px' },
+            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+          },
+          '& .rbc-event': {
+            borderRadius: '4px',
+            padding: '2px 4px',
+            fontSize: { xs: '0.7rem', sm: '0.75rem' },
+            backgroundColor: alpha(theme.palette.primary.main, 0.9),
+            border: 'none',
+            '&:hover': {
+              backgroundColor: theme.palette.primary.main,
+            },
+          },
+          '& .rbc-today': {
+            backgroundColor: alpha(theme.palette.primary.main, 0.05),
+          },
+          '& .rbc-off-range-bg': {
+            backgroundColor: alpha(theme.palette.action.disabled, 0.05),
+          },
+          '& .rbc-agenda-view': {
+            '& table.rbc-agenda-table': {
+              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              '& thead > tr > th': {
+                padding: { xs: '4px', sm: '8px' },
+                fontWeight: 600,
+              },
+              '& tbody > tr > td': {
+                padding: { xs: '4px', sm: '8px' },
+              },
+            },
+          },
+        }}
+      >
         <BigCalendar
           localizer={localizer}
           events={events.map(event => ({
@@ -115,12 +230,15 @@ export const DateCalendar: React.FC<DateCalendarProps> = ({ events, onAddEvent, 
           }))}
           startAccessor="start"
           endAccessor="end"
-          style={{ height: 500 }}
+          view={view}
+          onView={(newView: View) => setView(newView)}
+          defaultView={isMobile ? 'agenda' : 'month'}
+          views={['month', 'week', 'day', 'agenda']}
           onSelectSlot={({ start }: { start: Date }) => handleDateClick(start)}
           selectable
           eventPropGetter={() => ({
             style: {
-              backgroundColor: theme.palette.primary.light,
+              backgroundColor: theme.palette.primary.main,
               color: theme.palette.primary.contrastText,
               borderRadius: '4px',
               border: 'none',
@@ -128,18 +246,39 @@ export const DateCalendar: React.FC<DateCalendarProps> = ({ events, onAddEvent, 
             },
           })}
           onSelectEvent={(event: DateEvent) => setSelectedEvent(event)}
-          messages={{
-            next: 'Próximo',
-            previous: 'Anterior',
-            today: 'Hoje',
-            month: 'Mês',
-            week: 'Semana',
-            day: 'Dia',
-            agenda: 'Agenda',
-            date: 'Data',
-            time: 'Hora',
-            event: 'Evento',
-            noEventsInRange: 'Não há eventos neste período',
+          messages={calendarMessages}
+          popup
+          components={{
+            toolbar: (toolbarProps: ToolbarProps) => (
+              <div className="rbc-toolbar">
+                <span className="rbc-btn-group">
+                  <button type="button" onClick={() => toolbarProps.onNavigate('PREV')}>
+                    Anterior
+                  </button>
+                  <button type="button" onClick={() => toolbarProps.onNavigate('TODAY')}>
+                    Hoje
+                  </button>
+                  <button type="button" onClick={() => toolbarProps.onNavigate('NEXT')}>
+                    Próximo
+                  </button>
+                </span>
+                <span className="rbc-toolbar-label">{toolbarProps.label}</span>
+                {!isMobile && (
+                  <span className="rbc-btn-group">
+                    {toolbarProps.views.map(name => (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => toolbarProps.onView(name)}
+                        className={toolbarProps.view === name ? 'rbc-active' : ''}
+                      >
+                        {calendarMessages[name as keyof typeof calendarMessages]}
+                      </button>
+                    ))}
+                  </span>
+                )}
+              </div>
+            ),
           }}
         />
       </Paper>

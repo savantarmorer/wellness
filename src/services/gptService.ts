@@ -9,6 +9,7 @@ import {
 } from './prompts';
 import { analyzeEmotionalDynamics, EmotionalDynamics } from './psychologicalAnalysisService';
 import { CategoryAverages } from './analysisUtils';
+import { config } from '../config';
 
 export interface RelationshipAnalysis {
   overallHealth: {
@@ -97,7 +98,7 @@ export interface ConsensusFormAnalysis {
 }
 
 export const getApiKey = () => {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  const apiKey = config.openai.apiKey;
   if (!apiKey) {
     console.error('OpenAI API key not found in environment variables');
     throw new Error('API key not found');
@@ -130,10 +131,6 @@ Por favor, forneça uma análise do relacionamento no seguinte formato JSON:
     }
     // ... outros campos
   },
-  "strengthsAndChallenges": {
-    "strengths": string[],
-    "challenges": string[]
-  },
   "communicationSuggestions": string[],
   "actionItems": string[],
   "relationshipDynamics": {
@@ -147,8 +144,22 @@ Baseado na seguinte avaliação:
 ${JSON.stringify(assessment, null, 2)}
 ${relationshipContext ? `\nContexto do relacionamento:\n${JSON.stringify(relationshipContext, null, 2)}` : ''}`;
 
-    const response = await callOpenAI(THERAPIST_SYSTEM_PROMPT, prompt);
-    
+    const response = await callOpenAI({
+      messages: [
+        { role: 'system', content: THERAPIST_SYSTEM_PROMPT },
+        { role: 'user', content: prompt }
+      ]
+    });
+
+    if (!response || !response.choices || !response.choices[0] || !response.choices[0].message) {
+      throw new Error('Failed to generate daily insight');
+    }
+
+    const content = response.choices[0].message.content;
+    if (!content) {
+      throw new Error('Failed to generate daily insight');
+    }
+
     // Calculate emotional dynamics
     const averages: CategoryAverages = {
       satisfaction: assessment.ratings.satisfacaoGeral,
@@ -163,7 +174,7 @@ ${relationshipContext ? `\nContexto do relacionamento:\n${JSON.stringify(relatio
 
     // Try to parse insights from the GPT response
     try {
-      const gptAnalysis = JSON.parse(response);
+      const gptAnalysis = JSON.parse(content);
       if (gptAnalysis) {
         return {
           overallHealth: gptAnalysis.overallHealth || {
@@ -206,9 +217,11 @@ ${relationshipContext ? `\nContexto do relacionamento:\n${JSON.stringify(relatio
           emotionalDynamics
         };
       }
+      throw new Error('Failed to parse GPT response');
     } catch (error) {
       console.error('Error parsing GPT response:', error);
       console.log('Raw GPT response:', response);
+      throw new Error('Failed to parse GPT response');
     }
 
     // Fallback analysis if parsing fails
@@ -254,7 +267,15 @@ ${relationshipContext ? `\nContexto do relacionamento:\n${JSON.stringify(relatio
     };
   } catch (error) {
     console.error('Error generating daily insight:', error);
-    throw error;
+    if (error instanceof Error) {
+      // Preserve specific error messages for parsing failures
+      if (error.message === 'Failed to parse GPT response') {
+        throw error;
+      }
+      // Wrap other errors with our custom message
+      throw new Error('Failed to generate daily insight');
+    }
+    throw new Error('Failed to generate daily insight');
   }
 };
 
@@ -382,13 +403,27 @@ export const generateRelationshipAnalysis = async (
     // Use the comprehensive analysis prompt
     const prompt = generateAnalysisPrompt(userAssessment, partnerAssessment, relationshipContext);
     
-    // Call OpenAI with the analysis prompt
-    const response = await callOpenAI(ANALYSIS_SYSTEM_PROMPT, prompt);
+    const response = await callOpenAI({
+      messages: [
+        { role: 'system', content: ANALYSIS_SYSTEM_PROMPT },
+        { role: 'user', content: prompt }
+      ]
+    });
+
+    if (!response || !response.choices || !response.choices[0] || !response.choices[0].message) {
+      throw new Error('Invalid response from OpenAI');
+    }
+
+    const content = response.choices[0].message.content;
+    if (!content) {
+      throw new Error('Empty response from OpenAI');
+    }
+
     console.log('[generateRelationshipAnalysis] Raw OpenAI response:', response);
 
     try {
       // Try to find JSON in the response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         console.error('[generateRelationshipAnalysis] No JSON found in response');
         throw new Error('Invalid response format');
@@ -435,6 +470,10 @@ export const analyzeConsensusForm = async (
   }
 ): Promise<ConsensusFormAnalysis> => {
   try {
+    if (!userFormData || !userFormData.answers) {
+      throw new Error('Invalid consensus form data');
+    }
+
     const prompt = `
 Analise os seguintes dados do formulário de consenso conjugal:
 
@@ -462,13 +501,31 @@ ${JSON.stringify(historicalContext.previousAnalyses, null, 2)}
 ` : ''}
 `;
 
-    const analysisText = await callOpenAI(CONSENSUS_FORM_ANALYSIS_PROMPT, prompt, 0.7);
+    const response = await callOpenAI({
+      messages: [
+        { role: 'system', content: CONSENSUS_FORM_ANALYSIS_PROMPT },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7
+    });
+
+    if (!response || !response.choices || !response.choices[0] || !response.choices[0].message) {
+      throw new Error('Invalid consensus form data');
+    }
+
+    const content = response.choices[0].message.content;
+    if (!content) {
+      throw new Error('Invalid consensus form data');
+    }
 
     try {
-      const jsonStart = analysisText.indexOf('{');
-      const jsonEnd = analysisText.lastIndexOf('}') + 1;
-      const jsonString = analysisText.slice(jsonStart, jsonEnd);
-      
+      const jsonStart = content.indexOf('{');
+      const jsonEnd = content.lastIndexOf('}') + 1;
+      if (jsonStart === -1 || jsonEnd === 0) {
+        throw new Error('Invalid consensus form data');
+      }
+
+      const jsonString = content.slice(jsonStart, jsonEnd);
       const analysis = JSON.parse(jsonString);
 
       // Validate and ensure all required fields exist
@@ -527,10 +584,13 @@ ${JSON.stringify(historicalContext.previousAnalyses, null, 2)}
       return validatedAnalysis;
     } catch (parseError) {
       console.error('Failed to parse consensus form analysis:', parseError);
-      throw new Error('Failed to parse analysis response. The AI response was not in the expected format.');
+      throw new Error('Invalid consensus form data');
     }
   } catch (error) {
     console.error('Error analyzing consensus form:', error);
-    throw error;
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Invalid consensus form data');
   }
 }; 

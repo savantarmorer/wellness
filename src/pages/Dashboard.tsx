@@ -381,9 +381,9 @@ const Dashboard = () => {
     return (
       <Layout>
         <Container maxWidth="lg">
-          <Box sx={{ mt: 4, mb: 4 }}>
+          <Box sx={{ mt: { xs: 2, sm: 4 }, mb: { xs: 2, sm: 4 } }}>
             <Skeleton variant="rectangular" height={200} sx={{ mb: 2, borderRadius: 2 }} />
-            <Grid container spacing={3}>
+            <Grid container spacing={{ xs: 2, sm: 3 }}>
               <Grid item xs={12} md={4}>
                 <Skeleton variant="rectangular" height={150} sx={{ borderRadius: 2 }} />
               </Grid>
@@ -403,11 +403,11 @@ const Dashboard = () => {
         <Fade in timeout={500}>
           <Box>
             <Box sx={{ 
-              mb: { xs: 3, sm: 4 },
+              mb: { xs: 2, sm: 4 },
               display: 'flex',
               flexDirection: { xs: 'column', sm: 'row' },
               alignItems: { xs: 'flex-start', sm: 'center' },
-              gap: 2,
+              gap: { xs: 1.5, sm: 2 },
               position: 'relative',
               '&::after': {
                 content: '""',
@@ -425,7 +425,7 @@ const Dashboard = () => {
                   gutterBottom 
                   sx={{ 
                     fontWeight: 700,
-                    fontSize: { xs: '1.75rem', sm: '2rem', md: '2.25rem' },
+                    fontSize: { xs: '1.5rem', sm: '2rem', md: '2.25rem' },
                     background: (theme) => `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
@@ -453,8 +453,8 @@ const Dashboard = () => {
                 onClick={() => navigate('/assessment')}
                 sx={{
                   minWidth: { xs: '100%', sm: 'auto' },
-                  py: { xs: 1.5, sm: 2 },
-                  px: { xs: 3, sm: 4 },
+                  py: { xs: 1.25, sm: 2 },
+                  px: { xs: 2, sm: 4 },
                   borderRadius: 2,
                   fontSize: { xs: '0.875rem', sm: '1rem' },
                   fontWeight: 600,
@@ -472,20 +472,19 @@ const Dashboard = () => {
               </Button>
             </Box>
 
-            <Box sx={{ mt: 3, mb: 4 }}>
+            <Box sx={{ mt: { xs: 2, sm: 3 }, mb: { xs: 2, sm: 4 } }}>
               <DailyAnalysisStatus
-                userHasSubmitted={dailyStatus.userHasSubmitted}
-                partnerHasSubmitted={dailyStatus.partnerHasSubmitted}
-                hasCollectiveAnalysis={dailyStatus.hasCollectiveAnalysis}
-                partnerName={userData?.partnerName}
+                userSubmitted={dailyStatus.userHasSubmitted}
+                partnerSubmitted={dailyStatus.partnerHasSubmitted}
+                onNavigateToAnalysis={() => navigate('/analysis')}
               />
             </Box>
 
-            <Grid container spacing={3}>
+            <Grid container spacing={{ xs: 2, sm: 3 }}>
               {/* Partner Status */}
               <Grid item xs={12} md={4}>
                 <Paper sx={{ 
-                  p: 3, 
+                  p: { xs: 2, sm: 3 }, 
                   height: '100%',
                   background: (theme) => alpha(theme.palette.background.paper, 0.8),
                   backdropFilter: 'blur(10px)',
@@ -504,7 +503,7 @@ const Dashboard = () => {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 1,
-                      fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                      fontSize: { xs: '1rem', sm: '1.25rem' },
                       fontWeight: 600,
                     }}
                   >
@@ -528,7 +527,7 @@ const Dashboard = () => {
               {/* Recent Assessments */}
               <Grid item xs={12} md={8}>
                 <Paper sx={{ 
-                  p: 3, 
+                  p: { xs: 2, sm: 3 }, 
                   height: '100%',
                   background: (theme) => alpha(theme.palette.background.paper, 0.8),
                   backdropFilter: 'blur(10px)',
@@ -548,7 +547,7 @@ const Dashboard = () => {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: 1,
-                      fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                      fontSize: { xs: '1rem', sm: '1.25rem' },
                       fontWeight: 600,
                     }}
                   >
@@ -618,7 +617,7 @@ const Dashboard = () => {
                     variant="h6" 
                     gutterBottom
                     sx={{ 
-                      fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                      fontSize: { xs: '1rem', sm: '1.25rem' },
                       fontWeight: 600,
                       color: 'primary.main',
                       display: 'flex',
@@ -629,7 +628,7 @@ const Dashboard = () => {
                     <EmojiEventsIcon color="inherit" />
                     Estatísticas rápidas
                   </Typography>
-                  <Grid container spacing={3}>
+                  <Grid container spacing={{ xs: 2, sm: 3 }}>
                     <Grid item xs={12} sm={4}>
                       <Box 
                         sx={{ 
@@ -649,7 +648,7 @@ const Dashboard = () => {
                           variant="h4" 
                           color="primary"
                           sx={{ 
-                            fontSize: { xs: '1.75rem', sm: '2rem' },
+                            fontSize: { xs: '1.5rem', sm: '2rem' },
                             fontWeight: 700,
                             mb: 1,
                             background: (theme) => `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
@@ -687,7 +686,7 @@ const Dashboard = () => {
                           variant="h4" 
                           color="primary"
                           sx={{ 
-                            fontSize: { xs: '1.75rem', sm: '2rem' },
+                            fontSize: { xs: '1.5rem', sm: '2rem' },
                             fontWeight: 700,
                             mb: 1,
                             background: (theme) => `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
@@ -725,7 +724,7 @@ const Dashboard = () => {
                           variant="h4" 
                           color="primary"
                           sx={{ 
-                            fontSize: { xs: '1.75rem', sm: '2rem' },
+                            fontSize: { xs: '1.5rem', sm: '2rem' },
                             fontWeight: 700,
                             mb: 1,
                             background: (theme) => `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
@@ -748,61 +747,6 @@ const Dashboard = () => {
                 </Paper>
               </Grid>
 
-              {/* Date Suggestions Card */}
-              <Grid item xs={12} md={6}>
-                <Paper sx={{ 
-                  p: 3, 
-                  height: '100%',
-                  background: (theme) => alpha(theme.palette.background.paper, 0.8),
-                  backdropFilter: 'blur(10px)',
-                  borderRadius: 2,
-                  transition: 'all 0.2s ease-in-out',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: (theme) => `0 12px 20px -5px ${alpha(theme.palette.primary.main, 0.2)}`,
-                  },
-                }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <FavoriteIcon color="primary" sx={{ mr: 1 }} />
-                    <Typography 
-                      variant="h6"
-                      sx={{ 
-                        fontSize: { xs: '1.1rem', sm: '1.25rem' },
-                        fontWeight: 600,
-                      }}
-                    >
-                      Sugestões de Encontro
-                    </Typography>
-                  </Box>
-                  <Typography 
-                    variant="body2" 
-                    color="text.secondary" 
-                    sx={{ 
-                      mb: 2,
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    Descubra lugares interessantes para um encontro especial com seu parceiro.
-                    Explore restaurantes, parques, museus e muito mais!
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleDateSuggestionsClick}
-                    sx={{ 
-                      mt: 'auto',
-                      background: (theme) => `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                      '&:hover': {
-                        transform: 'translateY(-2px)',
-                        boxShadow: (theme) => `0 8px 16px -4px ${alpha(theme.palette.primary.main, 0.15)}`,
-                      },
-                    }}
-                  >
-                    Ver Sugestões
-                  </Button>
-                </Paper>
-              </Grid>
-
               {/* Calendar */}
               <Grid item xs={12}>
                 <DateCalendar
@@ -820,6 +764,7 @@ const Dashboard = () => {
                 sx: {
                   borderRadius: 2,
                   backdropFilter: 'blur(10px)',
+                  p: { xs: 2, sm: 3 },
                 }
               }}
             >

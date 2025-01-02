@@ -1,74 +1,33 @@
-import { getApiKey } from './gptService';
+import OpenAI from 'openai';
+import { config } from '../config';
 
-interface OpenAIResponse {
-  choices: Array<{
-    message: {
-      content: string;
-    };
-  }>;
+interface Message {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
 }
 
-interface OpenAIErrorResponse {
-  error: {
-    message: string;
-    type: string;
-    code: string;
-  };
+interface OpenAIRequest {
+  messages: Message[];
+  temperature?: number;
+  max_tokens?: number;
 }
 
-export const callOpenAI = async (
-  systemPrompt: string,
-  userPrompt: string,
-  temperature: number = 0.7
-): Promise<string> => {
+export const callOpenAI = async (request: OpenAIRequest): Promise<OpenAI.Chat.ChatCompletion> => {
+  const openai = new OpenAI({
+    apiKey: config.openai.apiKey,
+  });
+
   try {
-    const apiKey = getApiKey();
-    if (!apiKey) {
-      throw new Error('OpenAI API key is not configured');
-    }
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4-turbo-preview',
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt,
-          },
-          {
-            role: 'user',
-            content: userPrompt,
-          },
-        ],
-        temperature,
-      }),
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: request.messages,
+      temperature: request.temperature || 0.7,
+      max_tokens: request.max_tokens || 500,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json() as OpenAIErrorResponse;
-      throw new Error(
-        `OpenAI API error: ${response.status} ${response.statusText}\n` +
-        `Type: ${errorData.error?.type}\n` +
-        `Message: ${errorData.error?.message}`
-      );
-    }
-
-    const data = await response.json() as OpenAIResponse;
-    if (!data.choices?.[0]?.message?.content) {
-      throw new Error('Invalid response format from OpenAI API');
-    }
-    
-    return data.choices[0].message.content;
+    return completion;
   } catch (error) {
-    console.error('Error calling OpenAI:', error);
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error('An unexpected error occurred while calling OpenAI API');
+    console.error('OpenAI API error:', error);
+    throw error;
   }
 }; 
