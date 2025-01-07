@@ -1,16 +1,23 @@
 # Wellness Application Overview
 
 ## Recent Updates
+- Fixed duplicate properties issue in Gottman metrics implementation
+- Improved type safety in ValidatedScales interface
+- Enhanced recommendations handling in RelationshipAnalysis
+- Fixed type safety issues in Analysis page initialization
+- Fixed route navigation for daily assessment (/assessment)
 - Optimized GPT service for better token efficiency
 - Improved prompt system with structured JSON schemas
 - Enhanced error handling in relationship analysis
 - Added array initialization safeguards
 - Improved type safety in GPT responses
+- Standardized route naming conventions
 
 ## Project Description
 A comprehensive wellness and psychological assessment platform built with React and TypeScript, focusing on mental health evaluation and relationship analysis with robust type safety and error handling.
 
 ## Core Features
+- Daily Assessment System (/assessment)
 - Attachment Assessment System
 - Psychological Analysis Tools
 - Relationship Assessment Module
@@ -26,6 +33,7 @@ A comprehensive wellness and psychological assessment platform built with React 
 
 ## Technical Architecture
 - Frontend: React with TypeScript
+- Routing: React Router with protected routes
 - State Management: React Context
 - Data Fetching: React Query
 - UI Components: Custom components with accessibility focus
@@ -46,6 +54,7 @@ A comprehensive wellness and psychological assessment platform built with React 
 8. Implement robust error handling
 9. Maintain data consistency
 10. Support relationship analysis with scientific backing
+11. Maintain consistent route naming and navigation
 
 ## Development Principles
 - User-centric design
@@ -58,6 +67,18 @@ A comprehensive wellness and psychological assessment platform built with React 
 - Defensive programming
 - Comprehensive error handling
 - Data consistency through transactions
+- Consistent route naming conventions
+
+## Application Routes
+- /dashboard - Main dashboard view
+- /assessment - Daily relationship assessment
+- /analysis - Relationship analysis view
+- /statistics - Statistical data view
+- /profile - User profile management
+- /relationship - Relationship context
+- /date-suggestions - Date planning tools
+- /analysis-history - Historical analysis view
+- /attachment-assessment - Attachment style assessment
 
 ## Relationship Context Fields
 - Previous counseling experience

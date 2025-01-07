@@ -138,7 +138,7 @@ const calculateGottmanMetrics = (metrics: Partial<GottmanMetrics>): GottmanMetri
     respostasNeutras: 0
   };
 
-  // Calculate response ratio
+  // Calculate response ratio for partner's responses to your bids
   const totalResponses = bidsForConnection.respostasPositivas + 
     bidsForConnection.respostasNegativas + 
     bidsForConnection.respostasNeutras;
@@ -147,11 +147,12 @@ const calculateGottmanMetrics = (metrics: Partial<GottmanMetrics>): GottmanMetri
     ? bidsForConnection.respostasPositivas / totalResponses 
     : 0;
 
-  // Calculate negative interaction ratio
+  // Calculate negative interaction ratio from partner's behavior
   const totalNegative = fourHorsemen.critica + fourHorsemen.defensividade + 
     fourHorsemen.desprezo + fourHorsemen.stonewalling;
 
   // Gottman's magic ratio is 5:1 (positive:negative)
+  // Here we're measuring the partner's positive influence
   const influenciaPositiva = Math.min(10, (responseRatio * 10));
 
   return {

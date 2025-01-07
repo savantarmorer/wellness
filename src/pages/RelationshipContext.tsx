@@ -124,6 +124,9 @@ export default function RelationshipContext() {
 
   const handleSubmit = async (formData: RelationshipContextFormData) => {
     try {
+      setError(null);
+      setSuccess(null);
+
       const updatedContext: RelationshipContext = {
         type: formData.type,
         duration: formData.duration,
@@ -164,13 +167,18 @@ export default function RelationshipContext() {
         attachmentStyle: formData.attachmentStyle
       };
 
-      if (currentUser) {
-        await saveRelationshipContext(updatedContext, currentUser.uid, formData.partnerId || '');
-        navigate('/dashboard');
+      if (!currentUser) {
+        throw new Error('Você precisa estar logado para salvar o contexto.');
       }
+
+      await saveRelationshipContext(updatedContext, currentUser.uid, formData.partnerId || '');
+      setSuccess('Contexto do relacionamento salvo com sucesso!');
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1500);
     } catch (error) {
       console.error('Error updating relationship context:', error);
-      setError('Failed to update relationship context');
+      setError(error instanceof Error ? error.message : 'Erro ao atualizar o contexto do relacionamento');
     }
   };
 

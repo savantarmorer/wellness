@@ -1,4 +1,4 @@
-import { DailyAssessment, AttachmentStyle } from '../types';
+import { DailyAssessment, AttachmentStyle, ValidatedScaleAssessmentData } from '../types';
 
 interface AttachmentAnalysisResult {
   primary: AttachmentStyle;
@@ -7,8 +7,8 @@ interface AttachmentAnalysisResult {
 }
 
 export async function analyzeAttachmentStyle(
-  userAssessment: DailyAssessment,
-  partnerAssessment: DailyAssessment
+  userAssessment: DailyAssessment | ValidatedScaleAssessmentData,
+  partnerAssessment: DailyAssessment | ValidatedScaleAssessmentData
 ): Promise<AttachmentAnalysisResult> {
   // Calculate attachment style based on assessment scores
   const {

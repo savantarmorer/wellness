@@ -7,6 +7,7 @@ import {
   StepContent,
   Typography,
   Button,
+  CircularProgress
 } from '@mui/material';
 import type { RelationshipContextFormData } from '../types';
 
@@ -14,12 +15,14 @@ interface Props {
   currentStep: number;
   onStepChange: (step: number) => void;
   data: Partial<RelationshipContextFormData>;
+  isSubmitting?: boolean;
 }
 
 export const RelationshipContextProgress: React.FC<Props> = ({
   currentStep,
   onStepChange,
   data,
+  isSubmitting = false
 }) => {
   const steps = [
     {
@@ -55,9 +58,17 @@ export const RelationshipContextProgress: React.FC<Props> = ({
       description: 'O que vocês querem alcançar',
       isComplete: () => Boolean(data.appGoals),
     },
+    {
+      label: 'Eventos Importantes',
+      description: 'Eventos significativos e atividades compartilhadas',
+      isComplete: () => Boolean(data.communicationStyle && data.attachmentStyle),
+    }
   ];
 
   const handleNext = () => {
+    if (currentStep === steps.length - 1) {
+      return;
+    }
     onStepChange(currentStep + 1);
   };
 
@@ -83,12 +94,17 @@ export const RelationshipContextProgress: React.FC<Props> = ({
                     variant="contained"
                     onClick={handleNext}
                     sx={{ mt: 1, mr: 1 }}
-                    disabled={!step.isComplete()}
+                    disabled={!step.isComplete() || (index === steps.length - 1 && isSubmitting)}
+                    type={index === steps.length - 1 ? 'submit' : 'button'}
+                    startIcon={index === steps.length - 1 && isSubmitting ? <CircularProgress size={20} color="inherit" /> : null}
                   >
-                    {index === steps.length - 1 ? 'Finalizar' : 'Continuar'}
+                    {index === steps.length - 1 
+                      ? (isSubmitting ? 'Salvando...' : 'Finalizar')
+                      : 'Continuar'
+                    }
                   </Button>
                   <Button
-                    disabled={index === 0}
+                    disabled={index === 0 || isSubmitting}
                     onClick={handleBack}
                     sx={{ mt: 1, mr: 1 }}
                   >

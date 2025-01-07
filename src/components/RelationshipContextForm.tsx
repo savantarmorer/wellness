@@ -86,6 +86,7 @@ export const RelationshipContextForm: React.FC<Props> = ({ initialData = {}, onS
   const [currentStep, setCurrentStep] = useState(0);
   const [newEvent, setNewEvent] = useState('');
   const [newStrength, setNewStrength] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (field: keyof RelationshipContextFormData) => (
     event: React.ChangeEvent<HTMLInputElement>
@@ -109,9 +110,16 @@ export const RelationshipContextForm: React.FC<Props> = ({ initialData = {}, onS
     }));
   };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    onSubmit(formData);
+    try {
+      setIsSubmitting(true);
+      await onSubmit(formData);
+    } catch (error) {
+      console.error('Error submitting form:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderStep = () => {
@@ -487,12 +495,6 @@ export const RelationshipContextForm: React.FC<Props> = ({ initialData = {}, onS
                 helperText="Que aspectos do relacionamento você gostaria de melhorar?"
               />
             </Grid>
-
-            <Grid item xs={12}>
-              <Button type="submit" variant="contained" color="primary" fullWidth>
-                Salvar Contexto
-              </Button>
-            </Grid>
           </>
         );
 
@@ -618,13 +620,14 @@ export const RelationshipContextForm: React.FC<Props> = ({ initialData = {}, onS
 
   return (
     <Paper elevation={3} sx={{ p: 4 }}>
-      <Box component="form" onSubmit={handleSubmit}>
+      <Box component="form" onSubmit={handleSubmit} noValidate>
         <Grid container spacing={3}>
           <Grid item xs={12} md={4}>
             <RelationshipContextProgress
               currentStep={currentStep}
               onStepChange={setCurrentStep}
               data={formData}
+              isSubmitting={isSubmitting}
             />
           </Grid>
 

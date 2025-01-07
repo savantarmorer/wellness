@@ -3,7 +3,25 @@ import { Container, Box, Typography, Paper, CircularProgress, alpha, IconButton,
 import { Layout } from '../components/Layout';
 import { AnalysisTabs } from '../components/AnalysisTabs';
 import { useAuth } from '../contexts/AuthContext';
-import type { GPTAnalysis, RelationshipAnalysis, MoodAnalysis, UnifiedAnalysis, DailyAssessment, ConsensusFormData, MoodEntry, ValidatedScalesAnalysis, ClinicalSignificance, AttachmentAnalysis } from '../types';
+import type { 
+  GPTAnalysis, 
+  RelationshipAnalysis, 
+  MoodAnalysis, 
+  UnifiedAnalysis, 
+  DailyAssessment, 
+  ConsensusFormData, 
+  MoodEntry, 
+  ValidatedScalesAnalysis, 
+  ClinicalSignificance, 
+  AttachmentAnalysis,
+  MoodType,
+  ComprehensiveAnalysis,
+  ValidatedScales,
+  EmotionalDynamics,
+  TemporalAnalysis,
+  CommunicationPatterns,
+  CategoryRatings
+} from '../types';
 import { ArrowBack, ArrowForwardIos } from '@mui/icons-material';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../services/firebase';
@@ -205,342 +223,187 @@ const Analysis = () => {
           })()
         ]);
 
-        // Convert to UnifiedAnalysis format with actual calculated values
-        const analysis: UnifiedAnalysis = {
+        // Initialize default values
+        const defaultMoodFrequency: Record<MoodType, number> = {
+          feliz: 0,
+          animado: 0,
+          grato: 0,
+          calmo: 0,
+          satisfeito: 0,
+          amado: 0,
+          ansioso: 0,
+          estressado: 0,
+          triste: 0,
+          irritado: 0,
+          frustrado: 0,
+          exausto: 0,
+          confuso: 0,
+          solitário: 0,
+          neutral: 0,
+          content: 0
+        };
+
+        const defaultMoodTransitions: Record<string, number> = {};
+
+        // Construct unified analysis
+        const unifiedAnalysis = {
           gptAnalysis: {
-            id: `${currentUser.uid}_${new Date().toISOString()}`,
-            userId: currentUser.uid,
-            partnerId: userData.partnerId || '',
+            id: '',
+            userId: currentUser?.uid || '',
+            partnerId: userData?.partnerId || '',
             date: new Date().toISOString(),
             type: 'individual',
             analysis: {
               moodPatterns: {
                 user: {
                   dominant: 'neutral',
-                  frequency: {
-                    content: 0,
-                    neutral: 0,
-                    feliz: 0,
-                    animado: 0,
-                    grato: 0,
-                    calmo: 0,
-                    satisfeito: 0,
-                    amado: 0,
-                    ansioso: 0,
-                    estressado: 0,
-                    triste: 0,
-                    irritado: 0,
-                    frustrado: 0,
-                    exausto: 0,
-                    confuso: 0,
-                    solitário: 0
-                  },
-                  transitions: {}
+                  frequency: defaultMoodFrequency,
+                  transitions: defaultMoodTransitions
                 },
                 partner: {
                   dominant: 'neutral',
-                  frequency: {
-                    content: 0,
-                    neutral: 0,
-                    feliz: 0,
-                    animado: 0,
-                    grato: 0,
-                    calmo: 0,
-                    satisfeito: 0,
-                    amado: 0,
-                    ansioso: 0,
-                    estressado: 0,
-                    triste: 0,
-                    irritado: 0,
-                    frustrado: 0,
-                    exausto: 0,
-                    confuso: 0,
-                    solitário: 0
-                  },
-                  transitions: {}
+                  frequency: defaultMoodFrequency,
+                  transitions: defaultMoodTransitions
                 },
-                overall: { synchronicity: 0, stability: 0, variability: 0 }
+                overall: {
+                  synchronicity: 0,
+                  stability: 0,
+                  variability: 0
+                }
               },
-              communicationMetrics: { quality: 0, frequency: 0, depth: 0, patterns: [] },
-              attachmentInsights: { style: '', behaviors: [], triggers: [], suggestions: [] },
+              communicationMetrics: {
+                quality: 0,
+                frequency: 0,
+                depth: 0,
+                patterns: []
+              },
               relationshipDynamics: {
                 strengths: [],
                 challenges: [],
                 recommendations: []
+              },
+              attachmentInsights: {
+                style: '',
+                behaviors: [],
+                triggers: [],
+                suggestions: []
               }
             },
             timestamp: new Date().toISOString(),
             version: '1.0',
             metadata: {
-              assessmentCount: 1,
-              timeSpan: '1 day',
-              confidence: 0.8
+              assessmentCount: 0,
+              timeSpan: '',
+              confidence: 0
             }
           },
-          relationshipAnalysis: {
-            id: `${currentUser.uid}_${new Date().toISOString()}`,
-            userId: currentUser.uid,
-            partnerId: userData.partnerId || '',
-            date: new Date().toISOString(),
-            type: 'individual',
-            overallHealth: {
-              score: relationshipAnalysis.overallHealth?.score || 0,
-              trend: relationshipAnalysis.overallHealth?.trend || 'stable',
-              confidence: relationshipAnalysis.overallHealth?.confidence || 0.8
+          relationshipContext: context,
+          relationshipAnalysis: relationshipAnalysis?.relationshipAnalysis,
+          moodAnalysis: moodAnalysis || undefined,
+          temporalAnalysis: {
+            correlation: 0,
+            trends: {},
+            patterns: {
+              cyclical: [],
+              persistent: [],
+              emerging: []
             },
-            categories: relationshipAnalysis.categories || {},
-            strengthsAndChallenges: {
-              strengths: [],
-              challenges: []
+            timeframes: {
+              daily: {
+                averageScores: {} as CategoryRatings,
+                discrepancies: [],
+                insights: [],
+                confidence: 0,
+                trends: {}
+              },
+              weekly: {
+                averageScores: {} as CategoryRatings,
+                discrepancies: [],
+                insights: [],
+                confidence: 0,
+                trends: {}
+              },
+              monthly: {
+                averageScores: {} as CategoryRatings,
+                discrepancies: [],
+                insights: [],
+                confidence: 0,
+                trends: {}
+              }
             },
-            communicationSuggestions: [],
-            actionItems: [],
-            relationshipDynamics: {
+            seasonality: 0,
+            volatility: 0,
+            confidence: 0,
+            analysisDate: new Date().toISOString()
+          },
+          attachmentAnalysis: attachmentAnalysis,
+          clinicalSignificance: {
+            gaps: [],
+            riskFactors: [],
+            protectiveFactors: [],
+            recommendations: [],
+            severity: 'low',
+            confidence: 0
+          },
+          emotionalDynamics: relationshipAnalysis?.emotionalDynamics || {
+            synchronicity: 0,
+            stability: 0,
+            emotionalSecurity: 0,
+            intimacyBalance: {
+              score: 0,
+              areas: {
+                emotional: 0,
+                physical: 0,
+                intellectual: 0,
+                shared: 0
+              }
+            },
+            conflictResolution: {
+              style: 'collaborative',
+              effectiveness: 0,
+              patterns: [],
+              confidence: 0
+            },
+            patterns: {
+              user: {
+                dominant: 'neutral',
+                frequency: defaultMoodFrequency,
+                transitions: defaultMoodTransitions
+              },
+              partner: {
+                dominant: 'neutral',
+                frequency: defaultMoodFrequency,
+                transitions: defaultMoodTransitions
+              }
+            },
+            insights: {
               strengths: [],
               challenges: [],
               recommendations: []
-            },
-            emotionalDynamics: {
-              emotionalSecurity: 0,
-              intimacyBalance: {
-                score: 0,
-                areas: {
-                  emotional: 0,
-                  physical: 0,
-                  intellectual: 0,
-                  shared: 0
-                }
-              },
-              conflictResolution: {
-                style: '',
-                effectiveness: 0,
-                patterns: [],
-                confidence: 0.8
-              },
-              synchronicity: 0,
-              stability: 0,
-              patterns: {
-                user: {
-                  dominant: 'neutral',
-                  frequency: {
-                    content: 0,
-                    neutral: 0,
-                    feliz: 0,
-                    animado: 0,
-                    grato: 0,
-                    calmo: 0,
-                    satisfeito: 0,
-                    amado: 0,
-                    ansioso: 0,
-                    estressado: 0,
-                    triste: 0,
-                    irritado: 0,
-                    frustrado: 0,
-                    exausto: 0,
-                    confuso: 0,
-                    solitário: 0
-                  },
-                  transitions: {}
-                },
-                partner: {
-                  dominant: 'neutral',
-                  frequency: {
-                    content: 0,
-                    neutral: 0,
-                    feliz: 0,
-                    animado: 0,
-                    grato: 0,
-                    calmo: 0,
-                    satisfeito: 0,
-                    amado: 0,
-                    ansioso: 0,
-                    estressado: 0,
-                    triste: 0,
-                    irritado: 0,
-                    frustrado: 0,
-                    exausto: 0,
-                    confuso: 0,
-                    solitário: 0
-                  },
-                  transitions: {}
-                }
-              },
-              insights: {
-                strengths: [],
-                challenges: [],
-                recommendations: []
-              }
-            },
-            emotionalSync: 0,
-            moodDiscrepancies: [],
-            insights: [],
-            riskFactors: [],
-            recommendations: [],
-            validatedScales: {
-              consistency: {
-                default: {
-                  score: 0,
-                  confidence: 0.8,
-                  flags: []
-                }
-              },
-              reliability: 0.8,
-              completeness: 0.8,
-              recommendations: [],
-              isValid: true,
-              errors: [],
-              attachment: {
-                ecr: {
-                  ansiedade: 0,
-                  evitacao: 0,
-                  anxiety: 0,
-                  avoidance: 0
-                },
-                securityLevel: 0,
-                attachmentStyle: {
-                  primary: 'secure',
-                  description: 'Secure attachment style',
-                  recommendations: ['Continue fostering trust and open communication']
-                },
-                padraoApego: {
-                  primary: 'secure',
-                  description: 'Padrão de apego seguro',
-                  recommendations: ['Manter comunicação aberta e confiança']
-                },
-                compatibilidadeApego: 0
-              },
-              das: {
-                consenso: 0,
-                satisfacao: 0,
-                coesao: 0,
-                expressaoAfetiva: 0,
-                total: 0
-              },
-              csi: {
-                satisfacaoGlobal: 0,
-                estabilidade: 0,
-                comprometimento: 0,
-                comunicacao: 0,
-                gestaoConflitos: 0,
-                atividadesCompartilhadas: 0,
-                total: 0
-              },
-              gottman: {
-                fourHorsemen: {
-                  critica: 0,
-                  defensividade: 0,
-                  desprezo: 0,
-                  stonewalling: 0
-                },
-                bidsForConnection: {
-                  tentativas: 0,
-                  respostasPositivas: 0,
-                  respostasNegativas: 0,
-                  respostasNeutras: 0
-                },
-                resolucaoConflitos: 0,
-                significadoCompartilhado: 0,
-                reparacao: 0,
-                influenciaPositiva: 0
-              }
-            },
-            gptAnalysis: {
-              id: `${currentUser.uid}_${new Date().toISOString()}`,
-              userId: currentUser.uid,
-              partnerId: userData.partnerId || '',
-              date: new Date().toISOString(),
-              type: 'individual',
-              analysis: {
-                moodPatterns: {
-                  user: {
-                    dominant: 'neutral',
-                    frequency: {
-                      content: 0,
-                      neutral: 0,
-                      feliz: 0,
-                      animado: 0,
-                      grato: 0,
-                      calmo: 0,
-                      satisfeito: 0,
-                      amado: 0,
-                      ansioso: 0,
-                      estressado: 0,
-                      triste: 0,
-                      irritado: 0,
-                      frustrado: 0,
-                      exausto: 0,
-                      confuso: 0,
-                      solitário: 0
-                    },
-                    transitions: {}
-                  },
-                  partner: {
-                    dominant: 'neutral',
-                    frequency: {
-                      content: 0,
-                      neutral: 0,
-                      feliz: 0,
-                      animado: 0,
-                      grato: 0,
-                      calmo: 0,
-                      satisfeito: 0,
-                      amado: 0,
-                      ansioso: 0,
-                      estressado: 0,
-                      triste: 0,
-                      irritado: 0,
-                      frustrado: 0,
-                      exausto: 0,
-                      confuso: 0,
-                      solitário: 0
-                    },
-                    transitions: {}
-                  },
-                  overall: { synchronicity: 0, stability: 0, variability: 0 }
-                },
-                communicationMetrics: { quality: 0, frequency: 0, depth: 0, patterns: [] },
-                attachmentInsights: { style: '', behaviors: [], triggers: [], suggestions: [] },
-                relationshipDynamics: {
-                  strengths: [],
-                  challenges: [],
-                  recommendations: []
-                }
-              },
-              timestamp: new Date().toISOString(),
-              version: '1.0',
-              metadata: {
-                assessmentCount: 1,
-                timeSpan: '1 day',
-                confidence: 0.8
-              }
-            },
-            metadata: {
-              assessmentCount: 1,
-              timeSpan: '1 day',
-              confidence: 0.8,
-              lastUpdate: new Date().toISOString()
             }
           },
-          temporalAnalysis: relationshipAnalysis.temporalAnalysis,
-          attachmentAnalysis: attachmentAnalysis,
-          communicationPatterns: relationshipAnalysis.communicationPatterns || {
+          communicationPatterns: {
             style: '',
             effectiveness: 0,
             patterns: [],
-            confidence: 0.8
+            confidence: 0
           },
-          dailyInsight: relationshipAnalysis.insights?.[0]?.description || 'Nenhuma análise disponível para hoje.',
+          dailyInsight: '',
           stage: {
-            current: 'initial',
+            current: '',
             nextSteps: [],
-            timelineEstimate: '1 week'
+            timelineEstimate: ''
           },
-          relationshipContext: context
-        };
+          compositeIndex: {
+            score: 0,
+            weights: {},
+            breakdown: {}
+          }
+        } as UnifiedAnalysis;
         
-        if (analysis) {
-          console.log('[Analysis] Generated unified analysis:', analysis);
-          setUnifiedAnalysis(analysis);
+        if (unifiedAnalysis) {
+          console.log('[Analysis] Generated unified analysis:', unifiedAnalysis);
+          setUnifiedAnalysis(unifiedAnalysis);
         } else {
           console.log('[Analysis] No analysis generated for the selected date');
           setUnifiedAnalysis(null);

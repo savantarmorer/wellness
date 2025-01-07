@@ -3,8 +3,10 @@ import {
   CommunicationPatterns, 
   DyadicAdjustmentScale, 
   GottmanMetrics,
+  GottmanAssessmentData,
   AttachmentStyle as AttachmentStyleType,
-  MoodType
+  MoodType,
+  ValidatedScaleAssessmentData
 } from '../types';
 import { CategoryAverages, DiscrepancyResult } from './analysisUtils';
 
@@ -201,20 +203,20 @@ export const analyzeGottmanMetrics = (metrics: GottmanMetrics): GottmanAnalysis 
   if (responseRatio <= SCALE_RANGES.gottman.bidsRatio.concerning.max) {
     effectiveness = 'poor';
     recommendations = [
-      'Preste mais atenção às tentativas de conexão do parceiro',
-      'Pratique respostas positivas mesmo em momentos de estresse'
+      'Seu parceiro precisa prestar mais atenção às suas tentativas de conexão',
+      'Seu parceiro pode melhorar suas respostas em momentos de estresse'
     ];
   } else if (responseRatio <= SCALE_RANGES.gottman.bidsRatio.moderate.max) {
     effectiveness = 'fair';
     recommendations = [
-      'Continue melhorando o reconhecimento de tentativas de conexão',
-      'Trabalhe em responder mais positivamente'
+      'Seu parceiro pode melhorar o reconhecimento de suas tentativas de conexão',
+      'Seu parceiro pode trabalhar em responder mais positivamente'
     ];
   } else {
     effectiveness = 'good';
     recommendations = [
-      'Mantenha o alto nível de responsividade',
-      'Continue cultivando momentos de conexão'
+      'Seu parceiro mantém um bom nível de responsividade',
+      'Seu parceiro cultiva bem os momentos de conexão'
     ];
   }
 
@@ -226,23 +228,23 @@ export const analyzeGottmanMetrics = (metrics: GottmanMetrics): GottmanAnalysis 
   };
 
   if (responseRatio > 0.6) {
-    overallHealth.strengths.push('Alta taxa de resposta positiva às tentativas de conexão');
+    overallHealth.strengths.push('Alta taxa de resposta positiva do parceiro às suas tentativas de conexão');
   }
   if (fourHorsemenTotal < 4) {
-    overallHealth.strengths.push('Baixa presença dos quatro cavaleiros');
+    overallHealth.strengths.push('Baixa presença dos quatro cavaleiros na comunicação do parceiro');
   }
   if (metrics.influenciaPositiva > 7) {
-    overallHealth.strengths.push('Forte influência positiva no relacionamento');
+    overallHealth.strengths.push('Forte influência positiva do parceiro no relacionamento');
   }
 
   if (fourHorsemenTotal > 6) {
-    overallHealth.concerns.push('Alta presença dos quatro cavaleiros');
+    overallHealth.concerns.push('Alta presença dos quatro cavaleiros na comunicação do parceiro');
   }
   if (responseRatio < 0.4) {
-    overallHealth.concerns.push('Baixa taxa de resposta positiva às tentativas de conexão');
+    overallHealth.concerns.push('Baixa taxa de resposta positiva do parceiro às suas tentativas de conexão');
   }
   if (metrics.influenciaPositiva < 5) {
-    overallHealth.concerns.push('Influência positiva abaixo do ideal');
+    overallHealth.concerns.push('Influência positiva do parceiro abaixo do ideal');
   }
 
   return {
@@ -260,9 +262,19 @@ export const analyzeGottmanMetrics = (metrics: GottmanMetrics): GottmanAnalysis 
   };
 };
 
+export const analyzeGottmanAssessment = async (
+  assessment: GottmanAssessmentData
+): Promise<GottmanAnalysis> => {
+  if (!assessment.validatedScales?.gottman) {
+    throw new Error('Métricas de Gottman não encontradas na avaliação');
+  }
+
+  return analyzeGottmanMetrics(assessment.validatedScales.gottman);
+};
+
 export const analyzeAttachmentStyle = (
-  userAssessment: DailyAssessment,
-  partnerAssessment: DailyAssessment
+  userAssessment: DailyAssessment | ValidatedScaleAssessmentData,
+  partnerAssessment: DailyAssessment | ValidatedScaleAssessmentData
 ): AttachmentStyle => {
   const securityScore = userAssessment.ratings.satisfacaoGeral * 0.3 + 
                      userAssessment.ratings.alinhamentoObjetivos * 0.2 + 

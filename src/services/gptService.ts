@@ -20,7 +20,10 @@ import {
   NormalizedRelationshipData,
   AttachmentAnalysis,
   AttachmentStyle,
-  ValidatedScales
+  ValidatedScales,
+  GottmanAssessmentData,
+  AttachmentStyleType,
+  GottmanMetrics
 } from '../types';
 import { getAnalysisForDate } from './analysisHistoryService';
 import { callOpenAI } from './openaiClient';
@@ -36,6 +39,8 @@ import { CategoryAverages } from './analysisUtils';
 import { config } from '../config';
 import { getAuth } from 'firebase/auth';
 import { openaiClient } from './openaiClient';
+import { analyzeGottmanMetrics } from './psychologicalAnalysisService';
+import { getLatestGottmanAssessment } from './assessmentService';
 
 export const getApiKey = () => {
   const apiKey = config.openai.apiKey;
@@ -46,11 +51,338 @@ export const getApiKey = () => {
   return apiKey;
 };
 
+const createGPTAnalysis = (assessment: DailyAssessment): GPTAnalysis => ({
+  id: `gpt_${new Date().getTime()}`,
+  userId: assessment.userId,
+  partnerId: assessment.partnerId,
+  date: new Date().toISOString(),
+  type: 'individual',
+  analysis: {
+    moodPatterns: {
+      user: {
+        dominant: 'feliz' as MoodType,
+        frequency: {
+          feliz: 0,
+          animado: 0,
+          grato: 0,
+          calmo: 0,
+          satisfeito: 0,
+          amado: 0,
+          ansioso: 0,
+          estressado: 0,
+          triste: 0,
+          irritado: 0,
+          frustrado: 0,
+          exausto: 0,
+          confuso: 0,
+          solitário: 0,
+          neutral: 0,
+          content: 0
+        },
+        transitions: {}
+      },
+      partner: {
+        dominant: 'feliz' as MoodType,
+        frequency: {
+          feliz: 0,
+          animado: 0,
+          grato: 0,
+          calmo: 0,
+          satisfeito: 0,
+          amado: 0,
+          ansioso: 0,
+          estressado: 0,
+          triste: 0,
+          irritado: 0,
+          frustrado: 0,
+          exausto: 0,
+          confuso: 0,
+          solitário: 0,
+          neutral: 0,
+          content: 0
+        },
+        transitions: {}
+      },
+      overall: {
+        synchronicity: 0.8,
+        stability: 0.7,
+        variability: 0.5
+      }
+    },
+    communicationMetrics: {
+      quality: 0.8,
+      frequency: 0.7,
+      depth: 0.6,
+      patterns: []
+    },
+    attachmentInsights: {
+      style: 'secure',
+      behaviors: [],
+      triggers: [],
+      suggestions: []
+    },
+    relationshipDynamics: {
+      strengths: [],
+      challenges: [],
+      recommendations: []
+    }
+  },
+  timestamp: new Date().toISOString(),
+  version: '1.0',
+  metadata: {
+    assessmentCount: 1,
+    timeSpan: '1 day',
+    confidence: 0.8
+  }
+});
+
+const createBaseAnalysis = (
+  assessment: DailyAssessment,
+  gptAnalysis: any,
+  gottmanMetrics: GottmanMetrics,
+  gottmanInsights: any[],
+  gottmanRecommendations: string[]
+): RelationshipAnalysis => {
+  // Consolidate insights and recommendations
+  const baseInsights = [...(gptAnalysis.insights || []), ...gottmanInsights];
+  const baseRecommendations = [...(gptAnalysis.recommendations || []), ...gottmanRecommendations];
+
+  // Create the base analysis object
+  const baseAnalysis: RelationshipAnalysis = {
+    id: `analysis_${new Date().getTime()}`,
+    userId: assessment.userId,
+    partnerId: assessment.partnerId,
+    date: new Date().toISOString(),
+    type: 'individual',
+    overallHealth: {
+      score: gptAnalysis.relationshipAnalysis?.overallHealth?.score || 0,
+      trend: (gptAnalysis.relationshipAnalysis?.overallHealth?.trend || 'stable') as 'improving' | 'stable' | 'declining',
+      confidence: gptAnalysis.relationshipAnalysis?.overallHealth?.confidence || 0.8
+    },
+    categories: gptAnalysis.categories || {},
+    strengthsAndChallenges: {
+      strengths: gptAnalysis.strengthsAndChallenges?.strengths || [],
+      challenges: gptAnalysis.strengthsAndChallenges?.challenges || []
+    },
+    communicationSuggestions: gptAnalysis.communicationSuggestions || [],
+    actionItems: gptAnalysis.actionItems || [],
+    relationshipDynamics: {
+      strengths: gptAnalysis.relationshipDynamics?.strengths || [],
+      challenges: gptAnalysis.relationshipDynamics?.challenges || [],
+      recommendations: gptAnalysis.relationshipDynamics?.recommendations || []
+    },
+    emotionalDynamics: {
+      synchronicity: 0.7,
+      stability: 0.8,
+      emotionalSecurity: assessment.ratings.segurancaRelacionamento || 0,
+      intimacyBalance: {
+        score: assessment.ratings.intimidadeFisica || 0,
+        areas: {
+          emotional: assessment.ratings.conexaoEmocional || 0,
+          physical: assessment.ratings.intimidadeFisica || 0,
+          intellectual: assessment.ratings.alinhamentoObjetivos || 0,
+          shared: assessment.ratings.qualidadeTempo || 0
+        }
+      },
+      conflictResolution: {
+        style: 'collaborative',
+        effectiveness: assessment.ratings.resolucaoConflitos || 0,
+        patterns: [],
+        confidence: 0.8
+      },
+      patterns: {
+        user: {
+          dominant: 'feliz' as MoodType,
+          frequency: {
+            feliz: 0,
+            animado: 0,
+            grato: 0,
+            calmo: 0,
+            satisfeito: 0,
+            amado: 0,
+            ansioso: 0,
+            estressado: 0,
+            triste: 0,
+            irritado: 0,
+            frustrado: 0,
+            exausto: 0,
+            confuso: 0,
+            solitário: 0,
+            neutral: 0,
+            content: 0
+          },
+          transitions: {}
+        },
+        partner: {
+          dominant: 'feliz' as MoodType,
+          frequency: {
+            feliz: 0,
+            animado: 0,
+            grato: 0,
+            calmo: 0,
+            satisfeito: 0,
+            amado: 0,
+            ansioso: 0,
+            estressado: 0,
+            triste: 0,
+            irritado: 0,
+            frustrado: 0,
+            exausto: 0,
+            confuso: 0,
+            solitário: 0,
+            neutral: 0,
+            content: 0
+          },
+          transitions: {}
+        }
+      },
+      insights: {
+        strengths: [],
+        challenges: [],
+        recommendations: []
+      }
+    },
+    emotionalSync: gptAnalysis.emotionalSync || 0,
+    moodDiscrepancies: gptAnalysis.moodDiscrepancies || [],
+    insights: baseInsights,
+    riskFactors: gptAnalysis.riskFactors || [],
+    recommendations: baseRecommendations,
+    validatedScales: {
+      das: {
+        total: 0,
+        consenso: 0,
+        satisfacao: 0,
+        coesao: 0,
+        expressaoAfetiva: 0
+      },
+      csi: {
+        satisfacaoGlobal: 0,
+        estabilidade: 0,
+        comprometimento: 0,
+        comunicacao: 0,
+        gestaoConflitos: 0,
+        atividadesCompartilhadas: 0,
+        total: 0
+      },
+      gottman: gottmanMetrics,
+      attachment: {
+        ecr: {
+          ansiedade: 0,
+          evitacao: 0,
+          anxiety: 0,
+          avoidance: 0
+        },
+        securityLevel: 0,
+        attachmentStyle: {
+          primary: 'secure' as AttachmentStyleType,
+          description: 'Secure attachment style',
+          recommendations: ['Continue fostering trust and open communication']
+        },
+        padraoApego: {
+          primary: 'secure' as AttachmentStyleType,
+          description: 'Padrão de apego seguro',
+          recommendations: ['Manter comunicação aberta e confiança']
+        },
+        compatibilidadeApego: 0
+      },
+      consistency: {
+        default: {
+          score: 0,
+          confidence: 0,
+          flags: []
+        }
+      },
+      reliability: 0,
+      completeness: 0,
+      recommendations: [
+        'Mantenha a consistência nas avaliações',
+        'Continue fornecendo feedback detalhado'
+      ],
+      isValid: true,
+      errors: []
+    },
+    gptAnalysis: createGPTAnalysis(assessment),
+    metadata: {
+      assessmentCount: 1,
+      timeSpan: '1 day',
+      confidence: 0.8,
+      lastUpdate: new Date().toISOString()
+    },
+    insights: [
+      ...(gptAnalysis.insights || []),
+      ...gottmanInsights,
+      ...(gptAnalysis.recommendations || []).map((rec: string) => ({
+        id: `insight_rec_${new Date().getTime()}_${Math.random()}`,
+        type: 'recommendation' as const,
+        category: 'general',
+        description: rec,
+        confidence: 0.9,
+        impact: 'high' as const,
+        timestamp: new Date().toISOString()
+      })),
+      ...gottmanRecommendations.map((rec: string) => ({
+        id: `insight_gottman_${new Date().getTime()}_${Math.random()}`,
+        type: 'recommendation' as const,
+        category: 'gottman_metrics',
+        description: rec,
+        confidence: 0.9,
+        impact: 'high' as const,
+        timestamp: new Date().toISOString()
+      }))
+    ]
+  };
+
+  return baseAnalysis;
+};
+
 export const generateDailyInsight = async (
   assessment: DailyAssessment,
   relationshipContext?: RelationshipContext
 ): Promise<RelationshipAnalysis> => {
   try {
+    // Busca a última avaliação Gottman disponível
+    const latestGottmanAssessment = await getLatestGottmanAssessment(assessment.userId, assessment.partnerId);
+    
+    // Se houver uma avaliação Gottman, use-a para análise
+    const gottmanMetrics = latestGottmanAssessment?.validatedScales?.gottman || {
+      fourHorsemen: {
+        critica: 0,
+        defensividade: 0,
+        desprezo: 0,
+        stonewalling: 0
+      },
+      bidsForConnection: {
+        tentativas: assessment.ratings.conexaoEmocional || 0,
+        respostasPositivas: assessment.ratings.apoioMutuo || 0,
+        respostasNegativas: 0,
+        respostasNeutras: 0
+      },
+      resolucaoConflitos: assessment.ratings.resolucaoConflitos || 0,
+      significadoCompartilhado: assessment.ratings.alinhamentoObjetivos || 0,
+      reparacao: assessment.ratings.apoioMutuo || 0,
+      influenciaPositiva: assessment.ratings.apoioMutuo || 0
+    };
+
+    // Analisa as métricas de Gottman para insights
+    const gottmanAnalysis = analyzeGottmanMetrics(gottmanMetrics);
+    const gottmanInsights = gottmanAnalysis.overallHealth.strengths.map(strength => ({
+      id: `insight_gottman_${new Date().getTime()}_${Math.random()}`,
+      type: 'observation' as const,
+      category: 'gottman_metrics',
+      description: strength,
+      confidence: 0.9,
+      impact: 'high' as const,
+      timestamp: new Date().toISOString()
+    }));
+
+    // Adiciona recomendações baseadas nas métricas de Gottman
+    const gottmanRecommendations = [
+      ...gottmanAnalysis.bidsEffectiveness.recommendations,
+      ...(gottmanAnalysis.overallHealth.concerns.map(concern => 
+        `Trabalhe em: ${concern}`
+      ))
+    ];
+
     const prompt = generateDailyInsightPrompt(assessment, relationshipContext);
 
     const response = await callOpenAI({
@@ -69,323 +401,10 @@ export const generateDailyInsight = async (
       throw new Error('Failed to generate daily insight');
     }
 
-    // Calculate emotional dynamics
-    const averages: CategoryAverages = {
-      satisfaction: assessment.ratings.satisfacaoGeral,
-      affection: assessment.ratings.conexaoEmocional,
-      consensus: assessment.ratings.alinhamentoObjetivos,
-      cohesion: assessment.ratings.apoioMutuo,
-      conflict: assessment.ratings.resolucaoConflitos,
-      general: assessment.ratings.satisfacaoGeral
-    };
-
-    const emotionalDynamics = analyzeEmotionalDynamics(averages, assessment, assessment);
-
-    // Try to parse insights from the GPT response
     try {
       const gptAnalysis = JSON.parse(content);
       if (gptAnalysis) {
-        const result: RelationshipAnalysis = {
-          id: `analysis_${new Date().getTime()}`,
-          userId: assessment.userId,
-          partnerId: assessment.partnerId,
-          date: new Date().toISOString(),
-          type: 'individual',
-          overallHealth: {
-            score: gptAnalysis.relationshipAnalysis?.overallHealth?.score || 0,
-            trend: (gptAnalysis.relationshipAnalysis?.overallHealth?.trend || 'stable') as 'improving' | 'stable' | 'declining',
-            confidence: gptAnalysis.relationshipAnalysis?.overallHealth?.confidence || 0.8
-          },
-          categories: {
-            comunicacao: {
-              score: assessment.ratings.comunicacao,
-              trend: "stable",
-              insights: [],
-              impactScore: 0,
-              priority: "medium"
-            },
-            conexaoEmocional: {
-              score: assessment.ratings.conexaoEmocional,
-              trend: "stable",
-              insights: [],
-              impactScore: 0,
-              priority: "medium"
-            }
-          },
-          strengthsAndChallenges: {
-            strengths: gptAnalysis.strengthsAndChallenges?.strengths || [],
-            challenges: gptAnalysis.strengthsAndChallenges?.challenges || []
-          },
-          communicationSuggestions: gptAnalysis.communicationSuggestions || [],
-          actionItems: gptAnalysis.actionItems || [],
-          relationshipDynamics: {
-            strengths: [],
-            challenges: [],
-            recommendations: []
-          },
-          emotionalDynamics: {
-            emotionalSecurity: assessment.ratings.segurancaRelacionamento || 0,
-            intimacyBalance: {
-              score: 0,
-              areas: {
-                emotional: assessment.ratings.conexaoEmocional || 0,
-                physical: assessment.ratings.intimidadeFisica || 0,
-                intellectual: assessment.ratings.alinhamentoObjetivos || 0,
-                shared: assessment.ratings.qualidadeTempo || 0
-              }
-            },
-            conflictResolution: {
-              style: 'collaborative',
-              effectiveness: assessment.ratings.resolucaoConflitos || 0,
-              patterns: [],
-              confidence: 0.8
-            },
-            synchronicity: 0.8,
-            stability: 0.7,
-            patterns: {
-              user: {
-                dominant: 'feliz' as MoodType,
-                frequency: {
-                  feliz: 0,
-                  animado: 0,
-                  grato: 0,
-                  calmo: 0,
-                  satisfeito: 0,
-                  amado: 0,
-                  ansioso: 0,
-                  estressado: 0,
-                  triste: 0,
-                  irritado: 0,
-                  frustrado: 0,
-                  exausto: 0,
-                  confuso: 0,
-                  solitário: 0,
-                  neutral: 0,
-                  content: 0
-                },
-                transitions: {}
-              },
-              partner: {
-                dominant: 'feliz' as MoodType,
-                frequency: {
-                  feliz: 0,
-                  animado: 0,
-                  grato: 0,
-                  calmo: 0,
-                  satisfeito: 0,
-                  amado: 0,
-                  ansioso: 0,
-                  estressado: 0,
-                  triste: 0,
-                  irritado: 0,
-                  frustrado: 0,
-                  exausto: 0,
-                  confuso: 0,
-                  solitário: 0,
-                  neutral: 0,
-                  content: 0
-                },
-                transitions: {}
-              }
-            },
-            insights: {
-              strengths: [],
-              challenges: [],
-              recommendations: []
-            }
-          },
-          emotionalSync: gptAnalysis.emotionalSync || 0,
-          moodDiscrepancies: gptAnalysis.moodDiscrepancies?.map((discrepancy: { userMood: MoodType; partnerMood: MoodType; impact: 'alto' | 'médio' | 'baixo'; timestamp: string }) => ({
-            userMood: discrepancy.userMood,
-            partnerMood: discrepancy.partnerMood,
-            difference: Math.abs(discrepancy.impact === 'alto' ? 3 : discrepancy.impact === 'médio' ? 2 : 1),
-            pattern: 'divergent',
-            type: 'divergent',
-            description: 'Mood discrepancy detected',
-            severity: discrepancy.impact === 'alto' ? 'high' : discrepancy.impact === 'médio' ? 'medium' : 'low',
-            impact: discrepancy.impact,
-            timestamp: discrepancy.timestamp
-          })) || [],
-          insights: gptAnalysis.insights?.map((insight: { id: string; type: 'pattern' | 'observation' | 'recommendation' | 'warning'; category: string; description: string; confidence: number; impact: string; timestamp: string }) => ({
-            id: insight.id,
-            type: insight.type,
-            category: insight.category,
-            description: insight.description,
-            confidence: insight.confidence,
-            impact: insight.impact === 'high' || insight.impact === 'medium' || insight.impact === 'low' ? insight.impact : 'medium',
-            timestamp: insight.timestamp
-          })) || [{
-            id: `insight_${new Date().getTime()}`,
-            type: 'pattern',
-            category: 'attachment',
-            description: 'Initial analysis',
-            confidence: 0.8,
-            impact: 'medium',
-            timestamp: new Date().toISOString()
-          }],
-          riskFactors: gptAnalysis.riskFactors || [],
-          recommendations: gptAnalysis.recommendations || [],
-          validatedScales: {
-            das: {
-              total: 0,
-              consenso: 0,
-              satisfacao: 0,
-              coesao: 0,
-              expressaoAfetiva: 0
-            },
-            csi: {
-              satisfacaoGlobal: 0,
-              estabilidade: 0,
-              comprometimento: 0,
-              comunicacao: 0,
-              gestaoConflitos: 0,
-              atividadesCompartilhadas: 0,
-              total: 0
-            },
-            gottman: {
-              fourHorsemen: {
-                critica: 0,
-                defensividade: 0,
-                desprezo: 0,
-                stonewalling: 0
-              },
-              bidsForConnection: {
-                tentativas: 0,
-                respostasPositivas: 0,
-                respostasNegativas: 0,
-                respostasNeutras: 0
-              },
-              resolucaoConflitos: 0,
-              significadoCompartilhado: 0,
-              reparacao: 0,
-              influenciaPositiva: 0
-            },
-            attachment: {
-              attachmentStyle: {
-                primary: 'secure',
-                description: 'Secure attachment style',
-                recommendations: ['Continue fostering trust and open communication']
-              },
-              compatibilidadeApego: 0,
-              ecr: {
-                ansiedade: 0,
-                evitacao: 0,
-                anxiety: 0,
-                avoidance: 0
-              },
-              securityLevel: 0,
-              padraoApego: {
-                primary: 'secure',
-                description: 'Padrão de apego seguro',
-                recommendations: ['Manter comunicação aberta e confiança']
-              }
-            },
-            consistency: {
-              default: {
-                score: 0,
-                confidence: 0,
-                flags: []
-              }
-            },
-            reliability: 0,
-            completeness: 0,
-            recommendations: [],
-            isValid: true,
-            errors: []
-          },
-          gptAnalysis: {
-            id: `gpt_${new Date().getTime()}`,
-            userId: assessment.userId,
-            partnerId: assessment.partnerId,
-            date: new Date().toISOString(),
-            type: 'individual',
-            analysis: {
-              moodPatterns: {
-                user: {
-                  dominant: 'feliz' as MoodType,
-                  frequency: {
-                    feliz: 0,
-                    animado: 0,
-                    grato: 0,
-                    calmo: 0,
-                    satisfeito: 0,
-                    amado: 0,
-                    ansioso: 0,
-                    estressado: 0,
-                    triste: 0,
-                    irritado: 0,
-                    frustrado: 0,
-                    exausto: 0,
-                    confuso: 0,
-                    solitário: 0,
-                    neutral: 0,
-                    content: 0
-                  },
-                  transitions: {}
-                },
-                partner: {
-                  dominant: 'feliz' as MoodType,
-                  frequency: {
-                    feliz: 0,
-                    animado: 0,
-                    grato: 0,
-                    calmo: 0,
-                    satisfeito: 0,
-                    amado: 0,
-                    ansioso: 0,
-                    estressado: 0,
-                    triste: 0,
-                    irritado: 0,
-                    frustrado: 0,
-                    exausto: 0,
-                    confuso: 0,
-                    solitário: 0,
-                    neutral: 0,
-                    content: 0
-                  },
-                  transitions: {}
-                },
-                overall: {
-                  synchronicity: 0.8,
-                  stability: 0.7,
-                  variability: 0.5
-                }
-              },
-              communicationMetrics: {
-                quality: 0.8,
-                frequency: 0.7,
-                depth: 0.6,
-                patterns: []
-              },
-              attachmentInsights: {
-                style: 'secure',
-                behaviors: [],
-                triggers: [],
-                suggestions: []
-              },
-              relationshipDynamics: {
-                strengths: [],
-                challenges: [],
-                recommendations: []
-              }
-            },
-            timestamp: new Date().toISOString(),
-            version: '1.0',
-            metadata: {
-              assessmentCount: 1,
-              timeSpan: '1 day',
-              confidence: 0.8
-            }
-          },
-          metadata: {
-            assessmentCount: 1,
-            timeSpan: '1 day',
-            confidence: 0.8,
-            lastUpdate: new Date().toISOString()
-          }
-        };
-
-        return result;
+        return createBaseAnalysis(assessment, gptAnalysis, gottmanMetrics, gottmanInsights, gottmanRecommendations);
       }
       throw new Error('Failed to parse GPT response');
     } catch (error) {
@@ -395,13 +414,7 @@ export const generateDailyInsight = async (
     }
   } catch (error) {
     console.error('Error generating daily insight:', error);
-    if (error instanceof Error) {
-      if (error.message === 'Failed to parse GPT response') {
-        throw error;
-      }
-      throw new Error('Failed to generate daily insight');
-    }
-    throw new Error('Failed to generate daily insight');
+    throw error;
   }
 };
 
@@ -464,6 +477,7 @@ export const generateAnalysisPrompt = (
 export const generateRelationshipAnalysis = async (
   userAssessment: DailyAssessment,
   partnerAssessment: DailyAssessment,
+  gottmanAssessment?: GottmanAssessmentData,
   relationshipContext?: RelationshipContext
 ): Promise<RelationshipAnalysis> => {
   try {
@@ -477,6 +491,46 @@ export const generateRelationshipAnalysis = async (
     const today = new Date().toISOString().split('T')[0];
     const existingAnalysis = await getAnalysisForDate(userAssessment.userId, today, 'collective');
     
+    // Se houver uma avaliação Gottman específica, use-a para análise
+    const gottmanMetrics = gottmanAssessment?.validatedScales?.gottman || {
+      fourHorsemen: {
+        critica: 0,
+        defensividade: 0,
+        desprezo: 0,
+        stonewalling: 0
+      },
+      bidsForConnection: {
+        tentativas: userAssessment.ratings.conexaoEmocional || 0,
+        respostasPositivas: userAssessment.ratings.apoioMutuo || 0,
+        respostasNegativas: 0,
+        respostasNeutras: 0
+      },
+      resolucaoConflitos: userAssessment.ratings.resolucaoConflitos || 0,
+      significadoCompartilhado: userAssessment.ratings.alinhamentoObjetivos || 0,
+      reparacao: userAssessment.ratings.apoioMutuo || 0,
+      influenciaPositiva: userAssessment.ratings.apoioMutuo || 0
+    };
+
+    // Analisa as métricas de Gottman para insights
+    const gottmanAnalysis = analyzeGottmanMetrics(gottmanMetrics);
+    const gottmanInsights = gottmanAnalysis.overallHealth.strengths.map(strength => ({
+      id: `insight_gottman_${new Date().getTime()}_${Math.random()}`,
+      type: 'observation' as const,
+      category: 'gottman_metrics',
+      description: strength,
+      confidence: 0.9,
+      impact: 'high' as const,
+      timestamp: new Date().toISOString()
+    }));
+
+    // Adiciona recomendações baseadas nas métricas de Gottman
+    const gottmanRecommendations = [
+      ...gottmanAnalysis.bidsEffectiveness.recommendations,
+      ...(gottmanAnalysis.overallHealth.concerns.map(concern => 
+        `Trabalhe em: ${concern}`
+      ))
+    ];
+
     if (existingAnalysis && typeof existingAnalysis.analysis !== 'string' && 'overallHealth' in existingAnalysis.analysis) {
       const analysis = existingAnalysis.analysis as RelationshipAnalysis;
       console.log('[generateRelationshipAnalysis] Found existing analysis:', {
@@ -662,7 +716,7 @@ export const generateRelationshipAnalysis = async (
           : [];
 
         // Validate required fields and create a properly typed result
-        const result = {
+        const result: RelationshipAnalysis = {
           id: `analysis_${new Date().getTime()}`,
           userId: userAssessment.userId,
           partnerId: userAssessment.partnerId,
@@ -825,7 +879,10 @@ export const generateRelationshipAnalysis = async (
             },
             reliability: 0,
             completeness: 0,
-            recommendations: [],
+            recommendations: [
+              'Mantenha a consistência nas avaliações',
+              'Continue fornecendo feedback detalhado'
+            ],
             isValid: true,
             errors: []
           },

@@ -13,6 +13,7 @@ import AnalysisHistory from './pages/AnalysisHistory';
 import Profile from './pages/Profile';
 import RelationshipContext from './pages/RelationshipContext';
 import AttachmentAssessment from './pages/AttachmentAssessment';
+import RelationshipPatterns from './pages/RelationshipPatterns';
 import ReloadPrompt from './components/ReloadPrompt';
 import { useEffect } from 'react';
 import { initializeScheduledTasks } from './services/scheduledTasks';
@@ -118,6 +119,14 @@ function App() {
             element={
               <PrivateRoute>
                 <DateSuggestionsPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/relationship-patterns"
+            element={
+              <PrivateRoute>
+                <RelationshipPatterns />
               </PrivateRoute>
             }
           />

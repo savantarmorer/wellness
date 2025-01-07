@@ -241,20 +241,36 @@ export interface MoodEntry {
 }
 
 export interface AssessmentData {
+  id: string;
   userId: string;
-  partnerId?: string;
-  emotionalSecurity: number;
-  intimacy: number;
-  communication: number;
-  trust: number;
+  partnerId: string;
+  date: string;
+  type: AssessmentType;
+  emotionalSecurity?: number;
+  intimacy?: number;
+  communication?: number;
+  trust?: number;
   mood?: Mood;
   validatedScales?: {
     das?: Partial<DyadicAdjustmentScale>;
     csi?: Partial<CouplesSatisfactionIndex>;
     gottman?: Partial<GottmanMetrics>;
   };
-  ratings: CategoryRatings;
+  ratings?: CategoryRatings;
   createdAt: string;
+  metadata?: {
+    assessmentCount: number;
+    timeSpan: string;
+    confidence: number;
+    lastUpdate: string;
+  };
+}
+
+export interface GottmanAssessmentData extends Omit<AssessmentData, 'type' | 'validatedScales'> {
+  type: 'gottman_metrics';
+  validatedScales: {
+    gottman: GottmanMetrics;
+  };
 }
 
 export interface AssessmentWithMetadata extends AssessmentData {
@@ -1232,3 +1248,38 @@ export interface AttachmentAnalysisResult {
   description: string;
   recommendations: string[];
 } 
+
+export interface ValidatedScaleAssessmentData {
+  id: string;
+  userId: string;
+  partnerId: string;
+  date: string;
+  type: AssessmentType;
+  emotionalSecurity: number;
+  intimacy: number;
+  communication: number;
+  trust: number;
+  mood: {
+    primary: string;
+    intensity: number;
+  };
+  validatedScales: ValidatedScales;
+  ratings: CategoryRatings;
+  createdAt: string;
+  metadata: AssessmentMetadata;
+  timestamp: string;
+} 
+
+export interface AssessmentMetadata {
+  assessmentCount: number;
+  timeSpan: string;
+  confidence: number;
+  lastUpdate: string;
+  assessmentType?: string;
+  assessmentName?: string;
+  description?: string;
+  category?: string;
+  version?: string;
+}
+
+export type AssessmentType = 'individual' | 'couple' | 'daily' | 'gottman_metrics'; 

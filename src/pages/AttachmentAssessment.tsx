@@ -22,12 +22,13 @@ import {
   alpha,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { AttachmentMetricsTab } from '../components/AttachmentMetricsTab';
 import { analyzeAttachmentStyle } from '../services/psychologicalAnalysisService';
 import { Layout } from '../components/Layout';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import InfoIcon from '@mui/icons-material/Info';
-import { MoodType } from '../types';
+import { MoodType, ValidatedScaleAssessmentData } from '../types';
 
 interface AttachmentFormData {
   emotionalExpression: number;
@@ -126,8 +127,12 @@ const QUESTIONS = [
 const AttachmentAssessment: React.FC = () => {
   const [formData, setFormData] = useState<AttachmentFormData>(INITIAL_FORM_DATA);
   const [activeStep, setActiveStep] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const navigate = useNavigate();
   const theme = useTheme();
+  const { currentUser, userData } = useAuth();
 
   const handleInputChange = (field: keyof AttachmentFormData) => (
     event: React.ChangeEvent<HTMLInputElement>
@@ -139,13 +144,34 @@ const AttachmentAssessment: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    if (!currentUser || !userData?.partnerId) {
+      setError('Dados do usuário não encontrados. Por favor, faça login novamente.');
+      return;
+    }
+
+    // Validate form data
+    if (Object.values(formData).some(value => 
+      typeof value === 'number' && (value < 1 || value > 5))
+    ) {
+      setError('Por favor, preencha todas as questões com valores válidos (1-5)');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
     try {
-      const assessmentData = {
+      const assessmentData: ValidatedScaleAssessmentData = {
         id: `attachment_${new Date().getTime()}`,
-        userId: 'current-user',
-        partnerId: 'partner-id',
+        userId: currentUser.uid,
+        partnerId: userData.partnerId,
         date: new Date().toISOString(),
-        type: 'individual' as const,
+        type: 'individual',
+        emotionalSecurity: formData.emotionalExpression,
+        intimacy: formData.intimacyComfort,
+        communication: formData.emotionalExpression,
+        trust: formData.trustLevel,
         mood: {
           primary: 'neutral' as MoodType,
           intensity: 3
@@ -180,13 +206,19 @@ const AttachmentAssessment: React.FC = () => {
           timeSpan: '1 day',
           confidence: 0.8,
           lastUpdate: new Date().toISOString()
-        }
+        },
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toISOString()
       };
 
-      const attachmentAnalysis = analyzeAttachmentStyle(assessmentData, assessmentData);
-      navigate('/analysis');
+      const attachmentAnalysis = await analyzeAttachmentStyle(assessmentData, assessmentData);
+      setSuccess('Avaliação enviada com sucesso!');
+      setTimeout(() => navigate('/analysis'), 1500); // Give user time to see success message
     } catch (error) {
       console.error('Error submitting attachment assessment:', error);
+      setError('Erro ao enviar avaliação. Por favor, tente novamente.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -362,9 +394,21 @@ const AttachmentAssessment: React.FC = () => {
   return (
     <Layout>
       <Container maxWidth="md" sx={{ py: 4 }}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
+        
+        {success && (
+          <Alert severity="success" sx={{ mb: 3 }}>
+            {success}
+          </Alert>
+        )}
+
         <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
           <IconButton 
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/dashboard')}
             sx={{ 
               bgcolor: 'background.paper',
               '&:hover': {

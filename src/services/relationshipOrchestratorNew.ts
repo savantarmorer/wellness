@@ -20,6 +20,7 @@ import {
   DyadicAdjustmentScale,
   CouplesSatisfactionIndex,
   GottmanMetrics,
+  GottmanAssessmentData,
   RelationshipStage,
   ConsistencyValidation,
   ValidationRecommendation,
@@ -39,6 +40,7 @@ import { analyzeTrends, detectCyclicalBehaviors } from './temporalAnalysisServic
 import { identifyPatterns } from './temporalAnalysisService';
 import { getUserMoodEntries, analyzeMoodPatterns, POSITIVE_MOODS, NEGATIVE_MOODS } from './moodService';
 import { calculateEmotionalSync, calculateMoodStability } from './relationshipAnalysisService';
+import { getLatestGottmanAssessment } from './assessmentService';
 
 interface TimeframeSummary extends TimeframeAnalysis {
   averageScores: CategoryRatings;
@@ -452,13 +454,15 @@ export class RelationshipOrchestrator {
       assessments: DailyAssessment[];
       consensusForms: any[];
       moodEntries: MoodEntry[];
+      gottmanAssessment?: GottmanAssessmentData;
     }
   ): Promise<ComprehensiveAnalysis> {
     console.log('[RelationshipOrchestrator] Starting comprehensive analysis:', {
       userId,
       hasContext: !!context,
       assessmentsCount: data.assessments.length,
-      moodEntriesCount: data.moodEntries.length
+      moodEntriesCount: data.moodEntries.length,
+      hasGottmanAssessment: !!data.gottmanAssessment
     });
 
     if (!data.assessments || data.assessments.length < 2) {
@@ -474,6 +478,21 @@ export class RelationshipOrchestrator {
     }
 
     try {
+      // Se não houver uma avaliação Gottman fornecida, busca a última disponível
+      if (!data.gottmanAssessment) {
+        try {
+          const latestGottman = await getLatestGottmanAssessment(userId, partnerAssessment.userId);
+          if (latestGottman) {
+            data.gottmanAssessment = latestGottman;
+            console.log('[RelationshipOrchestrator] Retrieved latest Gottman assessment:', {
+              hasGottmanAssessment: true
+            });
+          }
+        } catch (error) {
+          console.warn('[RelationshipOrchestrator] Failed to retrieve latest Gottman assessment:', error);
+        }
+      }
+
       const emotionalDynamics = await this.generateEmotionalDynamics(userAssessment, partnerAssessment);
       console.log('[RelationshipOrchestrator] Generated emotional dynamics:', {
         hasEmotionalSecurity: !!emotionalDynamics.emotionalSecurity,
@@ -671,7 +690,9 @@ export class RelationshipOrchestrator {
         validatedScales: {
           das: this.calculateDAS(userAssessment, partnerAssessment),
           csi: this.calculateCSI(userAssessment, partnerAssessment),
-          gottman: this.calculateGottmanMetrics(userAssessment, partnerAssessment),
+          gottman: data.gottmanAssessment ? 
+            this.calculateGottmanMetrics(data.gottmanAssessment) : 
+            this.calculateGottmanMetrics(userAssessment),
           attachment: {
             ecr: {
               ansiedade: ecrScores.ansiedade,
@@ -1086,7 +1107,13 @@ export class RelationshipOrchestrator {
     };
   }
 
-  private calculateGottmanMetrics(assessment: DailyAssessment, partnerAssessment: DailyAssessment): GottmanMetrics {
+  private calculateGottmanMetrics(assessment: DailyAssessment | GottmanAssessmentData): GottmanMetrics {
+    // Se for uma avaliação Gottman específica, use os valores diretamente
+    if (assessment.type === 'gottman_metrics' && 'validatedScales' in assessment && assessment.validatedScales?.gottman) {
+      return assessment.validatedScales.gottman;
+    }
+
+    // Caso contrário, calcule baseado nas avaliações diárias (comportamento legado)
     return {
       fourHorsemen: {
         critica: 0,
@@ -1095,15 +1122,15 @@ export class RelationshipOrchestrator {
         stonewalling: 0
       },
       bidsForConnection: {
-        tentativas: 0,
-        respostasPositivas: 0,
+        tentativas: assessment.ratings?.conexaoEmocional || 0,
+        respostasPositivas: assessment.ratings?.apoioMutuo || 0,
         respostasNegativas: 0,
         respostasNeutras: 0
       },
-      resolucaoConflitos: (assessment.ratings.resolucaoConflitos + partnerAssessment.ratings.resolucaoConflitos) / 2,
-      significadoCompartilhado: (assessment.ratings.alinhamentoObjetivos + partnerAssessment.ratings.alinhamentoObjetivos) / 2,
-      reparacao: 0,
-      influenciaPositiva: (assessment.ratings.apoioMutuo + partnerAssessment.ratings.apoioMutuo) / 2
+      resolucaoConflitos: assessment.ratings?.resolucaoConflitos || 0,
+      significadoCompartilhado: assessment.ratings?.alinhamentoObjetivos || 0,
+      reparacao: assessment.ratings?.apoioMutuo || 0,
+      influenciaPositiva: assessment.ratings?.apoioMutuo || 0
     };
   }
 

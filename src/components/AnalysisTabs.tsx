@@ -571,7 +571,7 @@ export const AnalysisTabs: React.FC<AnalysisTabsProps> = ({
                 variant="contained"
                 color="primary"
                 component={Link}
-                to="/relationship-context"
+                to="/relationship"
                 sx={{ mt: 4 }}
                 endIcon={<ArrowForwardIcon />}
               >

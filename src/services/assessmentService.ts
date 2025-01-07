@@ -10,14 +10,20 @@ import {
   limit as firestoreLimit,
   getDoc,
 } from 'firebase/firestore';
-import { AssessmentData, AssessmentWithMetadata, ValidatedScalesAssessment } from '../types';
+import { 
+  AssessmentData, 
+  AssessmentWithMetadata, 
+  ValidatedScalesAssessment,
+  GottmanAssessmentData,
+  AssessmentType
+} from '../types';
 
 const ASSESSMENTS_COLLECTION = 'assessments';
 
 export const saveAssessment = async (
   userId: string,
   partnerId: string,
-  data: AssessmentData | ValidatedScalesAssessment
+  data: AssessmentData | ValidatedScalesAssessment | GottmanAssessmentData
 ): Promise<string> => {
   try {
     const assessmentData = {
@@ -42,17 +48,22 @@ export const saveAssessment = async (
 export const getRecentAssessments = async (
   userId: string,
   partnerId: string,
+  type?: AssessmentType,
   limitCount = 30
 ): Promise<AssessmentWithMetadata[]> => {
   try {
     const assessmentsRef = collection(db, ASSESSMENTS_COLLECTION);
-    const q = query(
+    let q = query(
       assessmentsRef,
       where('userId', '==', userId),
       where('partnerId', '==', partnerId),
       orderBy('timestamp', 'desc'),
       firestoreLimit(limitCount)
     );
+
+    if (type) {
+      q = query(q, where('type', '==', type));
+    }
 
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map((doc) => ({
@@ -67,17 +78,22 @@ export const getRecentAssessments = async (
 
 export const getLatestAssessment = async (
   userId: string,
-  partnerId: string
+  partnerId: string,
+  type?: AssessmentType
 ): Promise<AssessmentWithMetadata | null> => {
   try {
     const assessmentsRef = collection(db, ASSESSMENTS_COLLECTION);
-    const q = query(
+    let q = query(
       assessmentsRef,
       where('userId', '==', userId),
       where('partnerId', '==', partnerId),
       orderBy('timestamp', 'desc'),
       firestoreLimit(1)
     );
+
+    if (type) {
+      q = query(q, where('type', '==', type));
+    }
 
     const querySnapshot = await getDocs(q);
     if (querySnapshot.empty) {
@@ -113,6 +129,37 @@ export const getAssessmentById = async (
   } catch (error) {
     console.error('Error fetching assessment by ID:', error);
     throw new Error('Failed to fetch assessment');
+  }
+};
+
+export const getLatestGottmanAssessment = async (
+  userId: string,
+  partnerId: string
+): Promise<GottmanAssessmentData | null> => {
+  try {
+    const assessmentsRef = collection(db, ASSESSMENTS_COLLECTION);
+    const q = query(
+      assessmentsRef,
+      where('userId', '==', userId),
+      where('partnerId', '==', partnerId),
+      where('type', '==', 'gottman_metrics'),
+      orderBy('timestamp', 'desc'),
+      firestoreLimit(1)
+    );
+
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) {
+      return null;
+    }
+
+    const doc = querySnapshot.docs[0];
+    return {
+      id: doc.id,
+      ...doc.data(),
+    } as GottmanAssessmentData;
+  } catch (error) {
+    console.error('Error fetching latest Gottman assessment:', error);
+    throw new Error('Failed to fetch latest Gottman assessment');
   }
 };
 

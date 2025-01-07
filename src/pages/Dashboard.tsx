@@ -1007,6 +1007,47 @@ const Dashboard = () => {
                   userId={currentUser?.uid || ''}
                 />
               </Grid>
+
+              {/* Assessment Actions */}
+              <Grid item xs={12}>
+                <Paper 
+                  elevation={3} 
+                  sx={{ 
+                    p: 3, 
+                    background: (theme) => alpha(theme.palette.background.paper, 0.8),
+                    backdropFilter: 'blur(10px)',
+                    borderRadius: 2 
+                  }}
+                >
+                  <Typography variant="h6" gutterBottom>
+                    Avaliações Disponíveis
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6} md={4}>
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        onClick={() => navigate('/relationship-patterns')}
+                        startIcon={<AssessmentIcon />}
+                        sx={{ py: 2 }}
+                      >
+                        Padrões do Relacionamento
+                      </Button>
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={4}>
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        onClick={() => navigate('/attachment-assessment')}
+                        startIcon={<PsychologyIcon />}
+                        sx={{ py: 2 }}
+                      >
+                        Avaliação de Apego
+                      </Button>
+                    </Grid>
+                  </Grid>
+                </Paper>
+              </Grid>
             </Grid>
 
             <Dialog

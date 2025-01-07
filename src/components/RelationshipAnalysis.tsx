@@ -283,10 +283,10 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
 
   const getFourHorsemenDescription = (key: string): string => {
     const descriptions: Record<string, string> = {
-      critica: 'Atacar o caráter do parceiro em vez do comportamento específico',
-      defensividade: 'Contra-atacar em vez de ouvir e reconhecer',
-      desprezo: 'Demonstrar superioridade ou zombar do parceiro',
-      stonewalling: 'Se retirar ou se fechar durante conflitos'
+      critica: 'Frequência com que seu parceiro critica seu caráter em vez de um comportamento específico',
+      defensividade: 'Frequência com que seu parceiro contra-ataca em vez de ouvir e reconhecer',
+      desprezo: 'Frequência com que seu parceiro demonstra superioridade ou zomba de você',
+      stonewalling: 'Frequência com que seu parceiro se retira ou se fecha durante conflitos'
     };
     return descriptions[key] || '';
   };
@@ -305,14 +305,24 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
     return rate >= 70 ? 'success' : rate >= 40 ? 'warning' : 'error';
   };
 
+  const getBidsDescription = (key: string): string => {
+    const descriptions: Record<string, string> = {
+      tentativas: 'Frequência com que seu parceiro tenta criar momentos de conexão com você',
+      respostasPositivas: 'Frequência com que seu parceiro responde positivamente às suas tentativas de conexão',
+      respostasNegativas: 'Frequência com que seu parceiro ignora ou responde negativamente às suas tentativas',
+      respostasNeutras: 'Frequência com que seu parceiro responde sem real engajamento às suas tentativas'
+    };
+    return descriptions[key] || '';
+  };
+
   const getResponseRateRecommendation = (bids: GottmanMetrics['bidsForConnection']): string => {
     const rate = calculatePositiveResponseRate(bids);
     if (rate < 40) {
-      return 'Tente notar mais as tentativas de conexão do seu parceiro. Comece com pequenos momentos de atenção.';
+      return 'Preocupante: Considere trabalhar na responsividade às tentativas de conexão do parceiro';
     } else if (rate < 70) {
-      return 'Você está no caminho certo. Continue praticando respostas positivas às tentativas de conexão.';
+      return 'Moderado: Continue melhorando o reconhecimento e resposta às tentativas de conexão';
     }
-    return 'Excelente taxa de resposta! Continue mantendo essa conexão forte.';
+    return 'Saudável: Mantenha o alto nível de responsividade às tentativas de conexão';
   };
 
   return (
