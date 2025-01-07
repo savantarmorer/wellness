@@ -336,6 +336,20 @@ export const Map: React.FC<MapProps> = ({ userLocation, suggestions, onMarkerCli
     }
   }, [map, suggestions, onMarkerClick, userLocation, theme.palette.secondary.main]);
 
+  useEffect(() => {
+    if (activeMarker?.infoWindow) {
+      // Update infoWindow styles or content based on theme
+      // ... implementation ...
+    }
+  }, [
+    activeMarker?.infoWindow,
+    markers,
+    theme.palette.mode,
+    theme.palette.primary.contrastText,
+    theme.palette.primary.dark,
+    theme.palette.primary.main
+  ]);
+
   return (
     <Paper
       elevation={3}

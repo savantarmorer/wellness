@@ -1,9 +1,20 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Função auxiliar para verificar se o usuário é parceiro
+    // Helper functions
     function isPartner(userId) {
       return request.auth != null && exists(/databases/$(database)/documents/users/$(userId)/partners/$(request.auth.uid));
+    }
+
+    function isUserOrPartner(userId, partnerId) {
+      return request.auth != null && (
+        request.auth.uid == userId ||
+        (partnerId != null && request.auth.uid == partnerId)
+      );
+    }
+
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
     match /users/{userId} {
@@ -33,32 +44,65 @@ service cloud.firestore {
       }
     }
     
-    match /gptAnalysis/{analysisId} {
-      allow read: if request.auth != null && (
-        request.auth.uid == resource.data.userId ||
-        (resource.data.partnerId != null && request.auth.uid == resource.data.partnerId)
-      );
-      allow create: if request.auth != null && (
-        request.auth.uid == request.resource.data.userId ||
-        (request.resource.data.partnerId != null && request.auth.uid == request.resource.data.partnerId)
-      );
+    // Analysis collections
+    match /relationshipAnalysis/{analysisId} {
+      allow list: if isAuthenticated();
+      allow get: if isUserOrPartner(resource.data.userId, resource.data.partnerId);
+      allow create: if isUserOrPartner(request.resource.data.userId, request.resource.data.partnerId);
       allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }
-    
+
     match /analysisHistory/{historyId} {
-      allow read: if request.auth != null && (
+      allow list: if request.auth != null && (
         request.auth.uid == resource.data.userId ||
         (resource.data.partnerId != null && request.auth.uid == resource.data.partnerId)
       );
-      allow create: if request.auth != null && (
-        request.auth.uid == request.resource.data.userId ||
-        (request.resource.data.partnerId != null && request.auth.uid == request.resource.data.partnerId)
+      allow get: if isUserOrPartner(resource.data.userId, resource.data.partnerId);
+      allow create: if isUserOrPartner(request.resource.data.userId, request.resource.data.partnerId);
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    match /assessments/{assessmentId} {
+      allow list: if isAuthenticated();
+      allow get: if isUserOrPartner(resource.data.userId, resource.data.partnerId);
+      allow create: if isUserOrPartner(request.resource.data.userId, request.resource.data.partnerId);
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    match /moodEntries/{entryId} {
+      allow list: if isAuthenticated();
+      allow get: if isUserOrPartner(resource.data.userId, resource.data.partnerId);
+      allow create: if isUserOrPartner(request.resource.data.userId, request.resource.data.partnerId);
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    match /moodAnalysis/{analysisId} {
+      allow list: if isAuthenticated();
+      allow get: if isUserOrPartner(resource.data.userId, resource.data.partnerId);
+      allow create: if isUserOrPartner(request.resource.data.userId, request.resource.data.partnerId);
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    match /gptAnalysis/{analysisId} {
+      allow list: if request.auth != null && (
+        request.auth.uid == resource.data.userId ||
+        (resource.data.partnerId != null && request.auth.uid == resource.data.partnerId)
       );
+      allow get: if isUserOrPartner(resource.data.userId, resource.data.partnerId);
+      allow create: if isUserOrPartner(request.resource.data.userId, request.resource.data.partnerId);
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    match /consensusForms/{formId} {
+      allow list: if isAuthenticated();
+      allow get: if isUserOrPartner(resource.data.userId, resource.data.partnerId);
+      allow create: if isUserOrPartner(request.resource.data.userId, request.resource.data.partnerId);
       allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }
     
     match /relationshipContexts/{userId} {
-      allow read: if request.auth != null && (
+      allow list: if isAuthenticated();
+      allow get: if request.auth != null && (
         request.auth.uid == userId ||
         (resource.data.partnerId != null && request.auth.uid == resource.data.partnerId)
       );
@@ -71,7 +115,8 @@ service cloud.firestore {
     }
 
     match /suggestions/{suggestionId} {
-      allow read: if request.auth != null;
+      allow list: if isAuthenticated();
+      allow get: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
       allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }

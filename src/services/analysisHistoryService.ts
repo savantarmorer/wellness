@@ -9,12 +9,20 @@ import {
   where,
   Timestamp,
   deleteDoc,
-  orderBy
+  orderBy,
+  writeBatch
 } from 'firebase/firestore';
-import { DailyAssessment, CategoryRatings } from '../types';
-import { RelationshipAnalysis, ConsensusFormData } from './gptService';
-import { generateRelationshipAnalysis } from './gptService';
+import { 
+  DailyAssessment, 
+  CategoryRatings, 
+  RelationshipAnalysis, 
+  ConsensusFormData,
+  ConsensusFormAnalysis,
+  UnifiedAnalysis
+} from '../types';
+import { RelationshipOrchestrator } from './relationshipOrchestratorNew';
 import { getRelationshipContext } from './relationshipContextService';
+import { generateRelationshipAnalysis } from './gptService';
 import { 
   detectConsistentDiscrepancy, 
   detectNewInteractionPattern,
@@ -29,7 +37,7 @@ import {
   analyzeIntimacyBalance,
   analyzeConflictStyle,
   determineRelationshipStage,
-  identifyGrowthAreas,
+  identifyrecommendations,
   analyzeRelationshipStrengths
 } from './psychologicalAnalysisService';
 import {
@@ -89,16 +97,16 @@ const CORRELATION_FACTORS = {
   general_all: 0.3              // Weak correlation between general factors and others
 };
 
-export const calculateConsensusScores = (answers: Record<string, string>): ConsensusFormData['scores'] => {
+export const calculateConsensusScores = (responses: { [key: string]: { rating: number; notes?: string } }): ConsensusFormData['scores'] => {
   const scoreMap: Record<string, number> = {};
   
-  // Convert string values to numbers using validated scales
-  Object.entries(answers).forEach(([key, value]) => {
-    if (!isNaN(Number(value))) {
-      scoreMap[key] = Number(value);
-    } else {
+  // Convert values to numbers
+  Object.entries(responses).forEach(([key, value]) => {
+    if (typeof value.rating === 'number') {
+      scoreMap[key] = value.rating;
+    } else if (value.notes) {
       // Convert frequency options using validated frequency scale
-      switch (value.toLowerCase()) {
+      switch (value.notes.toLowerCase()) {
         case 'diariamente':
         case 'todos os dias':
         case 'uma vez por dia':
@@ -125,6 +133,8 @@ export const calculateConsensusScores = (answers: Record<string, string>): Conse
         default:
           scoreMap[key] = 3;
       }
+    } else {
+      scoreMap[key] = 3; // Default value
     }
   });
 
@@ -195,6 +205,8 @@ export const calculateConsensusScores = (answers: Record<string, string>): Conse
   };
 };
 
+const ANALYSIS_COLLECTION = 'gptAnalysis';
+
 export const saveAnalysis = async (
   userId: string,
   type: 'individual' | 'collective',
@@ -207,14 +219,15 @@ export const saveAnalysis = async (
     if (!type) throw new Error('type is required');
     if (!analysis) throw new Error('analysis is required');
 
-    const analysisCollection = collection(db, 'gptAnalysis');
+    const analysisCollection = collection(db, ANALYSIS_COLLECTION);
     
     // Calculate scores for consensus form
     if (typeof analysis === 'object' && 'type' in analysis && analysis.type === 'consensus_form') {
-      if (!analysis.answers || Object.keys(analysis.answers).length === 0) {
-        throw new Error('Consensus form answers are required');
+      if (!analysis.responses || Object.keys(analysis.responses).length === 0) {
+        throw new Error('Consensus form responses are required');
       }
-      analysis.scores = calculateConsensusScores(analysis.answers);
+      const scores = calculateConsensusScores(analysis.responses);
+      analysis = { ...analysis, scores };
     }
 
     // Process the analysis data
@@ -275,7 +288,7 @@ export const checkAndUpdatePartnerAnalysis = async (
   date: string
 ): Promise<void> => {
   try {
-    const analysisCollection = collection(db, 'gptAnalysis');
+    const analysisCollection = collection(db, ANALYSIS_COLLECTION);
     const q = query(
       analysisCollection,
       where('userId', '==', partnerId),
@@ -301,10 +314,12 @@ export const checkAndUpdatePartnerAnalysis = async (
   }
 };
 
-// Função para processar atualizações pendentes
+const orchestrator = new RelationshipOrchestrator();
+
+// Update the processUpdateQueue function to use the orchestrator
 export const processUpdateQueue = async (userId: string): Promise<void> => {
   try {
-    const analysisCollection = collection(db, 'gptAnalysis');
+    const analysisCollection = collection(db, ANALYSIS_COLLECTION);
     
     // Query for documents where user is either the owner or partner
     const q = query(
@@ -319,13 +334,11 @@ export const processUpdateQueue = async (userId: string): Promise<void> => {
       where('partnerId', '==', userId)
     );
 
-    // Get both sets of documents
     const [snapshot1, snapshot2] = await Promise.all([
       getDocs(q),
       getDocs(q2)
     ]);
 
-    // Combine the results
     const analyses = [...snapshot1.docs, ...snapshot2.docs].map(doc => {
       const data = doc.data() as FirestoreData;
       return {
@@ -343,7 +356,6 @@ export const processUpdateQueue = async (userId: string): Promise<void> => {
       } as AnalysisRecord;
     });
 
-    // Log for debugging
     console.log('📊 Debug - Analysis Queue:', {
       userDocs: snapshot1.size,
       partnerDocs: snapshot2.size,
@@ -351,7 +363,7 @@ export const processUpdateQueue = async (userId: string): Promise<void> => {
       userId
     });
 
-    // Agrupa análises por par de usuários e data
+    // Group analyses by user pair and date
     const updateGroups = analyses.reduce((acc, analysis) => {
       const key = `${analysis.userId}_${analysis.partnerId}_${analysis.date}`;
       if (!acc[key]) acc[key] = [];
@@ -359,12 +371,12 @@ export const processUpdateQueue = async (userId: string): Promise<void> => {
       return acc;
     }, {} as Record<string, AnalysisRecord[]>);
 
-    // Processa cada grupo de atualizações
+    // Process each update group
     for (const analyses of Object.values(updateGroups)) {
-      if (analyses.length === 2) { // Temos ambas as análises
+      if (analyses.length === 2) { // We have both analyses
         const [analysis1, analysis2] = analyses;
         
-        // Gera nova análise combinada
+        // Get relationship context
         const context = await getRelationshipContext(analysis1.userId);
         if (!context) {
           console.log('⚠️ Debug - No relationship context found for:', analysis1.userId);
@@ -372,31 +384,33 @@ export const processUpdateQueue = async (userId: string): Promise<void> => {
         }
 
         try {
-          // Converte as análises para o formato esperado
-          let assessment1: DailyAssessment;
-          let assessment2: DailyAssessment;
-
-          assessment1 = typeof analysis1.analysis === 'string' 
+          // Convert analyses to expected format
+          let assessment1: DailyAssessment = typeof analysis1.analysis === 'string' 
             ? JSON.parse(analysis1.analysis)
             : analysis1.analysis as unknown as DailyAssessment;
 
-          assessment2 = typeof analysis2.analysis === 'string'
+          let assessment2: DailyAssessment = typeof analysis2.analysis === 'string'
             ? JSON.parse(analysis2.analysis)
             : analysis2.analysis as unknown as DailyAssessment;
 
-          const updatedAnalysis = await generateRelationshipAnalysis(
-            assessment1,
-            assessment2,
-            context
+          // Generate unified analysis using the orchestrator
+          const unifiedAnalysis = await orchestrator.generateComprehensiveAnalysis(
+            analysis1.userId,
+            context,
+            {
+              assessments: [assessment1, assessment2],
+              consensusForms: [],
+              moodEntries: []
+            }
           );
 
-          // Adiciona análises detalhadas
+          // Add detailed analyses
           const averages = calculateAverageScores([assessment1], [assessment2]);
           const discrepancies = analyzeDiscrepancies([assessment1], [assessment2]);
           const insights = generateTimeframeInsights(averages, discrepancies, 7);
 
           const enrichedAnalysis = {
-            ...updatedAnalysis,
+            ...unifiedAnalysis,
             detailedAnalysis: {
               averages,
               discrepancies,
@@ -406,7 +420,7 @@ export const processUpdateQueue = async (userId: string): Promise<void> => {
                 Object.values(assessment2.ratings)
               ),
               psychologicalInsights: {
-                attachmentStyle: analyzeAttachmentStyle(averages, discrepancies),
+                attachmentStyle: analyzeAttachmentStyle(assessment1, assessment2),
                 communicationPatterns: analyzeCommunicationPatterns(assessment1, assessment2),
                 emotionalDynamics: {
                   emotionalSecurity: calculateEmotionalSecurity(averages),
@@ -414,20 +428,51 @@ export const processUpdateQueue = async (userId: string): Promise<void> => {
                   conflictResolution: analyzeConflictStyle(assessment1, assessment2)
                 },
                 relationshipStage: determineRelationshipStage(averages, discrepancies),
-                growthAreas: identifyGrowthAreas(averages, discrepancies),
+                recommendations: identifyrecommendations(averages, discrepancies),
                 strengthsAnalysis: analyzeRelationshipStrengths(averages)
               },
               temporalAnalysis: {
+                correlation: 0,
                 trends: analyzeTrends([assessment1], [assessment2]),
-                patterns: identifyPatterns([assessment1], [assessment2]),
-                cyclicalBehaviors: detectCyclicalBehaviors([assessment1], [assessment2])
+                patterns: {
+                  cyclical: [],
+                  persistent: [],
+                  emerging: []
+                },
+                timeframes: {
+                  daily: {
+                    averageScores: {} as CategoryRatings,
+                    discrepancies: [],
+                    insights: [],
+                    confidence: 0
+                  },
+                  weekly: {
+                    averageScores: {} as CategoryRatings,
+                    discrepancies: [],
+                    insights: [],
+                    confidence: 0
+                  },
+                  monthly: {
+                    averageScores: {} as CategoryRatings,
+                    discrepancies: [],
+                    insights: [],
+                    confidence: 0
+                  }
+                },
+                seasonality: {
+                  pattern: 'none',
+                  confidence: 0
+                },
+                volatility: 0,
+                confidence: 0,
+                analysisDate: new Date().toISOString()
               }
             }
           };
 
-          // Atualiza ambos os documentos com a análise enriquecida
+          // Update both documents with the enriched analysis
           for (const analysis of analyses) {
-            const docRef = doc(db, 'gptAnalysis', analysis.id);
+            const docRef = doc(db, ANALYSIS_COLLECTION, analysis.id);
             await updateDoc(docRef, {
               analysis: JSON.stringify(enrichedAnalysis),
               needsUpdate: false,
@@ -501,39 +546,49 @@ export const getAnalysisForDate = async (
 
 export const getAnalysisHistory = async (userId: string): Promise<AnalysisRecord[]> => {
   try {
-    const analysisCollection = collection(db, 'gptAnalysis');
-    const q = query(
-      analysisCollection,
-      where('userId', '==', userId)
-    );
+    const analysisCollection = collection(db, ANALYSIS_COLLECTION);
     
-    const snapshot = await getDocs(q);
-    const records = snapshot.docs.map(doc => {
-      const data = doc.data();
-      console.log('Raw Firestore document:', {
-        id: doc.id,
-        data: data
-      });
+    // Create two queries: one for user's data and one for partner's data
+    const userQuery = query(
+      analysisCollection,
+      where('userId', '==', userId),
+      orderBy('date', 'desc')
+    );
 
-      // Convert the analysis back to the correct format
-      let processedAnalysis = data.analysis;
-      if (data.analysisType === 'object' && typeof data.analysis === 'string') {
-        try {
-          processedAnalysis = JSON.parse(data.analysis);
-        } catch (e) {
-          console.error('Error parsing analysis:', e);
-        }
-      }
+    const partnerQuery = query(
+      analysisCollection,
+      where('partnerId', '==', userId),
+      orderBy('date', 'desc')
+    );
 
+    // Execute both queries concurrently
+    const [userDocs, partnerDocs] = await Promise.all([
+      getDocs(userQuery),
+      getDocs(partnerQuery).catch(err => {
+        console.warn('Failed to fetch partner data:', err);
+        return { docs: [] };
+      })
+    ]);
+
+    // Combine and process the results
+    const allDocs = [...userDocs.docs, ...partnerDocs.docs];
+    
+    return allDocs.map(doc => {
+      const data = doc.data() as FirestoreData;
       return {
         id: doc.id,
-        ...data,
-        analysis: processedAnalysis
+        userId: data.userId,
+        partnerId: data.partnerId,
+        date: data.date,
+        type: data.type,
+        analysis: data.analysis,
+        analysisType: data.analysisType,
+        analysisValue: data.analysisValue,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+        needsUpdate: data.needsUpdate
       };
-    }) as AnalysisRecord[];
-
-    console.log('Processed analysis records:', records);
-    return records;
+    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   } catch (error) {
     console.error('Error fetching analysis history:', error);
     throw error;
@@ -747,7 +802,7 @@ export const generateTimeframeInsights = (
 
 export const clearAnalysisHistory = async (userId: string): Promise<void> => {
   try {
-    const analysisRef = collection(db, 'analyses');
+    const analysisRef = collection(db, ANALYSIS_COLLECTION);
     const q = query(analysisRef, where('userId', '==', userId));
     const querySnapshot = await getDocs(q);
     
@@ -792,30 +847,12 @@ export const cleanupInvalidAnalyses = async (userId: string): Promise<void> => {
           isValid = (
             typeof analysis === 'object' &&
             analysis !== null &&
-            'overallHealth' in analysis &&
-            typeof analysis.overallHealth === 'object' &&
-            'score' in analysis.overallHealth &&
-            'trend' in analysis.overallHealth &&
-            'categories' in analysis &&
-            typeof analysis.categories === 'object' &&
-            'strengthsAndChallenges' in analysis &&
-            typeof analysis.strengthsAndChallenges === 'object' &&
-            'strengths' in analysis.strengthsAndChallenges &&
-            'challenges' in analysis.strengthsAndChallenges &&
-            'communicationSuggestions' in analysis &&
-            Array.isArray(analysis.communicationSuggestions) &&
-            'actionItems' in analysis &&
-            Array.isArray(analysis.actionItems) &&
-            'relationshipDynamics' in analysis &&
-            typeof analysis.relationshipDynamics === 'object' &&
-            'positivePatterns' in analysis.relationshipDynamics &&
-            'concerningPatterns' in analysis.relationshipDynamics &&
-            'growthAreas' in analysis.relationshipDynamics &&
-            'emotionalDynamics' in analysis &&
-            typeof analysis.emotionalDynamics === 'object' &&
-            'emotionalSecurity' in analysis.emotionalDynamics &&
-            'intimacyBalance' in analysis.emotionalDynamics &&
-            'conflictResolution' in analysis.emotionalDynamics
+            'relationshipAnalysis' in analysis &&
+            typeof analysis.relationshipAnalysis === 'object' &&
+            'overallHealth' in analysis.relationshipAnalysis &&
+            typeof analysis.relationshipAnalysis.overallHealth === 'object' &&
+            'score' in analysis.relationshipAnalysis.overallHealth &&
+            'trend' in analysis.relationshipAnalysis.overallHealth
           );
         }
       } catch (error) {
@@ -848,6 +885,42 @@ export const cleanupInvalidAnalyses = async (userId: string): Promise<void> => {
     });
   } catch (error) {
     console.error('❌ Error during cleanup:', error);
+    throw error;
+  }
+};
+
+// Migration function to move data from analysisHistory to gptAnalysis
+export const migrateAnalysisData = async (userId: string): Promise<void> => {
+  try {
+    // Get all documents from analysisHistory
+    const oldCollection = collection(db, 'analysisHistory');
+    const q = query(oldCollection, where('userId', '==', userId));
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      console.log('No data to migrate');
+      return;
+    }
+
+    // Move each document to gptAnalysis
+    const batch = writeBatch(db);
+    let count = 0;
+
+    for (const document of snapshot.docs) {
+      const data = document.data();
+      const newDocRef = doc(db, ANALYSIS_COLLECTION, document.id);
+      batch.set(newDocRef, {
+        ...data,
+        migratedAt: Timestamp.now(),
+        originalCollection: 'analysisHistory'
+      });
+      count++;
+    }
+
+    await batch.commit();
+    console.log(`Successfully migrated ${count} documents`);
+  } catch (error) {
+    console.error('Error migrating analysis data:', error);
     throw error;
   }
 }; 

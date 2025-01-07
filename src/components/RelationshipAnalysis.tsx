@@ -16,6 +16,13 @@ import {
   Stack,
   alpha,
   useMediaQuery,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  IconButton,
+  LinearProgress,
+  Alert,
+  Tooltip,
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon,
@@ -32,8 +39,11 @@ import {
   Favorite as FavoriteIcon,
   Balance as BalanceIcon,
   Security as SecurityIcon,
+  ExpandMore as ExpandMoreIcon,
+  Info as InfoIcon,
+  Lightbulb as LightbulbIcon,
 } from '@mui/icons-material';
-import { RelationshipAnalysis as RelationshipAnalysisType } from '../services/gptService';
+import { ComprehensiveAnalysis, EmotionalDynamics, GottmanMetrics } from '../types';
 
 interface CommunicationSuggestion {
   title: string;
@@ -49,7 +59,7 @@ interface ActionItem {
 }
 
 interface Props {
-  analysis: RelationshipAnalysisType | string;
+  analysis: ComprehensiveAnalysis;
   isLoading?: boolean;
 }
 
@@ -73,18 +83,20 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // Type guard to check if analysis is RelationshipAnalysisType and has required properties
-  const isRelationshipAnalysis = (analysis: RelationshipAnalysisType | string): analysis is RelationshipAnalysisType => {
+  // Type guard to check if analysis has required properties
+  const isRelationshipAnalysis = (analysis: ComprehensiveAnalysis | string): analysis is ComprehensiveAnalysis => {
     if (typeof analysis === 'string') {
       try {
         const parsedAnalysis = JSON.parse(analysis);
         return (
           typeof parsedAnalysis === 'object' &&
           parsedAnalysis !== null &&
-          'overallHealth' in parsedAnalysis &&
-          'categories' in parsedAnalysis &&
-          'strengthsAndChallenges' in parsedAnalysis &&
-          'relationshipDynamics' in parsedAnalysis
+          'relationshipAnalysis' in parsedAnalysis &&
+          typeof parsedAnalysis.relationshipAnalysis === 'object' &&
+          'overallHealth' in parsedAnalysis.relationshipAnalysis &&
+          'categories' in parsedAnalysis.relationshipAnalysis &&
+          'strengthsAndChallenges' in parsedAnalysis.relationshipAnalysis &&
+          'relationshipDynamics' in parsedAnalysis.relationshipAnalysis
         );
       } catch {
         return false;
@@ -94,10 +106,12 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
     if (!analysis) return false;
     
     const hasRequiredProperties = typeof analysis === 'object' && 
-           'overallHealth' in analysis &&
-           'categories' in analysis &&
-           'strengthsAndChallenges' in analysis &&
-           'relationshipDynamics' in analysis;
+           'relationshipAnalysis' in analysis &&
+           typeof analysis.relationshipAnalysis === 'object' &&
+           'overallHealth' in analysis.relationshipAnalysis &&
+           'categories' in analysis.relationshipAnalysis &&
+           'strengthsAndChallenges' in analysis.relationshipAnalysis &&
+           'relationshipDynamics' in analysis.relationshipAnalysis;
 
     if (!hasRequiredProperties) return false;
 
@@ -113,7 +127,15 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
     return true;
   };
 
-  // Early return if analysis is not the correct type or is loading
+  const hasEmotionalDynamics = (analysis: ComprehensiveAnalysis): boolean => {
+    return analysis?.emotionalDynamics !== undefined && 
+      typeof analysis.emotionalDynamics === 'object' &&
+      analysis.emotionalDynamics !== null &&
+      'emotionalSecurity' in analysis.emotionalDynamics &&
+      'intimacyBalance' in analysis.emotionalDynamics &&
+      'conflictResolution' in analysis.emotionalDynamics;
+  };
+
   if (isLoading) {
     return (
       <Box sx={{ p: 3, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -123,7 +145,7 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
   }
 
   // Try to parse string analysis
-  let parsedAnalysis: RelationshipAnalysisType;
+  let parsedAnalysis: ComprehensiveAnalysis;
   if (typeof analysis === 'string') {
     try {
       const parsed = JSON.parse(analysis);
@@ -162,6 +184,8 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
   }
 
   analysis = parsedAnalysis;
+
+  const { relationshipAnalysis, emotionalDynamics } = analysis;
 
   const getPriorityColor = (priority: string) => {
     switch (priority.toLowerCase()) {
@@ -211,19 +235,84 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
     communicationSuggestions = [],
     actionItems = [],
     relationshipDynamics = {
-      positivePatterns: [],
-      concerningPatterns: [],
-      growthAreas: [],
+      strengths: [],
+      challenges: [],
+      recommendations: []
     },
-  } = analysis;
+  } = relationshipAnalysis;
 
-  const hasEmotionalDynamics = (analysis: RelationshipAnalysisType): boolean => {
-    return analysis?.emotionalDynamics !== undefined && 
-      typeof analysis.emotionalDynamics === 'object' &&
-      analysis.emotionalDynamics !== null &&
-      'emotionalSecurity' in analysis.emotionalDynamics &&
-      'intimacyBalance' in analysis.emotionalDynamics &&
-      'conflictResolution' in analysis.emotionalDynamics;
+  const getScaleDescription = (key: string): string => {
+    const descriptions: Record<string, string> = {
+      consenso: 'Nível de acordo em questões importantes do relacionamento',
+      satisfacao: 'Grau de satisfação com o relacionamento atual',
+      coesao: 'Conexão e atividades compartilhadas',
+      expressaoAfetiva: 'Demonstrações de afeto e intimidade'
+    };
+    return descriptions[key] || '';
+  };
+
+  const getMaxScore = (key: string): number => {
+    const maxScores: Record<string, number> = {
+      consenso: 65,
+      satisfacao: 50,
+      coesao: 24,
+      expressaoAfetiva: 12
+    };
+    return maxScores[key] || 100;
+  };
+
+  const getScoreColor = (key: string, value: number): string => {
+    const score = (value / getMaxScore(key)) * 100;
+    return score >= 70 ? '#4caf50' : score >= 40 ? '#ff9800' : '#f44336';
+  };
+
+  const getScoreSeverity = (key: string, value: number): 'success' | 'warning' | 'error' => {
+    const score = (value / getMaxScore(key)) * 100;
+    return score >= 70 ? 'success' : score >= 40 ? 'warning' : 'error';
+  };
+
+  const getRecommendation = (key: string, value: number): string => {
+    const score = (value / getMaxScore(key)) * 100;
+    if (score < 40) {
+      return 'Considere buscar apoio profissional para trabalhar nesta área.';
+    } else if (score < 70) {
+      return 'Há espaço para melhorias. Tente as sugestões personalizadas.';
+    }
+    return '';
+  };
+
+  const getFourHorsemenDescription = (key: string): string => {
+    const descriptions: Record<string, string> = {
+      critica: 'Atacar o caráter do parceiro em vez do comportamento específico',
+      defensividade: 'Contra-atacar em vez de ouvir e reconhecer',
+      desprezo: 'Demonstrar superioridade ou zombar do parceiro',
+      stonewalling: 'Se retirar ou se fechar durante conflitos'
+    };
+    return descriptions[key] || '';
+  };
+
+  const getFourHorsemenColor = (value: number): string => {
+    return value <= 3 ? '#4caf50' : value <= 6 ? '#ff9800' : '#f44336';
+  };
+
+  const calculatePositiveResponseRate = (bids: GottmanMetrics['bidsForConnection']): number => {
+    const total = bids.respostasPositivas + bids.respostasNegativas + bids.respostasNeutras;
+    return total > 0 ? Math.round((bids.respostasPositivas / total) * 100) : 0;
+  };
+
+  const getResponseRateSeverity = (bids: GottmanMetrics['bidsForConnection']): 'success' | 'warning' | 'error' => {
+    const rate = calculatePositiveResponseRate(bids);
+    return rate >= 70 ? 'success' : rate >= 40 ? 'warning' : 'error';
+  };
+
+  const getResponseRateRecommendation = (bids: GottmanMetrics['bidsForConnection']): string => {
+    const rate = calculatePositiveResponseRate(bids);
+    if (rate < 40) {
+      return 'Tente notar mais as tentativas de conexão do seu parceiro. Comece com pequenos momentos de atenção.';
+    } else if (rate < 70) {
+      return 'Você está no caminho certo. Continue praticando respostas positivas às tentativas de conexão.';
+    }
+    return 'Excelente taxa de resposta! Continue mantendo essa conexão forte.';
   };
 
   return (
@@ -283,15 +372,15 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
             <Box sx={{ 
               display: 'flex', 
               alignItems: 'center',
-              color: overallHealth.trend === 'up' 
+              color: overallHealth.trend === 'improving' 
                 ? 'success.main' 
-                : overallHealth.trend === 'down' 
+                : overallHealth.trend === 'declining' 
                 ? 'error.main' 
                 : 'text.secondary'
             }}>
-              {overallHealth.trend === 'up' ? (
+              {overallHealth.trend === 'improving' ? (
                 <TrendingUpIcon sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }} />
-              ) : overallHealth.trend === 'down' ? (
+              ) : overallHealth.trend === 'declining' ? (
                 <TrendingDownIcon sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }} />
               ) : null}
             </Box>
@@ -435,9 +524,9 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
                   >
                     Score: {category.score}
                   </Typography>
-                  {category.trend === 'up' ? (
+                  {category.trend === 'improving' ? (
                     <TrendingUpIcon color="success" sx={{ fontSize: '1rem' }} />
-                  ) : category.trend === 'down' ? (
+                  ) : category.trend === 'declining' ? (
                     <TrendingDownIcon color="error" sx={{ fontSize: '1rem' }} />
                   ) : (
                     <span>→</span>
@@ -727,26 +816,16 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
                 background: 'transparent',
               }}
             >
-              <Typography 
-                variant="subtitle1" 
-                color="success.main" 
-                gutterBottom
-                sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
-              >
-                Padrões Positivos
+              <Typography variant="h6" gutterBottom>
+                Pontos Fortes
               </Typography>
               <List dense sx={{ py: 0 }}>
-                {relationshipDynamics.positivePatterns.map((pattern, index) => (
+                {relationshipDynamics.strengths.map((pattern: string, index: number) => (
                   <ListItem key={index} sx={{ px: 0, py: 0.5 }}>
                     <ListItemIcon sx={{ minWidth: 32 }}>
-                      <StarIcon color="success" sx={{ fontSize: '1.125rem' }} />
+                      <StarIcon color="success" fontSize="small" />
                     </ListItemIcon>
-                    <ListItemText 
-                      primary={pattern}
-                      primaryTypographyProps={{
-                        sx: { fontSize: { xs: '0.75rem', sm: '0.813rem' } },
-                      }}
-                    />
+                    <ListItemText primary={pattern} />
                   </ListItem>
                 ))}
               </List>
@@ -760,26 +839,16 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
                 background: 'transparent',
               }}
             >
-              <Typography 
-                variant="subtitle1" 
-                color="warning.main" 
-                gutterBottom
-                sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
-              >
-                Áreas de Crescimento
+              <Typography variant="h6" gutterBottom>
+                Desafios
               </Typography>
               <List dense sx={{ py: 0 }}>
-                {relationshipDynamics.growthAreas.map((area, index) => (
+                {relationshipDynamics.challenges.map((pattern: string, index: number) => (
                   <ListItem key={index} sx={{ px: 0, py: 0.5 }}>
                     <ListItemIcon sx={{ minWidth: 32 }}>
-                      <PsychologyIcon color="warning" sx={{ fontSize: '1.125rem' }} />
+                      <WarningIcon color="warning" fontSize="small" />
                     </ListItemIcon>
-                    <ListItemText 
-                      primary={area}
-                      primaryTypographyProps={{
-                        sx: { fontSize: { xs: '0.75rem', sm: '0.813rem' } },
-                      }}
-                    />
+                    <ListItemText primary={pattern} />
                   </ListItem>
                 ))}
               </List>
@@ -793,26 +862,16 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
                 background: 'transparent',
               }}
             >
-              <Typography 
-                variant="subtitle1" 
-                color="error.main" 
-                gutterBottom
-                sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
-              >
-                Padrões Preocupantes
+              <Typography variant="h6" gutterBottom>
+                Recomendações
               </Typography>
               <List dense sx={{ py: 0 }}>
-                {relationshipDynamics.concerningPatterns.map((pattern, index) => (
+                {relationshipDynamics.recommendations.map((pattern: string, index: number) => (
                   <ListItem key={index} sx={{ px: 0, py: 0.5 }}>
                     <ListItemIcon sx={{ minWidth: 32 }}>
-                      <WarningIcon color="error" sx={{ fontSize: '1.125rem' }} />
+                      <LightbulbIcon color="info" fontSize="small" />
                     </ListItemIcon>
-                    <ListItemText 
-                      primary={pattern}
-                      primaryTypographyProps={{
-                        sx: { fontSize: { xs: '0.75rem', sm: '0.813rem' } },
-                      }}
-                    />
+                    <ListItemText primary={pattern} />
                   </ListItem>
                 ))}
               </List>
@@ -822,7 +881,7 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
       </Card>
 
       {/* Emotional Dynamics */}
-      {isRelationshipAnalysis(analysis) && hasEmotionalDynamics(analysis) && (
+      {hasEmotionalDynamics(analysis) && (
         <Card 
           id="emocional"
           elevation={0}
@@ -845,7 +904,7 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
             Dinâmicas Emocionais
           </Typography>
           <Grid container spacing={{ xs: 1, sm: 2 }}>
-            <Grid item xs={12} sm={4}>
+            <Grid item xs={12} sm={6}>
               <Card 
                 variant="outlined" 
                 sx={{ 
@@ -871,12 +930,12 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', my: 2 }}>
                   <CircularProgress
                     variant="determinate"
-                    value={analysis.emotionalDynamics.emotionalSecurity}
+                    value={emotionalDynamics.emotionalSecurity}
                     size={isMobile ? 48 : 60}
                     thickness={4}
                     sx={{
                       color: (theme) => {
-                        const security = analysis.emotionalDynamics.emotionalSecurity;
+                        const security = emotionalDynamics.emotionalSecurity;
                         return security >= 70
                           ? theme.palette.success.main
                           : security >= 40
@@ -893,55 +952,13 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
                       fontSize: { xs: '0.75rem', sm: '0.813rem' },
                     }}
                   >
-                    {analysis.emotionalDynamics.emotionalSecurity}%
+                    {emotionalDynamics.emotionalSecurity}%
                   </Typography>
                 </Box>
               </Card>
             </Grid>
 
-            <Grid item xs={12} sm={4}>
-              <Card 
-                variant="outlined" 
-                sx={{ 
-                  p: { xs: 2, sm: 3 },
-                  background: 'transparent',
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <FavoriteIcon 
-                    color="primary" 
-                    sx={{ 
-                      mr: 1,
-                      fontSize: { xs: '1.25rem', sm: '1.5rem' },
-                    }} 
-                  />
-                  <Typography 
-                    variant="subtitle1"
-                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
-                  >
-                    Equilíbrio de Intimidade
-                  </Typography>
-                </Box>
-                <List dense sx={{ py: 0 }}>
-                  {Object.entries(analysis.emotionalDynamics.intimacyBalance.areas).map(([key, value]) => (
-                    <ListItem key={key} sx={{ px: 0, py: 0.5 }}>
-                      <ListItemText 
-                        primary={key.charAt(0).toUpperCase() + key.slice(1)} 
-                        secondary={`${value}%`}
-                        primaryTypographyProps={{
-                          sx: { fontSize: { xs: '0.75rem', sm: '0.813rem' } },
-                        }}
-                        secondaryTypographyProps={{
-                          sx: { fontSize: { xs: '0.688rem', sm: '0.75rem' } },
-                        }}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} sm={4}>
+            <Grid item xs={12} sm={6}>
               <Card 
                 variant="outlined" 
                 sx={{ 
@@ -972,7 +989,7 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
                     fontSize: { xs: '0.75rem', sm: '0.813rem' },
                   }}
                 >
-                  Estilo: {analysis.emotionalDynamics.conflictResolution.style}
+                  Efetividade: {emotionalDynamics.conflictResolution.effectiveness}%
                 </Typography>
                 <Typography 
                   variant="subtitle2" 
@@ -982,10 +999,10 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
                     fontSize: { xs: '0.75rem', sm: '0.813rem' },
                   }}
                 >
-                  Efetividade: {analysis.emotionalDynamics.conflictResolution.effectiveness}%
+                  Confiança: {emotionalDynamics.conflictResolution.confidence}%
                 </Typography>
                 <List dense sx={{ py: 0 }}>
-                  {analysis.emotionalDynamics.conflictResolution.patterns.map((pattern, index) => (
+                  {emotionalDynamics.conflictResolution.patterns.map((pattern: string, index: number) => (
                     <ListItem key={index} sx={{ px: 0, py: 0.5 }}>
                       <ListItemIcon sx={{ minWidth: 32 }}>
                         <TimelineIcon 
@@ -1007,6 +1024,174 @@ export const RelationshipAnalysis: React.FC<Props> = ({ analysis, isLoading = fa
           </Grid>
         </Card>
       )}
+
+      {/* Validated Scales Analysis */}
+      <Card 
+        id="validated-scales"
+        elevation={0}
+        sx={{ 
+          p: { xs: 1.5, sm: 3 },
+          background: (theme) => alpha(theme.palette.background.paper, 0.6),
+          backdropFilter: 'blur(10px)',
+          scrollMarginTop: { xs: '56px', sm: '64px' },
+          maxWidth: '100%',
+        }}
+      >
+        <Typography 
+          variant="h6" 
+          gutterBottom
+          sx={{ 
+            fontSize: { xs: '1rem', sm: '1.25rem' },
+            mb: { xs: 2, sm: 3 },
+          }}
+        >
+          Métricas Validadas
+        </Typography>
+
+        {/* DAS Section */}
+        <Accordion defaultExpanded={true}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+              <Typography variant="subtitle1">Escala de Ajuste Diádico (DAS)</Typography>
+              <Box sx={{ flexGrow: 1 }} />
+              <Tooltip title="Uma medida validada do ajuste no relacionamento, incluindo consenso, satisfação, coesão e expressão afetiva">
+                <IconButton size="small">
+                  <InfoIcon />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Grid container spacing={2}>
+              {analysis.validatedScales?.das && Object.entries(analysis.validatedScales.das).map(([key, value]) => (
+                key !== 'total' && (
+                  <Grid item xs={12} sm={6} key={key}>
+                    <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="subtitle2" sx={{ textTransform: 'capitalize' }}>
+                          {key}
+                        </Typography>
+                        <Tooltip title={getScaleDescription(key)}>
+                          <IconButton size="small">
+                            <InfoIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Box sx={{ flexGrow: 1 }}>
+                          <LinearProgress
+                            variant="determinate"
+                            value={((value as number) / getMaxScore(key)) * 100}
+                            sx={{
+                              height: 8,
+                              borderRadius: 4,
+                              backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.1),
+                              '& .MuiLinearProgress-bar': {
+                                borderRadius: 4,
+                                backgroundColor: getScoreColor(key, value),
+                              },
+                            }}
+                          />
+                        </Box>
+                        <Typography variant="body2" color="text.secondary">
+                          {value}/{getMaxScore(key)}
+                        </Typography>
+                      </Box>
+                      {getRecommendation(key, value) && (
+                        <Alert 
+                          severity={getScoreSeverity(key, value)} 
+                          sx={{ mt: 1, '& .MuiAlert-message': { fontSize: '0.75rem' } }}
+                        >
+                          {getRecommendation(key, value)}
+                        </Alert>
+                      )}
+                    </Box>
+                  </Grid>
+                )
+              ))}
+            </Grid>
+          </AccordionDetails>
+        </Accordion>
+
+        {/* Gottman Metrics Section */}
+        <Accordion>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+              <Typography variant="subtitle1">Métricas Gottman</Typography>
+              <Box sx={{ flexGrow: 1 }} />
+              <Tooltip title="Análise baseada na pesquisa dos Quatro Cavaleiros e Tentativas de Conexão">
+                <IconButton size="small">
+                  <InfoIcon />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Grid container spacing={2}>
+              {/* Four Horsemen */}
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" gutterBottom>Os Quatro Cavaleiros</Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                  {analysis.validatedScales?.gottman?.fourHorsemen && 
+                   Object.entries(analysis.validatedScales.gottman.fourHorsemen).map(([key, value]) => (
+                    <Box key={key} sx={{ minWidth: 150, flex: 1 }}>
+                      <Tooltip title={getFourHorsemenDescription(key)}>
+                        <Box sx={{ p: 1.5, border: 1, borderColor: 'divider', borderRadius: 1 }}>
+                          <Typography variant="body2" sx={{ textTransform: 'capitalize', mb: 1 }}>
+                            {key}
+                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box
+                              sx={{
+                                width: 12,
+                                height: 12,
+                                borderRadius: '50%',
+                                bgcolor: getFourHorsemenColor(value),
+                              }}
+                            />
+                            <Typography variant="body2">{value}/10</Typography>
+                          </Box>
+                        </Box>
+                      </Tooltip>
+                    </Box>
+                  ))}
+                </Box>
+              </Grid>
+
+              {/* Bids for Connection */}
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" gutterBottom>Tentativas de Conexão</Typography>
+                <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}>
+                  {analysis.validatedScales?.gottman?.bidsForConnection && (
+                    <>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" gutterBottom>
+                          Taxa de Resposta Positiva: {calculatePositiveResponseRate(analysis.validatedScales.gottman.bidsForConnection)}%
+                        </Typography>
+                        <LinearProgress
+                          variant="determinate"
+                          value={calculatePositiveResponseRate(analysis.validatedScales.gottman.bidsForConnection)}
+                          sx={{
+                            height: 8,
+                            borderRadius: 4,
+                            backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.1),
+                            '& .MuiLinearProgress-bar': {
+                              borderRadius: 4,
+                            },
+                          }}
+                        />
+                      </Box>
+                      <Alert severity={getResponseRateSeverity(analysis.validatedScales.gottman.bidsForConnection)}>
+                        {getResponseRateRecommendation(analysis.validatedScales.gottman.bidsForConnection)}
+                      </Alert>
+                    </>
+                  )}
+                </Box>
+              </Grid>
+            </Grid>
+          </AccordionDetails>
+        </Accordion>
+      </Card>
     </Stack>
   );
 }; 

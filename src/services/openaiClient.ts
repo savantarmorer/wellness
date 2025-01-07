@@ -1,4 +1,6 @@
 import { config } from '../config';
+import { getAuth } from 'firebase/auth';
+import axios from 'axios';
 
 interface Message {
   role: 'system' | 'user' | 'assistant';
@@ -11,26 +13,67 @@ interface OpenAIRequest {
   max_tokens?: number;
 }
 
-export const callOpenAI = async (request: OpenAIRequest): Promise<any> => {
-  const apiUrl = process.env.NODE_ENV === 'production'
+// Create and export the client
+export const openaiClient = axios.create({
+  baseURL: process.env.NODE_ENV === 'production'
     ? 'https://us-central1-lkhg-a0501.cloudfunctions.net/apiv2'
-    : 'http://localhost:5001/lkhg-a0501/us-central1/apiv2';
-  const requestBody = {
-    systemPrompt: request.messages.find(m => m.role === 'system')?.content || '',
-    userPrompt: request.messages.find(m => m.role === 'user')?.content || '',
-    temperature: request.temperature || 0.7,
-  };
+    : 'http://localhost:5001/lkhg-a0501/us-central1/apiv2',
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  }
+});
 
-  console.log('Making API request to:', apiUrl);
-  console.log('Request body:', requestBody);
+export const callOpenAI = async (request: OpenAIRequest): Promise<any> => {
+  // Get authentication token
+  const auth = getAuth();
+  console.log('Auth state:', {
+    currentUser: auth.currentUser?.uid,
+    isAuthenticated: !!auth.currentUser,
+  });
 
+  if (!auth.currentUser) {
+    console.error('No authenticated user found');
+    throw new Error('Authentication required. Please sign in.');
+  }
+
+  // Always force a token refresh to ensure we have a valid token
   try {
-    const response = await fetch(apiUrl, {
+    await auth.currentUser.reload();
+    const idToken = await auth.currentUser.getIdToken(true);
+    console.log('Token retrieved:', idToken ? 'Token present' : 'No token');
+    
+    if (!idToken) {
+      console.error('Failed to get authentication token');
+      throw new Error('Authentication required. Please sign in again.');
+    }
+
+    const requestBody = {
+      systemPrompt: request.messages.find(m => m.role === 'system')?.content || '',
+      userPrompt: request.messages.find(m => m.role === 'user')?.content || '',
+      temperature: request.temperature || 0.7,
+    };
+
+    console.log('Making API request to:', process.env.NODE_ENV === 'production'
+      ? 'https://us-central1-lkhg-a0501.cloudfunctions.net/apiv2'
+      : 'http://localhost:5001/lkhg-a0501/us-central1/apiv2');
+    console.log('Request headers:', {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': 'Bearer [token present]',
+      'Origin': window.location.origin
+    });
+
+    const response = await fetch(process.env.NODE_ENV === 'production'
+      ? 'https://us-central1-lkhg-a0501.cloudfunctions.net/apiv2'
+      : 'http://localhost:5001/lkhg-a0501/us-central1/apiv2', {
       method: 'POST',
       mode: 'cors',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        'Authorization': `Bearer ${idToken}`,
         'Origin': window.location.origin
       },
       body: JSON.stringify(requestBody),
@@ -39,40 +82,57 @@ export const callOpenAI = async (request: OpenAIRequest): Promise<any> => {
     console.log('Response status:', response.status);
     console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
-    if (response.status === 403) {
-      console.error('CORS error - Access denied');
-      throw new Error('Access denied. CORS error.');
-    }
-
     if (!response.ok) {
-      let errorMessage = `HTTP error! status: ${response.status}`;
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorMessage;
-        console.error('API Error response:', errorData);
-      } catch (e) {
-        console.error('Failed to parse error response:', e);
-      }
-      throw new Error(errorMessage);
-    }
+      const errorData = await response.json().catch(() => null);
+      console.error('API Error:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorData
+      });
 
-    const data = await response.json();
-    console.log('API Response data:', data);
+      if (response.status === 401) {
+        // Try to get a fresh token one more time
+        try {
+          await auth.currentUser.reload();
+          const newToken = await auth.currentUser.getIdToken(true);
+          if (newToken) {
+            console.log('Token refreshed, retrying request...');
+            const retryResponse = await fetch(process.env.NODE_ENV === 'production'
+              ? 'https://us-central1-lkhg-a0501.cloudfunctions.net/apiv2'
+              : 'http://localhost:5001/lkhg-a0501/us-central1/apiv2', {
+              method: 'POST',
+              mode: 'cors',
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${newToken}`,
+                'Origin': window.location.origin
+              },
+              body: JSON.stringify(requestBody),
+            });
 
-    if (!data.result) {
-      console.error('Invalid response format:', data);
-      throw new Error('Invalid response format from API');
-    }
+            if (!retryResponse.ok) {
+              throw new Error(`API request failed: ${retryResponse.statusText}`);
+            }
 
-    return {
-      choices: [{
-        message: {
-          content: data.result
+            return await retryResponse.json();
+          }
+        } catch (retryError) {
+          console.error('Retry failed:', retryError);
+          throw new Error('Authentication failed. Please sign in again.');
         }
-      }]
-    };
+      }
+
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+
+    return await response.json();
   } catch (error) {
     console.error('OpenAI API error:', error);
-    throw error;
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Failed to make API request');
   }
 }; 

@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Box, Container, Typography, Alert } from '@mui/material';
+import { Box, Container, Typography, Alert, Button } from '@mui/material';
 import { RelationshipContextForm } from '../components/RelationshipContextForm';
 import { RelationshipContextView } from '../components/RelationshipContextView';
 import { useAuth } from '../contexts/AuthContext';
 import { getRelationshipContext, saveRelationshipContext, updateRelationshipContext } from '../services/relationshipContextService';
 import type { RelationshipContext, RelationshipContextFormData } from '../types';
 import { Layout } from '../components/Layout';
+import { useNavigate } from 'react-router-dom';
+
+const isValidStatus = (status: string): status is 'dating' | 'engaged' | 'married' | 'other' => {
+  return ['dating', 'engaged', 'married', 'other'].includes(status);
+};
 
 export default function RelationshipContext() {
   const { currentUser, userData } = useAuth();
@@ -13,6 +18,7 @@ export default function RelationshipContext() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchContext = async () => {
@@ -23,18 +29,30 @@ export default function RelationshipContext() {
         if (context) {
           const formData: Partial<RelationshipContextFormData> = {
             duration: context.duration,
-            status: context.status,
+            status: isValidStatus(context.status) ? context.status : 'other',
             type: context.type,
             goals: context.goals,
             challenges: context.challenges,
             values: context.values,
-            relationshipDuration: context.relationshipDuration,
             relationshipStyle: context.relationshipStyle,
             relationshipStyleOther: context.relationshipStyleOther,
             currentDynamics: context.currentDynamics,
             strengths: context.strengths,
-            areasNeedingAttention: context.areasNeedingAttention,
-            areasNeedingAttentionOther: context.areasNeedingAttentionOther,
+            areasNeedingAttention: Array.isArray(context.areasNeedingAttention) ? {
+              comunicacao: context.areasNeedingAttention.includes('comunicacao'),
+              confianca: context.areasNeedingAttention.includes('confianca'),
+              intimidade: context.areasNeedingAttention.includes('intimidade'),
+              resolucaoConflitos: context.areasNeedingAttention.includes('resolucaoConflitos'),
+              apoioEmocional: context.areasNeedingAttention.includes('apoioEmocional'),
+              outros: context.areasNeedingAttention.includes('outros')
+            } : {
+              comunicacao: false,
+              confianca: false,
+              intimidade: false,
+              resolucaoConflitos: false,
+              apoioEmocional: false,
+              outros: false
+            },
             recurringProblems: context.recurringProblems,
             appGoals: context.appGoals,
             hadSignificantCrises: context.hadSignificantCrises,
@@ -44,12 +62,14 @@ export default function RelationshipContext() {
             userEmotionalState: context.userEmotionalState,
             partnerEmotionalState: context.partnerEmotionalState,
             timeSpentTogether: context.timeSpentTogether,
-            qualityTime: context.qualityTime,
+            qualityTime: context.qualityTime === 'yes',
             qualityTimeDescription: context.qualityTimeDescription,
             routineImpact: context.routineImpact,
-            physicalIntimacy: context.physicalIntimacy,
+            physicalIntimacy: context.physicalIntimacy === 'yes',
             intimacyImprovements: context.intimacyImprovements,
             additionalInfo: context.additionalInfo,
+            majorLifeEvents: context.majorLifeEvents,
+            attachmentStyle: context.attachmentStyle
           };
           setExistingContext(formData);
           setIsEditing(false);
@@ -66,65 +86,91 @@ export default function RelationshipContext() {
     fetchContext();
   }, [currentUser]);
 
-  const handleSubmit = async (data: RelationshipContextFormData) => {
-    if (!currentUser || !userData?.partnerId) {
-      setError('You need to be connected with a partner to save relationship context');
-      return;
-    }
+  const initialContext: RelationshipContext = {
+    type: '',
+    duration: '',
+    status: 'dating',
+    relationshipStyle: '',
+    relationshipStyleOther: '',
+    currentDynamics: '',
+    userEmotionalState: '',
+    partnerEmotionalState: '',
+    hadSignificantCrises: false,
+    crisisDescription: '',
+    attemptedSolutions: false,
+    solutionsDescription: '',
+    routineImpact: '',
+    relationshipStatus: '',
+    livingArrangement: '',
+    communicationStyle: '',
+    sharedActivities: [],
+    supportSystem: [],
+    futureExpectations: '',
+    challengeAreas: [],
+    strengthAreas: [],
+    values: [],
+    goals: [],
+    challenges: [],
+    strengths: [],
+    appGoals: [],
+    timeSpentTogether: '',
+    qualityTime: 'no' as const,
+    qualityTimeDescription: '',
+    physicalIntimacy: 'no' as const,
+    intimacyImprovements: [],
+    additionalInfo: '',
+    areasNeedingAttention: []
+  };
 
+  const handleSubmit = async (formData: RelationshipContextFormData) => {
     try {
-      setError(null);
-      setSuccess(null);
+      const updatedContext: RelationshipContext = {
+        type: formData.type,
+        duration: formData.duration,
+        status: formData.status,
+        relationshipStyle: formData.relationshipStyle,
+        relationshipStyleOther: formData.relationshipStyleOther,
+        currentDynamics: formData.currentDynamics,
+        userEmotionalState: formData.userEmotionalState,
+        partnerEmotionalState: formData.partnerEmotionalState,
+        hadSignificantCrises: formData.hadSignificantCrises,
+        crisisDescription: formData.crisisDescription || '',
+        attemptedSolutions: formData.attemptedSolutions,
+        solutionsDescription: formData.solutionsDescription || '',
+        routineImpact: formData.routineImpact,
+        relationshipStatus: formData.relationshipStatus,
+        livingArrangement: formData.livingArrangement,
+        communicationStyle: formData.communicationStyle,
+        sharedActivities: formData.sharedActivities,
+        supportSystem: formData.supportSystem,
+        futureExpectations: formData.futureExpectations,
+        challengeAreas: formData.challengeAreas,
+        strengthAreas: formData.strengthAreas,
+        values: formData.values,
+        goals: formData.goals,
+        challenges: formData.challenges,
+        strengths: formData.strengths,
+        appGoals: formData.appGoals,
+        timeSpentTogether: formData.timeSpentTogether,
+        qualityTime: formData.qualityTime ? 'yes' as const : 'no' as const,
+        qualityTimeDescription: formData.qualityTimeDescription,
+        physicalIntimacy: formData.physicalIntimacy ? 'yes' as const : 'no' as const,
+        intimacyImprovements: formData.intimacyImprovements,
+        additionalInfo: formData.additionalInfo || '',
+        areasNeedingAttention: Object.entries(formData.areasNeedingAttention)
+          .filter(([_, value]) => value)
+          .map(([key]) => key),
+        majorLifeEvents: formData.majorLifeEvents,
+        attachmentStyle: formData.attachmentStyle
+      };
 
-      if (existingContext) {
-        await updateRelationshipContext(currentUser.uid, userData.partnerId, data);
-      } else {
-        await saveRelationshipContext(currentUser.uid, userData.partnerId, data);
-      }
-
-      setSuccess('Relationship context saved successfully');
-
-      const updatedContext = await getRelationshipContext(currentUser.uid);
-      if (updatedContext) {
-        const formData: Partial<RelationshipContextFormData> = {
-          duration: updatedContext.duration,
-          status: updatedContext.status,
-          type: updatedContext.type,
-          goals: updatedContext.goals,
-          challenges: updatedContext.challenges,
-          values: updatedContext.values,
-          relationshipDuration: updatedContext.relationshipDuration,
-          relationshipStyle: updatedContext.relationshipStyle,
-          relationshipStyleOther: updatedContext.relationshipStyleOther,
-          currentDynamics: updatedContext.currentDynamics,
-          strengths: updatedContext.strengths,
-          areasNeedingAttention: updatedContext.areasNeedingAttention,
-          areasNeedingAttentionOther: updatedContext.areasNeedingAttentionOther,
-          recurringProblems: updatedContext.recurringProblems,
-          appGoals: updatedContext.appGoals,
-          hadSignificantCrises: updatedContext.hadSignificantCrises,
-          crisisDescription: updatedContext.crisisDescription,
-          attemptedSolutions: updatedContext.attemptedSolutions,
-          solutionsDescription: updatedContext.solutionsDescription,
-          userEmotionalState: updatedContext.userEmotionalState,
-          partnerEmotionalState: updatedContext.partnerEmotionalState,
-          timeSpentTogether: updatedContext.timeSpentTogether,
-          qualityTime: updatedContext.qualityTime,
-          qualityTimeDescription: updatedContext.qualityTimeDescription,
-          routineImpact: updatedContext.routineImpact,
-          physicalIntimacy: updatedContext.physicalIntimacy,
-          intimacyImprovements: updatedContext.intimacyImprovements,
-          additionalInfo: updatedContext.additionalInfo,
-        };
-        setExistingContext(formData);
-        setIsEditing(false);
-      } else {
-        setExistingContext(undefined);
-        setIsEditing(true);
+      if (currentUser) {
+        await saveRelationshipContext(updatedContext, currentUser.uid, formData.partnerId || '');
+        navigate('/dashboard');
       }
     } catch (error) {
-      console.error('Error saving relationship context:', error);
-      setError('Failed to save relationship context');
+      console.error('Error updating relationship context:', error);
+      setError('Failed to update relationship context');
     }
   };
 
@@ -153,14 +199,9 @@ export default function RelationshipContext() {
   return (
     <Layout>
       <Container maxWidth="md">
-        <Box sx={{ mt: 4 }}>
-          <Typography variant="h4" gutterBottom>
+        <Box sx={{ my: 4 }}>
+          <Typography variant="h4" component="h1" gutterBottom>
             Contexto do Relacionamento
-          </Typography>
-
-          <Typography variant="body1" color="text.secondary" paragraph>
-            Ajude-nos a entender melhor seu relacionamento fornecendo algumas informações. 
-            Essas informações serão usadas para fornecer insights e recomendações mais personalizadas.
           </Typography>
 
           {error && (
@@ -175,16 +216,34 @@ export default function RelationshipContext() {
             </Alert>
           )}
 
-          {existingContext && !isEditing ? (
-            <RelationshipContextView
-              data={existingContext as RelationshipContextFormData}
-              onEdit={() => setIsEditing(true)}
-            />
-          ) : (
+          {isEditing ? (
             <RelationshipContextForm
-              initialValues={existingContext}
+              initialData={existingContext}
               onSubmit={handleSubmit}
+              userId={currentUser?.uid || ''}
+              partnerId={userData?.partnerId || ''}
             />
+          ) : existingContext ? (
+            <Box>
+              <RelationshipContextView
+                data={existingContext as RelationshipContextFormData}
+                onEdit={() => setIsEditing(true)}
+              />
+            </Box>
+          ) : (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography>
+                Nenhum contexto de relacionamento encontrado. Por favor, adicione um.
+              </Typography>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => setIsEditing(true)}
+                sx={{ mt: 2 }}
+              >
+                Adicionar Contexto
+              </Button>
+            </Box>
           )}
         </Box>
       </Container>

@@ -20,7 +20,7 @@ import { Layout } from '../components/Layout';
 import { AnalysisHistoryList } from '../components/AnalysisHistoryList';
 import { getAnalysisHistory, clearAnalysisHistory, cleanupInvalidAnalyses } from '../services/analysisHistoryService';
 import { useAuth } from '../contexts/AuthContext';
-import type { GPTAnalysis } from '../types';
+import type { GPTAnalysis, MoodType } from '../types';
 import { MigrationTool } from '../components/MigrationTool';
 
 const AnalysisHistory = () => {
@@ -36,19 +36,204 @@ const AnalysisHistory = () => {
     // If it's already a string, wrap it in a text report format
     if (typeof analysis === 'string') {
       return {
-        overallHealth: { score: 0, trend: 'neutral' },
-        categories: {},
-        strengthsAndChallenges: {
-          strengths: [],
-          challenges: []
+        id: `gpt_${new Date().getTime()}`,
+        userId: currentUser?.uid || '',
+        partnerId: '',
+        date: new Date().toISOString(),
+        type: 'individual',
+        analysis: {
+          moodPatterns: {
+            user: {
+              dominant: 'feliz' as MoodType,
+              frequency: {},
+              transitions: {}
+            },
+            partner: {
+              dominant: 'feliz' as MoodType,
+              frequency: {},
+              transitions: {}
+            },
+            overall: {
+              synchronicity: 0.8,
+              stability: 0.7,
+              variability: 0.5
+            }
+          },
+          communicationMetrics: {
+            quality: 0.8,
+            frequency: 0.7,
+            depth: 0.6,
+            patterns: []
+          },
+          relationshipDynamics: {
+            strengths: [],
+            challenges: [],
+            recommendations: []
+          },
+          attachmentInsights: {
+            style: 'secure',
+            behaviors: [],
+            triggers: [],
+            suggestions: []
+          },
+          overallHealth: {
+            score: 0,
+            trend: 'stable'
+          },
+          categories: {},
+          emotionalDynamics: {
+            emotionalSecurity: 0,
+            intimacyBalance: {
+              score: 0,
+              areas: {
+                emotional: 0,
+                physical: 0,
+                intellectual: 0,
+                shared: 0
+              }
+            },
+            conflictResolution: {
+              style: 'undefined',
+              effectiveness: 0,
+              patterns: []
+            }
+          }
         },
-        communicationSuggestions: [],
-        actionItems: [],
+        timestamp: new Date().toISOString(),
+        version: '1.0',
+        metadata: {
+          assessmentCount: 1,
+          timeSpan: '1 day',
+          confidence: 0.8
+        },
+        createdAt: new Date().toISOString()
+      };
+    }
+
+    // If it's already an object, ensure it has all required fields
+    if (typeof analysis === 'object' && analysis !== null) {
+      return {
+        id: analysis.id || `gpt_${new Date().getTime()}`,
+        userId: analysis.userId || currentUser?.uid || '',
+        partnerId: analysis.partnerId || '',
+        date: analysis.date || new Date().toISOString(),
+        type: analysis.type || 'individual',
+        analysis: {
+          moodPatterns: analysis.moodPatterns || {
+            user: {
+              dominant: 'feliz' as MoodType,
+              frequency: {},
+              transitions: {}
+            },
+            partner: {
+              dominant: 'feliz' as MoodType,
+              frequency: {},
+              transitions: {}
+            },
+            overall: {
+              synchronicity: 0.8,
+              stability: 0.7,
+              variability: 0.5
+            }
+          },
+          communicationMetrics: analysis.communicationMetrics || {
+            quality: 0.8,
+            frequency: 0.7,
+            depth: 0.6,
+            patterns: []
+          },
+          relationshipDynamics: analysis.relationshipDynamics || {
+            strengths: [],
+            challenges: [],
+            recommendations: []
+          },
+          attachmentInsights: analysis.attachmentInsights || {
+            style: 'secure',
+            behaviors: [],
+            triggers: [],
+            suggestions: []
+          },
+          overallHealth: analysis.overallHealth || {
+            score: 0,
+            trend: 'stable'
+          },
+          categories: analysis.categories || {},
+          emotionalDynamics: analysis.emotionalDynamics || {
+            emotionalSecurity: 0,
+            intimacyBalance: {
+              score: 0,
+              areas: {
+                emotional: 0,
+                physical: 0,
+                intellectual: 0,
+                shared: 0
+              }
+            },
+            conflictResolution: {
+              style: 'undefined',
+              effectiveness: 0,
+              patterns: []
+            }
+          }
+        },
+        timestamp: analysis.timestamp || new Date().toISOString(),
+        version: analysis.version || '1.0',
+        metadata: analysis.metadata || {
+          assessmentCount: 1,
+          timeSpan: '1 day',
+          confidence: 0.8
+        },
+        createdAt: analysis.createdAt || new Date().toISOString()
+      };
+    }
+
+    // If neither string nor object, return a default structure
+    return {
+      id: `gpt_${new Date().getTime()}`,
+      userId: currentUser?.uid || '',
+      partnerId: '',
+      date: new Date().toISOString(),
+      type: 'individual',
+      analysis: {
+        moodPatterns: {
+          user: {
+            dominant: 'feliz' as MoodType,
+            frequency: {},
+            transitions: {}
+          },
+          partner: {
+            dominant: 'feliz' as MoodType,
+            frequency: {},
+            transitions: {}
+          },
+          overall: {
+            synchronicity: 0.8,
+            stability: 0.7,
+            variability: 0.5
+          }
+        },
+        communicationMetrics: {
+          quality: 0.8,
+          frequency: 0.7,
+          depth: 0.6,
+          patterns: []
+        },
         relationshipDynamics: {
-          positivePatterns: [],
-          concerningPatterns: [],
-          growthAreas: []
+          strengths: [],
+          challenges: [],
+          recommendations: []
         },
+        attachmentInsights: {
+          style: 'secure',
+          behaviors: [],
+          triggers: [],
+          suggestions: []
+        },
+        overallHealth: {
+          score: 0,
+          trend: 'stable'
+        },
+        categories: {},
         emotionalDynamics: {
           emotionalSecurity: 0,
           intimacyBalance: {
@@ -65,81 +250,16 @@ const AnalysisHistory = () => {
             effectiveness: 0,
             patterns: []
           }
-        },
-        textReport: analysis
-      };
-    }
-
-    // If it's already an object, ensure it has all required fields
-    if (typeof analysis === 'object' && analysis !== null) {
-      return {
-        overallHealth: analysis.overallHealth || { score: 0, trend: 'neutral' },
-        categories: analysis.categories || {},
-        strengthsAndChallenges: analysis.strengthsAndChallenges || {
-          strengths: [],
-          challenges: []
-        },
-        communicationSuggestions: analysis.communicationSuggestions || [],
-        actionItems: analysis.actionItems || [],
-        relationshipDynamics: analysis.relationshipDynamics || {
-          positivePatterns: [],
-          concerningPatterns: [],
-          growthAreas: []
-        },
-        emotionalDynamics: analysis.emotionalDynamics || {
-          emotionalSecurity: 0,
-          intimacyBalance: {
-            score: 0,
-            areas: {
-              emotional: 0,
-              physical: 0,
-              intellectual: 0,
-              shared: 0
-            }
-          },
-          conflictResolution: {
-            style: 'undefined',
-            effectiveness: 0,
-            patterns: []
-          }
-        },
-        textReport: analysis.textReport || ''
-      };
-    }
-
-    // If neither string nor object, return a default structure
-    return {
-      overallHealth: { score: 0, trend: 'neutral' },
-      categories: {},
-      strengthsAndChallenges: {
-        strengths: [],
-        challenges: []
-      },
-      communicationSuggestions: [],
-      actionItems: [],
-      relationshipDynamics: {
-        positivePatterns: [],
-        concerningPatterns: [],
-        growthAreas: []
-      },
-      emotionalDynamics: {
-        emotionalSecurity: 0,
-        intimacyBalance: {
-          score: 0,
-          areas: {
-            emotional: 0,
-            physical: 0,
-            intellectual: 0,
-            shared: 0
-          }
-        },
-        conflictResolution: {
-          style: 'undefined',
-          effectiveness: 0,
-          patterns: []
         }
       },
-      textReport: 'Invalid analysis format'
+      timestamp: new Date().toISOString(),
+      version: '1.0',
+      metadata: {
+        assessmentCount: 1,
+        timeSpan: '1 day',
+        confidence: 0.8
+      },
+      createdAt: new Date().toISOString()
     };
   };
 
@@ -184,12 +304,19 @@ const AnalysisHistory = () => {
           const convertedAnalysis = convertToGPTAnalysis(parsedAnalysis);
 
           return {
+            ...convertedAnalysis,
             id: record.id!,
             userId: record.userId,
             partnerId: record.partnerId || '',
             date: record.date,
             type: record.type,
-            analysis: convertedAnalysis,
+            timestamp: record.createdAt.toString(),
+            version: '1.0',
+            metadata: {
+              assessmentCount: 1,
+              timeSpan: '1 day',
+              confidence: 0.8
+            },
             createdAt: record.createdAt.toString()
           };
         });

@@ -1,0 +1,51 @@
+{
+  "env": {
+    "browser": true,
+    "es2021": true
+  },
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:react/recommended",
+    "plugin:react-hooks/recommended",
+    "plugin:functional/recommended"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaFeatures": {
+      "jsx": true
+    },
+    "ecmaVersion": 12,
+    "sourceType": "module"
+  },
+  "plugins": [
+    "react",
+    "@typescript-eslint",
+    "react-hooks",
+    "functional"
+  ],
+  "rules": {
+    "react/react-in-jsx-scope": "off",
+    "@typescript-eslint/explicit-module-boundary-types": "off",
+    "@typescript-eslint/no-explicit-any": "warn",
+    "react/prop-types": "off",
+    "@typescript-eslint/naming-convention": [
+      "error",
+      {
+        "selector": "function",
+        "format": ["camelCase"],
+        "leadingUnderscore": "forbid"
+      }
+    ],
+    "functional/no-let": "error",
+    "functional/immutable-data": "warn",
+    "functional/functional-parameters": "warn",
+    "functional/no-mixed-type": "warn",
+    "functional/prefer-readonly-type": "warn"
+  },
+  "settings": {
+    "react": {
+      "version": "detect"
+    }
+  }
+} 

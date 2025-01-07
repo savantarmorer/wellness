@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -32,7 +32,7 @@ import {
 import { getAnalysisHistory } from '../services/analysisHistoryService';
 import { useAuth } from '../contexts/AuthContext';
 import type { AnalysisRecord } from '../services/analysisHistoryService';
-import type { ConsensusFormData, ConsensusFormAnalysis } from '../services/gptService';
+import type { ConsensusFormData, ConsensusFormAnalysis } from '../types';
 
 interface ProcessedAnalysis {
   id?: string;
@@ -50,11 +50,7 @@ const ConsensusFormHistory: React.FC = () => {
   const [selectedAnalysis, setSelectedAnalysis] = useState<ProcessedAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadHistory();
-  }, [currentUser]);
-
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     if (!currentUser) return;
 
     try {
@@ -84,7 +80,11 @@ const ConsensusFormHistory: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser]);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR', {

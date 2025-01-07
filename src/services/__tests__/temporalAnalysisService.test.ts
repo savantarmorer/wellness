@@ -12,36 +12,60 @@ describe('temporalAnalysisService', () => {
     trend: 'improving' | 'declining' | 'stable' = 'stable'
   ): DailyAssessment[] => {
     return Array(count).fill(null).map((_, index) => {
-      let score = baseScore;
-      if (trend === 'improving') {
-        score += index * 0.2;
-      } else if (trend === 'declining') {
-        score -= index * 0.2;
-      }
-      score = Math.min(5, Math.max(1, score));
-
+      const date = new Date();
+      date.setDate(date.getDate() - index);
+      
       return {
         id: `test-${index}`,
-        userId: 'user1',
-        date: new Date(2024, 0, index + 1).toISOString(),
-        createdAt: new Date(2024, 0, index + 1).toISOString(),
+        userId: 'test-user',
+        partnerId: 'test-partner',
+        date: date.toISOString(),
+        createdAt: date.toISOString(),
+        type: 'individual',
+        mood: {
+          current: 'neutral',
+          previous: 'neutral',
+          description: '',
+          intensity: 0,
+          triggers: [],
+          context: '',
+          primary: 'neutral',
+          secondary: [],
+          notes: ''
+        },
         ratings: {
-          comunicacao: score,
-          resolucaoConflitos: score,
-          conexaoEmocional: score,
-          apoioMutuo: score,
-          transparenciaConfianca: score,
-          intimidadeFisica: score,
-          saudeMental: score,
-          segurancaRelacionamento: score,
-          alinhamentoObjetivos: score,
-          satisfacaoGeral: score,
-          autocuidado: score,
-          gratidao: score,
-          qualidadeTempo: score
+          comunicacao: 7,
+          resolucaoConflitos: 6,
+          conexaoEmocional: 8,
+          apoioMutuo: 7,
+          transparenciaConfianca: 8,
+          intimidadeFisica: 7,
+          saudeMental: 6,
+          segurancaRelacionamento: 7,
+          satisfacaoGeral: 8,
+          alinhamentoObjetivos: 7,
+          qualidadeTempo: 6,
+          intimidade: 7,
+          autocuidado: 7,
+          gratidao: 8
         },
         comments: '',
-        gratitude: ''
+        gratitude: '',
+        validatedScales: {
+          das: {
+            total: 0,
+            consenso: 0,
+            satisfacao: 0,
+            coesao: 0,
+            expressaoAfetiva: 0
+          }
+        },
+        metadata: {
+          assessmentCount: 1,
+          timeSpan: '1 day',
+          confidence: 0.8,
+          lastUpdate: new Date().toISOString()
+        }
       };
     });
   };

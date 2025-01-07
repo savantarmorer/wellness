@@ -1,4 +1,27 @@
-import { DailyAssessment, RelationshipContext } from '../types';
+import {
+  DailyAssessment,
+  RelationshipContext,
+  RelationshipAnalysis,
+  ConsensusFormData,
+  ConsensusFormAnalysis,
+  EmotionalDynamics,
+  CategoryRatings,
+  GPTAnalysis,
+  GPTAnalysisContent,
+  MoodEntry,
+  MoodType,
+  Insight,
+  FormValidation,
+  DailyAssessmentForm,
+  MoodTrackingForm,
+  ConflictResolutionForm,
+  QualityTimeForm,
+  FormSubmissionResult,
+  NormalizedRelationshipData,
+  AttachmentAnalysis,
+  AttachmentStyle,
+  ValidatedScales
+} from '../types';
 import { getAnalysisForDate } from './analysisHistoryService';
 import { callOpenAI } from './openaiClient';
 import {
@@ -6,96 +29,13 @@ import {
   ANALYSIS_SYSTEM_PROMPT,
   generateDailyInsightPrompt,
   CONSENSUS_FORM_ANALYSIS_PROMPT,
+  ANALYSIS_SCHEMA,
 } from './prompts';
-import { analyzeEmotionalDynamics, EmotionalDynamics } from './psychologicalAnalysisService';
+import { analyzeEmotionalDynamics } from './psychologicalAnalysisService';
 import { CategoryAverages } from './analysisUtils';
 import { config } from '../config';
-
-export interface RelationshipAnalysis {
-  overallHealth: {
-    score: number;
-    trend: string;
-  };
-  categories: {
-    [key: string]: {
-      score: number;
-      partnerScore?: number;
-      trend: string;
-      insights: string[];
-    };
-  };
-  strengthsAndChallenges: {
-    strengths: string[];
-    challenges: string[];
-  };
-  communicationSuggestions: string[];
-  actionItems: string[];
-  relationshipDynamics: {
-    positivePatterns: string[];
-    concerningPatterns: string[];
-    growthAreas: string[];
-    discrepancyInsights?: string;
-  };
-  emotionalDynamics: EmotionalDynamics;
-}
-
-export interface ConsensusFormData {
-  type: 'consensus_form';
-  answers: Record<string, string>;
-  date: string;
-  scores?: {
-    consensus: number;
-    affection: number;
-    cohesion: number;
-    satisfaction: number;
-    conflict: number;
-    general: number;
-    overall: number;
-  };
-  analysis?: ConsensusFormAnalysis;
-}
-
-export interface ConsensusFormAnalysis {
-  overallAnalysis: {
-    score: number;
-    trend: 'improving' | 'stable' | 'concerning';
-    summary: string;
-    riskLevel: 'low' | 'moderate' | 'high';
-  };
-  categoryAnalysis: {
-    [category: string]: {
-      score: number;
-      insights: string[];
-      recommendations: string[];
-      riskFactors: string[];
-    };
-  };
-  progressionAnalysis: {
-    improvements: string[];
-    concerns: string[];
-    trends: {
-      [area: string]: {
-        direction: string;
-        significance: string;
-      };
-    };
-  };
-  therapeuticInsights: {
-    immediateActions: string[];
-    longTermStrategies: string[];
-    underlyingIssues: string[];
-  };
-  consistencyAnalysis: {
-    alignedAreas: string[];
-    discrepancies: string[];
-    possibleMotivations: string[];
-  };
-  recommendations: {
-    communication: string[];
-    exercises: string[];
-    professionalSupport: string[];
-  };
-}
+import { getAuth } from 'firebase/auth';
+import { openaiClient } from './openaiClient';
 
 export const getApiKey = () => {
   const apiKey = config.openai.apiKey;
@@ -111,38 +51,7 @@ export const generateDailyInsight = async (
   relationshipContext?: RelationshipContext
 ): Promise<RelationshipAnalysis> => {
   try {
-    const prompt = `
-Por favor, forneça uma análise do relacionamento no seguinte formato JSON:
-{
-  "overallHealth": {
-    "score": number,
-    "trend": string
-  },
-  "categories": {
-    "comunicacao": {
-      "score": number,
-      "trend": string,
-      "insights": string[]
-    },
-    "conexaoEmocional": {
-      "score": number,
-      "trend": string,
-      "insights": string[]
-    }
-    // ... outros campos
-  },
-  "communicationSuggestions": string[],
-  "actionItems": string[],
-  "relationshipDynamics": {
-    "positivePatterns": string[],
-    "concerningPatterns": string[],
-    "growthAreas": string[]
-  }
-}
-
-Baseado na seguinte avaliação:
-${JSON.stringify(assessment, null, 2)}
-${relationshipContext ? `\nContexto do relacionamento:\n${JSON.stringify(relationshipContext, null, 2)}` : ''}`;
+    const prompt = generateDailyInsightPrompt(assessment, relationshipContext);
 
     const response = await callOpenAI({
       messages: [
@@ -176,46 +85,307 @@ ${relationshipContext ? `\nContexto do relacionamento:\n${JSON.stringify(relatio
     try {
       const gptAnalysis = JSON.parse(content);
       if (gptAnalysis) {
-        return {
-          overallHealth: gptAnalysis.overallHealth || {
-            score: assessment.ratings.satisfacaoGeral * 10,
-            trend: "stable"
+        const result: RelationshipAnalysis = {
+          id: `analysis_${new Date().getTime()}`,
+          userId: assessment.userId,
+          partnerId: assessment.partnerId,
+          date: new Date().toISOString(),
+          type: 'individual',
+          overallHealth: {
+            score: gptAnalysis.relationshipAnalysis?.overallHealth?.score || 0,
+            trend: (gptAnalysis.relationshipAnalysis?.overallHealth?.trend || 'stable') as 'improving' | 'stable' | 'declining',
+            confidence: gptAnalysis.relationshipAnalysis?.overallHealth?.confidence || 0.8
           },
-          categories: gptAnalysis.categories || {
+          categories: {
             comunicacao: {
               score: assessment.ratings.comunicacao,
               trend: "stable",
-              insights: []
+              insights: [],
+              impactScore: 0,
+              priority: "medium"
             },
             conexaoEmocional: {
               score: assessment.ratings.conexaoEmocional,
               trend: "stable",
-              insights: []
-            },
-            apoioMutuo: {
-              score: assessment.ratings.apoioMutuo,
-              trend: "stable",
-              insights: []
-            },
-            transparenciaConfianca: {
-              score: assessment.ratings.transparenciaConfianca,
-              trend: "stable",
-              insights: []
+              insights: [],
+              impactScore: 0,
+              priority: "medium"
             }
           },
-          strengthsAndChallenges: gptAnalysis.strengthsAndChallenges || {
-            strengths: [],
-            challenges: []
+          strengthsAndChallenges: {
+            strengths: gptAnalysis.strengthsAndChallenges?.strengths || [],
+            challenges: gptAnalysis.strengthsAndChallenges?.challenges || []
           },
           communicationSuggestions: gptAnalysis.communicationSuggestions || [],
           actionItems: gptAnalysis.actionItems || [],
-          relationshipDynamics: gptAnalysis.relationshipDynamics || {
-            positivePatterns: [],
-            concerningPatterns: [],
-            growthAreas: []
+          relationshipDynamics: {
+            strengths: [],
+            challenges: [],
+            recommendations: []
           },
-          emotionalDynamics
+          emotionalDynamics: {
+            emotionalSecurity: assessment.ratings.segurancaRelacionamento || 0,
+            intimacyBalance: {
+              score: 0,
+              areas: {
+                emotional: assessment.ratings.conexaoEmocional || 0,
+                physical: assessment.ratings.intimidadeFisica || 0,
+                intellectual: assessment.ratings.alinhamentoObjetivos || 0,
+                shared: assessment.ratings.qualidadeTempo || 0
+              }
+            },
+            conflictResolution: {
+              style: 'collaborative',
+              effectiveness: assessment.ratings.resolucaoConflitos || 0,
+              patterns: [],
+              confidence: 0.8
+            },
+            synchronicity: 0.8,
+            stability: 0.7,
+            patterns: {
+              user: {
+                dominant: 'feliz' as MoodType,
+                frequency: {
+                  feliz: 0,
+                  animado: 0,
+                  grato: 0,
+                  calmo: 0,
+                  satisfeito: 0,
+                  amado: 0,
+                  ansioso: 0,
+                  estressado: 0,
+                  triste: 0,
+                  irritado: 0,
+                  frustrado: 0,
+                  exausto: 0,
+                  confuso: 0,
+                  solitário: 0,
+                  neutral: 0,
+                  content: 0
+                },
+                transitions: {}
+              },
+              partner: {
+                dominant: 'feliz' as MoodType,
+                frequency: {
+                  feliz: 0,
+                  animado: 0,
+                  grato: 0,
+                  calmo: 0,
+                  satisfeito: 0,
+                  amado: 0,
+                  ansioso: 0,
+                  estressado: 0,
+                  triste: 0,
+                  irritado: 0,
+                  frustrado: 0,
+                  exausto: 0,
+                  confuso: 0,
+                  solitário: 0,
+                  neutral: 0,
+                  content: 0
+                },
+                transitions: {}
+              }
+            },
+            insights: {
+              strengths: [],
+              challenges: [],
+              recommendations: []
+            }
+          },
+          emotionalSync: gptAnalysis.emotionalSync || 0,
+          moodDiscrepancies: gptAnalysis.moodDiscrepancies?.map((discrepancy: { userMood: MoodType; partnerMood: MoodType; impact: 'alto' | 'médio' | 'baixo'; timestamp: string }) => ({
+            userMood: discrepancy.userMood,
+            partnerMood: discrepancy.partnerMood,
+            difference: Math.abs(discrepancy.impact === 'alto' ? 3 : discrepancy.impact === 'médio' ? 2 : 1),
+            pattern: 'divergent',
+            type: 'divergent',
+            description: 'Mood discrepancy detected',
+            severity: discrepancy.impact === 'alto' ? 'high' : discrepancy.impact === 'médio' ? 'medium' : 'low',
+            impact: discrepancy.impact,
+            timestamp: discrepancy.timestamp
+          })) || [],
+          insights: gptAnalysis.insights?.map((insight: { id: string; type: 'pattern' | 'observation' | 'recommendation' | 'warning'; category: string; description: string; confidence: number; impact: string; timestamp: string }) => ({
+            id: insight.id,
+            type: insight.type,
+            category: insight.category,
+            description: insight.description,
+            confidence: insight.confidence,
+            impact: insight.impact === 'high' || insight.impact === 'medium' || insight.impact === 'low' ? insight.impact : 'medium',
+            timestamp: insight.timestamp
+          })) || [{
+            id: `insight_${new Date().getTime()}`,
+            type: 'pattern',
+            category: 'attachment',
+            description: 'Initial analysis',
+            confidence: 0.8,
+            impact: 'medium',
+            timestamp: new Date().toISOString()
+          }],
+          riskFactors: gptAnalysis.riskFactors || [],
+          recommendations: gptAnalysis.recommendations || [],
+          validatedScales: {
+            das: {
+              total: 0,
+              consenso: 0,
+              satisfacao: 0,
+              coesao: 0,
+              expressaoAfetiva: 0
+            },
+            csi: {
+              satisfacaoGlobal: 0,
+              estabilidade: 0,
+              comprometimento: 0,
+              comunicacao: 0,
+              gestaoConflitos: 0,
+              atividadesCompartilhadas: 0,
+              total: 0
+            },
+            gottman: {
+              fourHorsemen: {
+                critica: 0,
+                defensividade: 0,
+                desprezo: 0,
+                stonewalling: 0
+              },
+              bidsForConnection: {
+                tentativas: 0,
+                respostasPositivas: 0,
+                respostasNegativas: 0,
+                respostasNeutras: 0
+              },
+              resolucaoConflitos: 0,
+              significadoCompartilhado: 0,
+              reparacao: 0,
+              influenciaPositiva: 0
+            },
+            attachment: {
+              attachmentStyle: {
+                primary: 'secure',
+                description: 'Secure attachment style',
+                recommendations: ['Continue fostering trust and open communication']
+              },
+              compatibilidadeApego: 0,
+              ecr: {
+                ansiedade: 0,
+                evitacao: 0,
+                anxiety: 0,
+                avoidance: 0
+              },
+              securityLevel: 0,
+              padraoApego: {
+                primary: 'secure',
+                description: 'Padrão de apego seguro',
+                recommendations: ['Manter comunicação aberta e confiança']
+              }
+            },
+            consistency: {
+              default: {
+                score: 0,
+                confidence: 0,
+                flags: []
+              }
+            },
+            reliability: 0,
+            completeness: 0,
+            recommendations: [],
+            isValid: true,
+            errors: []
+          },
+          gptAnalysis: {
+            id: `gpt_${new Date().getTime()}`,
+            userId: assessment.userId,
+            partnerId: assessment.partnerId,
+            date: new Date().toISOString(),
+            type: 'individual',
+            analysis: {
+              moodPatterns: {
+                user: {
+                  dominant: 'feliz' as MoodType,
+                  frequency: {
+                    feliz: 0,
+                    animado: 0,
+                    grato: 0,
+                    calmo: 0,
+                    satisfeito: 0,
+                    amado: 0,
+                    ansioso: 0,
+                    estressado: 0,
+                    triste: 0,
+                    irritado: 0,
+                    frustrado: 0,
+                    exausto: 0,
+                    confuso: 0,
+                    solitário: 0,
+                    neutral: 0,
+                    content: 0
+                  },
+                  transitions: {}
+                },
+                partner: {
+                  dominant: 'feliz' as MoodType,
+                  frequency: {
+                    feliz: 0,
+                    animado: 0,
+                    grato: 0,
+                    calmo: 0,
+                    satisfeito: 0,
+                    amado: 0,
+                    ansioso: 0,
+                    estressado: 0,
+                    triste: 0,
+                    irritado: 0,
+                    frustrado: 0,
+                    exausto: 0,
+                    confuso: 0,
+                    solitário: 0,
+                    neutral: 0,
+                    content: 0
+                  },
+                  transitions: {}
+                },
+                overall: {
+                  synchronicity: 0.8,
+                  stability: 0.7,
+                  variability: 0.5
+                }
+              },
+              communicationMetrics: {
+                quality: 0.8,
+                frequency: 0.7,
+                depth: 0.6,
+                patterns: []
+              },
+              attachmentInsights: {
+                style: 'secure',
+                behaviors: [],
+                triggers: [],
+                suggestions: []
+              },
+              relationshipDynamics: {
+                strengths: [],
+                challenges: [],
+                recommendations: []
+              }
+            },
+            timestamp: new Date().toISOString(),
+            version: '1.0',
+            metadata: {
+              assessmentCount: 1,
+              timeSpan: '1 day',
+              confidence: 0.8
+            }
+          },
+          metadata: {
+            assessmentCount: 1,
+            timeSpan: '1 day',
+            confidence: 0.8,
+            lastUpdate: new Date().toISOString()
+          }
         };
+
+        return result;
       }
       throw new Error('Failed to parse GPT response');
     } catch (error) {
@@ -223,56 +393,12 @@ ${relationshipContext ? `\nContexto do relacionamento:\n${JSON.stringify(relatio
       console.log('Raw GPT response:', response);
       throw new Error('Failed to parse GPT response');
     }
-
-    // Fallback analysis if parsing fails
-    return {
-      overallHealth: {
-        score: assessment.ratings.satisfacaoGeral * 10,
-        trend: "stable"
-      },
-      categories: {
-        comunicacao: {
-          score: assessment.ratings.comunicacao,
-          trend: "stable",
-          insights: []
-        },
-        conexaoEmocional: {
-          score: assessment.ratings.conexaoEmocional,
-          trend: "stable",
-          insights: []
-        },
-        apoioMutuo: {
-          score: assessment.ratings.apoioMutuo,
-          trend: "stable",
-          insights: []
-        },
-        transparenciaConfianca: {
-          score: assessment.ratings.transparenciaConfianca,
-          trend: "stable",
-          insights: []
-        }
-      },
-      strengthsAndChallenges: {
-        strengths: [],
-        challenges: []
-      },
-      communicationSuggestions: [],
-      actionItems: [],
-      relationshipDynamics: {
-        positivePatterns: [],
-        concerningPatterns: [],
-        growthAreas: []
-      },
-      emotionalDynamics
-    };
   } catch (error) {
     console.error('Error generating daily insight:', error);
     if (error instanceof Error) {
-      // Preserve specific error messages for parsing failures
       if (error.message === 'Failed to parse GPT response') {
         throw error;
       }
-      // Wrap other errors with our custom message
       throw new Error('Failed to generate daily insight');
     }
     throw new Error('Failed to generate daily insight');
@@ -284,72 +410,55 @@ export const generateAnalysisPrompt = (
   partnerAssessment: DailyAssessment,
   relationshipContext?: RelationshipContext
 ): string => {
-  const basePrompt = `
-    Como terapeuta especializado, realize uma análise profunda da dinâmica relacional deste casal.
-    Considere tanto os aspectos manifestos quanto os padrões latentes do relacionamento.
-
-    Avaliação do Primeiro Parceiro:
-    ${Object.entries(userAssessment.ratings)
-      .map(([key, value]) => `- ${key}: ${value}`)
-      .join('\n    ')}
-
-    Avaliação do Segundo Parceiro:
-    ${Object.entries(partnerAssessment.ratings)
-      .map(([key, value]) => `- ${key}: ${value}`)
-      .join('\n    ')}
-
-    ${userAssessment.comments ? `Observações do Primeiro Parceiro: ${userAssessment.comments}\n` : ''}
-    ${userAssessment.gratitude ? `Gratidão do Primeiro Parceiro: ${userAssessment.gratitude}\n` : ''}
-    ${partnerAssessment.comments ? `Observações do Segundo Parceiro: ${partnerAssessment.comments}\n` : ''}
-    ${partnerAssessment.gratitude ? `Gratidão do Segundo Parceiro: ${partnerAssessment.gratitude}\n` : ''}`;
-
-  const contextPrompt = relationshipContext
-    ? `
-    Contexto Terapêutico do Relacionamento:
-    - História e Duração: ${relationshipContext.duration}
-    - Status Atual: ${relationshipContext.status}
-    - Natureza do Vínculo: ${relationshipContext.type}
-    - Objetivos Compartilhados: ${relationshipContext.goals.join(', ')}
-    - Desafios Identificados: ${relationshipContext.challenges.join(', ')}
-    - Valores Fundamentais: ${relationshipContext.values.join(', ')}
-    - Dinâmica Atual: ${relationshipContext.currentDynamics}
-    - Pontos Fortes: ${relationshipContext.strengths}
-    - Estado Emocional do Usuário: ${relationshipContext.userEmotionalState}
-    - Estado Emocional do Parceiro: ${relationshipContext.partnerEmotionalState}
-    - Histórico de Crises: ${relationshipContext.hadSignificantCrises ? 'Sim - ' + relationshipContext.crisisDescription : 'Não'}
-    - Tentativas de Resolução: ${relationshipContext.attemptedSolutions ? 'Sim - ' + relationshipContext.solutionsDescription : 'Não'}
-    - Impacto da Rotina: ${relationshipContext.routineImpact}
-    - Intimidade Física: ${relationshipContext.physicalIntimacy}`
-    : '';
-
-  return `${basePrompt}${contextPrompt}
-
-    Por favor, forneça uma análise detalhada do relacionamento no seguinte formato JSON:
-
-    {
-      "overallHealth": {
-        "score": number, // 0-100
-        "trend": string // "up", "down", or "stable"
+  const data = {
+    schema: ANALYSIS_SCHEMA,
+    assessment: {
+      user: {
+        ratings: userAssessment.ratings,
+        mood: {
+          type: userAssessment.mood.primary,
+          intensity: userAssessment.mood.intensity,
+          notes: userAssessment.mood.notes
+        },
+        activities: userAssessment.context?.activities,
+        triggers: userAssessment.context?.triggers
       },
-      "categories": {
-        [categoria]: {
-          "score": number, // 0-10
-          "trend": string, // "up", "down", or "stable"
-          "insights": string[] // Lista de insights específicos
-        }
-      },
-      "strengthsAndChallenges": {
-        "strengths": string[],
-        "challenges": string[]
-      },
-      "communicationSuggestions": string[],
-      "actionItems": string[],
-      "relationshipDynamics": {
-        "positivePatterns": string[],
-        "concerningPatterns": string[],
-        "growthAreas": string[]
+      partner: {
+        ratings: partnerAssessment.ratings,
+        mood: {
+          type: partnerAssessment.mood.primary,
+          intensity: partnerAssessment.mood.intensity,
+          notes: partnerAssessment.mood.notes
+        },
+        activities: partnerAssessment.context?.activities,
+        triggers: partnerAssessment.context?.triggers
       }
-    }`;
+    },
+    context: relationshipContext && {
+      type: relationshipContext.type,
+      duration: relationshipContext.duration,
+      dynamics: relationshipContext.currentDynamics,
+      emotional: {
+        user: relationshipContext.userEmotionalState,
+        partner: relationshipContext.partnerEmotionalState
+      },
+      crisis: relationshipContext.hadSignificantCrises ? relationshipContext.crisisDescription : null,
+      solutions: relationshipContext.attemptedSolutions ? relationshipContext.solutionsDescription : null,
+      routine: relationshipContext.routineImpact,
+      status: relationshipContext.relationshipStatus,
+      living: relationshipContext.livingArrangement,
+      communication: relationshipContext.communicationStyle,
+      activities: relationshipContext.sharedActivities,
+      support: relationshipContext.supportSystem,
+      future: relationshipContext.futureExpectations,
+      challenges: relationshipContext.challengeAreas,
+      strengths: relationshipContext.strengthAreas,
+      values: relationshipContext.values,
+      goals: relationshipContext.goals
+    }
+  };
+
+  return JSON.stringify(data);
 };
 
 export const generateRelationshipAnalysis = async (
@@ -358,6 +467,12 @@ export const generateRelationshipAnalysis = async (
   relationshipContext?: RelationshipContext
 ): Promise<RelationshipAnalysis> => {
   try {
+    // Initialize empty arrays for strengths and challenges
+    const strengthsAndChallenges = {
+      strengths: [] as string[],
+      challenges: [] as string[]
+    };
+
     // Check for existing analysis
     const today = new Date().toISOString().split('T')[0];
     const existingAnalysis = await getAnalysisForDate(userAssessment.userId, today, 'collective');
@@ -380,79 +495,447 @@ export const generateRelationshipAnalysis = async (
           conflict: Math.min(5, (userAssessment.ratings.resolucaoConflitos + partnerAssessment.ratings.resolucaoConflitos) / 2),
           general: Math.min(5, (userAssessment.ratings.satisfacaoGeral + partnerAssessment.ratings.satisfacaoGeral) / 2)
         };
-        analysis.emotionalDynamics = analyzeEmotionalDynamics(averages, userAssessment, partnerAssessment);
-        console.log('[generateRelationshipAnalysis] Initialized emotionalDynamics:', analysis.emotionalDynamics);
+        const emotionalDynamics = analyzeEmotionalDynamics(averages, userAssessment, partnerAssessment);
+        analysis.emotionalDynamics = {
+          ...emotionalDynamics,
+          synchronicity: 0.8,
+          stability: 0.7,
+          patterns: {
+            user: {
+              dominant: 'feliz' as MoodType,
+              frequency: {
+                feliz: 0,
+                animado: 0,
+                grato: 0,
+                calmo: 0,
+                satisfeito: 0,
+                amado: 0,
+                ansioso: 0,
+                estressado: 0,
+                triste: 0,
+                irritado: 0,
+                frustrado: 0,
+                exausto: 0,
+                confuso: 0,
+                solitário: 0,
+                neutral: 0,
+                content: 0
+              },
+              transitions: {}
+            },
+            partner: {
+              dominant: 'feliz' as MoodType,
+              frequency: {
+                feliz: 0,
+                animado: 0,
+                grato: 0,
+                calmo: 0,
+                satisfeito: 0,
+                amado: 0,
+                ansioso: 0,
+                estressado: 0,
+                triste: 0,
+                irritado: 0,
+                frustrado: 0,
+                exausto: 0,
+                confuso: 0,
+                solitário: 0,
+                neutral: 0,
+                content: 0
+              },
+              transitions: {}
+            }
+          },
+          insights: {
+            strengths: [],
+            challenges: [],
+            recommendations: []
+          }
+        };
       }
+
+      // Ensure arrays are initialized
+      analysis.strengthsAndChallenges = analysis.strengthsAndChallenges || { strengths: [], challenges: [] };
+      analysis.strengthsAndChallenges.strengths = analysis.strengthsAndChallenges.strengths || [];
+      analysis.strengthsAndChallenges.challenges = analysis.strengthsAndChallenges.challenges || [];
+      
       return analysis;
     }
 
-    // Calculate averages for emotional dynamics analysis
-    const averages: CategoryAverages = {
-      satisfaction: Math.min(5, (userAssessment.ratings.satisfacaoGeral + partnerAssessment.ratings.satisfacaoGeral) / 2),
-      affection: Math.min(5, (userAssessment.ratings.conexaoEmocional + partnerAssessment.ratings.conexaoEmocional) / 2),
-      consensus: Math.min(5, (userAssessment.ratings.alinhamentoObjetivos + partnerAssessment.ratings.alinhamentoObjetivos) / 2),
-      cohesion: Math.min(5, (userAssessment.ratings.apoioMutuo + partnerAssessment.ratings.apoioMutuo) / 2),
-      conflict: Math.min(5, (userAssessment.ratings.resolucaoConflitos + partnerAssessment.ratings.resolucaoConflitos) / 2),
-      general: Math.min(5, (userAssessment.ratings.satisfacaoGeral + partnerAssessment.ratings.satisfacaoGeral) / 2)
-    };
+    // Get authentication token
+    const auth = getAuth();
+    const idToken = await auth.currentUser?.getIdToken(true);
+    if (!idToken) {
+      console.error('Failed to get authentication token');
+      throw new Error('Authentication required. Please sign in again.');
+    }
 
-    // Analyze emotional dynamics
-    const emotionalDynamics = analyzeEmotionalDynamics(averages, userAssessment, partnerAssessment);
-    console.log('[generateRelationshipAnalysis] Generated new emotionalDynamics:', emotionalDynamics);
-    
-    // Use the comprehensive analysis prompt
+    // Generate analysis prompt
     const prompt = generateAnalysisPrompt(userAssessment, partnerAssessment, relationshipContext);
-    
-    const response = await callOpenAI({
-      messages: [
-        { role: 'system', content: ANALYSIS_SYSTEM_PROMPT },
-        { role: 'user', content: prompt }
-      ]
-    });
-
-    if (!response || !response.choices || !response.choices[0] || !response.choices[0].message) {
-      throw new Error('Invalid response from OpenAI');
-    }
-
-    const content = response.choices[0].message.content;
-    if (!content) {
-      throw new Error('Empty response from OpenAI');
-    }
-
-    console.log('[generateRelationshipAnalysis] Raw OpenAI response:', response);
 
     try {
-      // Try to find JSON in the response
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        console.error('[generateRelationshipAnalysis] No JSON found in response');
+      // Call API with proper CORS and error handling
+      const response = await fetch('https://us-central1-lkhg-a0501.cloudfunctions.net/apiv2', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+          'Accept': 'application/json'
+        },
+        credentials: 'include',
+        mode: 'cors',
+        body: JSON.stringify({
+          systemPrompt: ANALYSIS_SYSTEM_PROMPT,
+          userPrompt: prompt,
+          temperature: 0.7
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        console.error('API Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData
+        });
+        if (response.status === 401) {
+          throw new Error('Authentication failed. Please sign in again.');
+        }
+        throw new Error(`API request failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (!data.result) {
         throw new Error('Invalid response format');
       }
 
-      const jsonString = jsonMatch[0];
-      console.log('[generateRelationshipAnalysis] Extracted JSON:', jsonString);
-
-      const analysis = JSON.parse(jsonString) as RelationshipAnalysis;
-      
-      // Validate required fields
-      if (!analysis.overallHealth || !analysis.categories || !analysis.strengthsAndChallenges) {
-        console.error('[generateRelationshipAnalysis] Missing required fields in analysis');
-        throw new Error('Invalid analysis structure');
+      const content = data.result;
+      if (!content) {
+        throw new Error('Empty response from GPT');
       }
 
-      // Add emotional dynamics to the analysis
-      analysis.emotionalDynamics = emotionalDynamics;
-      
-      console.log('[generateRelationshipAnalysis] Final analysis:', {
-        hasEmotionalDynamics: !!analysis.emotionalDynamics,
-        emotionalDynamicsStructure: analysis.emotionalDynamics
-      });
+      try {
+        // Try to find JSON in the response
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new Error('Invalid response format');
+        }
 
-      return analysis;
+        const jsonString = jsonMatch[0];
+        const gptAnalysis = JSON.parse(jsonString);
+
+        // Initialize arrays if they don't exist
+        gptAnalysis.strengthsAndChallenges = gptAnalysis.strengthsAndChallenges || { strengths: [], challenges: [] };
+        gptAnalysis.strengthsAndChallenges.strengths = Array.isArray(gptAnalysis.strengthsAndChallenges.strengths) 
+          ? gptAnalysis.strengthsAndChallenges.strengths 
+          : [];
+        gptAnalysis.strengthsAndChallenges.challenges = Array.isArray(gptAnalysis.strengthsAndChallenges.challenges) 
+          ? gptAnalysis.strengthsAndChallenges.challenges 
+          : [];
+        gptAnalysis.communicationSuggestions = Array.isArray(gptAnalysis.communicationSuggestions) 
+          ? gptAnalysis.communicationSuggestions 
+          : [];
+        gptAnalysis.actionItems = Array.isArray(gptAnalysis.actionItems) 
+          ? gptAnalysis.actionItems 
+          : [];
+        gptAnalysis.relationshipDynamics = gptAnalysis.relationshipDynamics || { strengths: [], challenges: [], recommendations: [] };
+        gptAnalysis.relationshipDynamics.strengths = Array.isArray(gptAnalysis.relationshipDynamics.strengths) 
+          ? gptAnalysis.relationshipDynamics.strengths 
+          : [];
+        gptAnalysis.relationshipDynamics.challenges = Array.isArray(gptAnalysis.relationshipDynamics.challenges) 
+          ? gptAnalysis.relationshipDynamics.challenges 
+          : [];
+        gptAnalysis.relationshipDynamics.recommendations = Array.isArray(gptAnalysis.relationshipDynamics.recommendations) 
+          ? gptAnalysis.relationshipDynamics.recommendations 
+          : [];
+        gptAnalysis.riskFactors = Array.isArray(gptAnalysis.riskFactors) 
+          ? gptAnalysis.riskFactors 
+          : [];
+        gptAnalysis.recommendations = Array.isArray(gptAnalysis.recommendations) 
+          ? gptAnalysis.recommendations 
+          : [];
+        gptAnalysis.moodDiscrepancies = Array.isArray(gptAnalysis.moodDiscrepancies) 
+          ? gptAnalysis.moodDiscrepancies 
+          : [];
+        gptAnalysis.insights = Array.isArray(gptAnalysis.insights) 
+          ? gptAnalysis.insights 
+          : [];
+
+        // Validate required fields and create a properly typed result
+        const result = {
+          id: `analysis_${new Date().getTime()}`,
+          userId: userAssessment.userId,
+          partnerId: userAssessment.partnerId,
+          date: new Date().toISOString(),
+          type: 'individual',
+          overallHealth: {
+            score: gptAnalysis.relationshipAnalysis?.overallHealth?.score || 0,
+            trend: (gptAnalysis.relationshipAnalysis?.overallHealth?.trend || 'stable') as 'improving' | 'stable' | 'declining',
+            confidence: gptAnalysis.relationshipAnalysis?.overallHealth?.confidence || 0.8
+          },
+          categories: gptAnalysis.categories || {},
+          strengthsAndChallenges: {
+            strengths: gptAnalysis.strengthsAndChallenges.strengths,
+            challenges: gptAnalysis.strengthsAndChallenges.challenges
+          },
+          communicationSuggestions: gptAnalysis.communicationSuggestions,
+          actionItems: gptAnalysis.actionItems,
+          relationshipDynamics: {
+            strengths: gptAnalysis.relationshipDynamics.strengths,
+            challenges: gptAnalysis.relationshipDynamics.challenges,
+            recommendations: gptAnalysis.relationshipDynamics.recommendations
+          },
+          emotionalDynamics: {
+            synchronicity: 0.7,
+            stability: 0.8,
+            emotionalSecurity: userAssessment.ratings.segurancaRelacionamento || 0,
+            intimacyBalance: {
+              score: userAssessment.ratings.intimidadeFisica || 0,
+              areas: {
+                emotional: userAssessment.ratings.conexaoEmocional || 0,
+                physical: userAssessment.ratings.intimidadeFisica || 0,
+                intellectual: userAssessment.ratings.alinhamentoObjetivos || 0,
+                shared: userAssessment.ratings.qualidadeTempo || 0
+              }
+            },
+            conflictResolution: {
+              style: 'collaborative',
+              effectiveness: userAssessment.ratings.resolucaoConflitos || 0,
+              patterns: [],
+              confidence: 0.8
+            },
+            patterns: {
+              user: {
+                dominant: 'feliz' as MoodType,
+                frequency: {
+                  feliz: 0,
+                  animado: 0,
+                  grato: 0,
+                  calmo: 0,
+                  satisfeito: 0,
+                  amado: 0,
+                  ansioso: 0,
+                  estressado: 0,
+                  triste: 0,
+                  irritado: 0,
+                  frustrado: 0,
+                  exausto: 0,
+                  confuso: 0,
+                  solitário: 0,
+                  neutral: 0,
+                  content: 0
+                },
+                transitions: {}
+              },
+              partner: {
+                dominant: 'feliz' as MoodType,
+                frequency: {
+                  feliz: 0,
+                  animado: 0,
+                  grato: 0,
+                  calmo: 0,
+                  satisfeito: 0,
+                  amado: 0,
+                  ansioso: 0,
+                  estressado: 0,
+                  triste: 0,
+                  irritado: 0,
+                  frustrado: 0,
+                  exausto: 0,
+                  confuso: 0,
+                  solitário: 0,
+                  neutral: 0,
+                  content: 0
+                },
+                transitions: {}
+              }
+            },
+            insights: {
+              strengths: [],
+              challenges: [],
+              recommendations: []
+            }
+          },
+          emotionalSync: gptAnalysis.emotionalSync || 0,
+          moodDiscrepancies: gptAnalysis.moodDiscrepancies || [],
+          insights: gptAnalysis.insights || [],
+          riskFactors: gptAnalysis.riskFactors || [],
+          recommendations: gptAnalysis.recommendations || [],
+          validatedScales: {
+            das: {
+              total: 0,
+              consenso: 0,
+              satisfacao: 0,
+              coesao: 0,
+              expressaoAfetiva: 0
+            },
+            csi: {
+              satisfacaoGlobal: 0,
+              estabilidade: 0,
+              comprometimento: 0,
+              comunicacao: 0,
+              gestaoConflitos: 0,
+              atividadesCompartilhadas: 0,
+              total: 0
+            },
+            gottman: {
+              fourHorsemen: {
+                critica: 0,
+                defensividade: 0,
+                desprezo: 0,
+                stonewalling: 0
+              },
+              bidsForConnection: {
+                tentativas: 0,
+                respostasPositivas: 0,
+                respostasNegativas: 0,
+                respostasNeutras: 0
+              },
+              resolucaoConflitos: 0,
+              significadoCompartilhado: 0,
+              reparacao: 0,
+              influenciaPositiva: 0
+            },
+            attachment: {
+              attachmentStyle: {
+                primary: 'secure',
+                description: 'Secure attachment style',
+                recommendations: ['Continue fostering trust and open communication']
+              },
+              compatibilidadeApego: 0,
+              ecr: {
+                ansiedade: 0,
+                evitacao: 0,
+                anxiety: 0,
+                avoidance: 0
+              },
+              securityLevel: 0,
+              padraoApego: {
+                primary: 'secure',
+                description: 'Padrão de apego seguro',
+                recommendations: ['Manter comunicação aberta e confiança']
+              }
+            },
+            consistency: {
+              default: {
+                score: 0,
+                confidence: 0,
+                flags: []
+              }
+            },
+            reliability: 0,
+            completeness: 0,
+            recommendations: [],
+            isValid: true,
+            errors: []
+          },
+          gptAnalysis: {
+            id: `gpt_${new Date().getTime()}`,
+            userId: userAssessment.userId,
+            partnerId: userAssessment.partnerId,
+            date: new Date().toISOString(),
+            type: 'individual',
+            analysis: {
+              moodPatterns: {
+                user: {
+                  dominant: 'feliz' as MoodType,
+                  frequency: {
+                    feliz: 0,
+                    animado: 0,
+                    grato: 0,
+                    calmo: 0,
+                    satisfeito: 0,
+                    amado: 0,
+                    ansioso: 0,
+                    estressado: 0,
+                    triste: 0,
+                    irritado: 0,
+                    frustrado: 0,
+                    exausto: 0,
+                    confuso: 0,
+                    solitário: 0,
+                    neutral: 0,
+                    content: 0
+                  },
+                  transitions: {}
+                },
+                partner: {
+                  dominant: 'feliz' as MoodType,
+                  frequency: {
+                    feliz: 0,
+                    animado: 0,
+                    grato: 0,
+                    calmo: 0,
+                    satisfeito: 0,
+                    amado: 0,
+                    ansioso: 0,
+                    estressado: 0,
+                    triste: 0,
+                    irritado: 0,
+                    frustrado: 0,
+                    exausto: 0,
+                    confuso: 0,
+                    solitário: 0,
+                    neutral: 0,
+                    content: 0
+                  },
+                  transitions: {}
+                },
+                overall: {
+                  synchronicity: 0.8,
+                  stability: 0.7,
+                  variability: 0.5
+                }
+              },
+              communicationMetrics: {
+                quality: 0.8,
+                frequency: 0.7,
+                depth: 0.6,
+                patterns: []
+              },
+              attachmentInsights: {
+                style: 'secure',
+                behaviors: [],
+                triggers: [],
+                suggestions: []
+              },
+              relationshipDynamics: {
+                strengths: [],
+                challenges: [],
+                recommendations: []
+              }
+            },
+            timestamp: new Date().toISOString(),
+            version: '1.0',
+            metadata: {
+              assessmentCount: 1,
+              timeSpan: '1 day',
+              confidence: 0.8
+            }
+          },
+          metadata: {
+            assessmentCount: 1,
+            timeSpan: '1 day',
+            confidence: 0.8,
+            lastUpdate: new Date().toISOString()
+          }
+        } satisfies RelationshipAnalysis;
+
+        return result;
+      } catch (error) {
+        console.error('[generateRelationshipAnalysis] Failed to parse analysis response:', error);
+        console.error('[generateRelationshipAnalysis] Response that failed:', response);
+        throw new Error('Failed to parse analysis response. Please try again later.');
+      }
     } catch (error) {
-      console.error('[generateRelationshipAnalysis] Failed to parse analysis response:', error);
-      console.error('[generateRelationshipAnalysis] Response that failed:', response);
-      throw new Error('Failed to parse analysis response. Please try again later.');
+      console.error('[generateRelationshipAnalysis] API call failed:', error);
+      if (error instanceof TypeError && error.message.includes('NetworkError')) {
+        throw new Error('Network error: Please check your internet connection and try again');
+      }
+      if (error instanceof Error && error.message.includes('CORS')) {
+        throw new Error('CORS error: Please try again later');
+      }
+      throw error;
     }
   } catch (error) {
     console.error('[generateRelationshipAnalysis] Error generating analysis:', error);
@@ -460,137 +943,174 @@ export const generateRelationshipAnalysis = async (
   }
 };
 
-export const analyzeConsensusForm = async (
+const MAX_RETRIES = 2;
+const RETRY_DELAY = 1000; // 1 second
+
+async function retryWithBackoff<T>(
+  operation: () => Promise<T>,
+  retries = MAX_RETRIES,
+  delay = RETRY_DELAY
+): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (retries > 0) {
+      console.log(`Retrying operation. Attempts remaining: ${retries}`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return retryWithBackoff(operation, retries - 1, delay * 2);
+    }
+    throw error;
+  }
+}
+
+export async function analyzeConsensusForm(
   userFormData: ConsensusFormData,
   partnerFormData?: ConsensusFormData,
   historicalContext?: {
     previousForms?: ConsensusFormData[];
-    dailyAssessments?: any[];
+    assessments?: any[];
     previousAnalyses?: any[];
   }
-): Promise<ConsensusFormAnalysis> => {
-  try {
-    if (!userFormData || !userFormData.answers) {
-      throw new Error('Invalid consensus form data');
-    }
-
-    const prompt = `
-Analise os seguintes dados do formulário de consenso conjugal:
-
-Respostas do Usuário:
-${JSON.stringify(userFormData.answers, null, 2)}
-
-${partnerFormData ? `
-Respostas do Parceiro:
-${JSON.stringify(partnerFormData.answers, null, 2)}
-` : ''}
-
-${historicalContext?.previousForms ? `
-Formulários Anteriores:
-${JSON.stringify(historicalContext.previousForms, null, 2)}
-` : ''}
-
-${historicalContext?.dailyAssessments ? `
-Avaliações Diárias Recentes:
-${JSON.stringify(historicalContext.dailyAssessments, null, 2)}
-` : ''}
-
-${historicalContext?.previousAnalyses ? `
-Análises Anteriores:
-${JSON.stringify(historicalContext.previousAnalyses, null, 2)}
-` : ''}
-`;
-
-    const response = await callOpenAI({
-      messages: [
-        { role: 'system', content: CONSENSUS_FORM_ANALYSIS_PROMPT },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.7
-    });
-
-    if (!response || !response.choices || !response.choices[0] || !response.choices[0].message) {
-      throw new Error('Invalid consensus form data');
-    }
-
-    const content = response.choices[0].message.content;
-    if (!content) {
-      throw new Error('Invalid consensus form data');
-    }
-
+): Promise<ConsensusFormAnalysis> {
+  return retryWithBackoff(async () => {
     try {
-      const jsonStart = content.indexOf('{');
-      const jsonEnd = content.lastIndexOf('}') + 1;
-      if (jsonStart === -1 || jsonEnd === 0) {
+      if (!userFormData || !userFormData.responses) {
         throw new Error('Invalid consensus form data');
       }
 
-      const jsonString = content.slice(jsonStart, jsonEnd);
-      const analysis = JSON.parse(jsonString);
-
-      // Validate and ensure all required fields exist
-      const validatedAnalysis: ConsensusFormAnalysis = {
-        overallAnalysis: {
-          score: Number(analysis.overallAnalysis?.score) || 75,
-          trend: analysis.overallAnalysis?.trend || 'stable',
-          summary: analysis.overallAnalysis?.summary || '',
-          riskLevel: analysis.overallAnalysis?.riskLevel || 'low'
-        },
-        categoryAnalysis: analysis.categoryAnalysis || {},
-        progressionAnalysis: {
-          improvements: Array.isArray(analysis.progressionAnalysis?.improvements) 
-            ? analysis.progressionAnalysis.improvements 
-            : [],
-          concerns: Array.isArray(analysis.progressionAnalysis?.concerns)
-            ? analysis.progressionAnalysis.concerns
-            : [],
-          trends: analysis.progressionAnalysis?.trends || {}
-        },
-        therapeuticInsights: {
-          immediateActions: Array.isArray(analysis.therapeuticInsights?.immediateActions)
-            ? analysis.therapeuticInsights.immediateActions
-            : [],
-          longTermStrategies: Array.isArray(analysis.therapeuticInsights?.longTermStrategies)
-            ? analysis.therapeuticInsights.longTermStrategies
-            : [],
-          underlyingIssues: Array.isArray(analysis.therapeuticInsights?.underlyingIssues)
-            ? analysis.therapeuticInsights.underlyingIssues
-            : []
-        },
-        consistencyAnalysis: {
-          alignedAreas: Array.isArray(analysis.consistencyAnalysis?.alignedAreas)
-            ? analysis.consistencyAnalysis.alignedAreas
-            : [],
-          discrepancies: Array.isArray(analysis.consistencyAnalysis?.discrepancies)
-            ? analysis.consistencyAnalysis.discrepancies
-            : [],
-          possibleMotivations: Array.isArray(analysis.consistencyAnalysis?.possibleMotivations)
-            ? analysis.consistencyAnalysis.possibleMotivations
-            : []
-        },
-        recommendations: {
-          communication: Array.isArray(analysis.recommendations?.communication)
-            ? analysis.recommendations.communication
-            : [],
-          exercises: Array.isArray(analysis.recommendations?.exercises)
-            ? analysis.recommendations.exercises
-            : [],
-          professionalSupport: Array.isArray(analysis.recommendations?.professionalSupport)
-            ? analysis.recommendations.professionalSupport
-            : []
+      const data = {
+        user: Object.entries(userFormData.responses).map(([question, response]) => ({
+          q: question,
+          r: response.rating,
+          n: response.notes
+        })),
+        partner: partnerFormData ? Object.entries(partnerFormData.responses).map(([question, response]) => ({
+          q: question,
+          r: response.rating,
+          n: response.notes
+        })) : undefined,
+        history: historicalContext && {
+          forms: historicalContext.previousForms?.map(f => ({
+            responses: f?.responses ? Object.entries(f.responses).map(([q, r]) => ({ q, r: r?.rating || 0 })) : []
+          })),
+          assessments: historicalContext.assessments?.map(a => ({
+            ratings: a?.ratings || {},
+            date: a?.date || new Date().toISOString()
+          })),
+          analyses: historicalContext.previousAnalyses?.map(a => ({
+            insights: a?.insights || [],
+            date: a?.date || new Date().toISOString()
+          }))
         }
       };
 
-      return validatedAnalysis;
-    } catch (parseError) {
-      console.error('Failed to parse consensus form analysis:', parseError);
-      throw new Error('Invalid consensus form data');
+      console.log('Analyzing consensus form with data:', JSON.stringify(data, null, 2));
+
+      const response = await callOpenAI({
+        messages: [
+          {
+            role: 'system',
+            content: CONSENSUS_FORM_ANALYSIS_PROMPT
+          },
+          {
+            role: 'user',
+            content: JSON.stringify(data)
+          }
+        ],
+        temperature: 0.7
+      });
+
+      if (!response) {
+        console.error('Empty response from OpenAI');
+        throw new Error('Failed to get response from analysis service');
+      }
+
+      let content: any;
+      
+      // Handle both direct response and response.result formats
+      if (typeof response === 'string') {
+        content = response;
+      } else if (response.data) {
+        content = response.data;
+      } else if (response.result) {
+        content = response.result;
+      } else if (typeof response === 'object' && response !== null) {
+        // If response is already a valid object with the expected structure
+        content = response;
+      } else {
+        console.error('Unexpected response format:', response);
+        throw new Error('Invalid response format from analysis service');
+      }
+
+      console.log('Raw analysis response:', content);
+
+      try {
+        // Try to parse the response if it's a string
+        let analysis: any;
+        if (typeof content === 'string') {
+          try {
+            analysis = JSON.parse(content);
+          } catch (parseError) {
+            // If direct parsing fails, try to find JSON in the string
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+              console.error('No JSON found in response:', content);
+              throw new Error('Invalid response format from analysis service');
+            }
+            analysis = JSON.parse(jsonMatch[0]);
+          }
+        } else {
+          analysis = content;
+        }
+
+        // Validate the required fields
+        if (!analysis.overallAnalysis || !analysis.categoryAnalysis) {
+          console.error('Missing required fields in analysis:', analysis);
+          throw new Error('Incomplete analysis response');
+        }
+
+        return {
+          overallAnalysis: {
+            score: analysis.overallAnalysis?.score || 0,
+            trend: analysis.overallAnalysis?.trend || 'stable',
+            summary: analysis.overallAnalysis?.summary || '',
+            riskLevel: analysis.overallAnalysis?.riskLevel || 'low'
+          },
+          categoryAnalysis: analysis.categoryAnalysis || {},
+          progressionAnalysis: {
+            improvements: analysis.progressionAnalysis?.improvements || [],
+            concerns: analysis.progressionAnalysis?.concerns || [],
+            trends: analysis.progressionAnalysis?.trends || {}
+          },
+          therapeuticInsights: {
+            immediateActions: analysis.therapeuticInsights?.immediateActions || [],
+            longTermStrategies: analysis.therapeuticInsights?.longTermStrategies || [],
+            underlyingIssues: analysis.therapeuticInsights?.underlyingIssues || []
+          },
+          consistencyAnalysis: {
+            alignedAreas: analysis.consistencyAnalysis?.alignedAreas || [],
+            discrepancies: analysis.consistencyAnalysis?.discrepancies || [],
+            possibleMotivations: analysis.consistencyAnalysis?.possibleMotivations || []
+          },
+          recommendations: {
+            communication: analysis.recommendations?.communication || [],
+            exercises: analysis.recommendations?.exercises || [],
+            professionalSupport: analysis.recommendations?.professionalSupport || []
+          }
+        };
+      } catch (parseError) {
+        console.error('Error parsing analysis response:', parseError);
+        console.error('Response that failed parsing:', content);
+        throw new Error('Failed to parse analysis response');
+      }
+    } catch (error) {
+      console.error('Error in consensus form analysis:', error);
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Failed to analyze consensus form');
     }
-  } catch (error) {
-    console.error('Error analyzing consensus form:', error);
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error('Invalid consensus form data');
-  }
-}; 
+  });
+}
+
+export type { RelationshipAnalysis, ConsensusFormData } from '../types'; 

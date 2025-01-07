@@ -13,56 +13,79 @@ import {
   Typography,
   Paper,
   Grid,
+  Chip,
 } from '@mui/material';
 import type { RelationshipContextFormData } from '../types';
 import { RelationshipContextProgress } from './RelationshipContextProgress';
 
 interface Props {
-  initialValues?: Partial<RelationshipContextFormData>;
-  onSubmit: (data: RelationshipContextFormData) => void;
+  initialData?: Partial<RelationshipContextFormData>;
+  onSubmit: (formData: RelationshipContextFormData) => Promise<void>;
+  userId: string;
+  partnerId: string;
 }
 
-export const RelationshipContextForm: React.FC<Props> = ({ initialValues, onSubmit }) => {
-  const initialData: Partial<RelationshipContextFormData> = initialValues || {};
+export const RelationshipContextForm: React.FC<Props> = ({ initialData = {}, onSubmit, userId, partnerId }) => {
   const [formData, setFormData] = useState<RelationshipContextFormData>({
+    status: initialData.status || 'dating',
     duration: initialData.duration || '',
-    status: initialData.status || '',
-    type: initialData.type || '',
-    goals: initialData.goals || [],
-    challenges: initialData.challenges || [],
-    values: initialData.values || [],
-    relationshipDuration: initialData.relationshipDuration || '',
-    relationshipStyle: initialData.relationshipStyle || 'monogamico',
+    cohabitation: initialData.cohabitation || false,
+    children: initialData.children || false,
+    previousMarriage: initialData.previousMarriage || false,
+    previousCounseling: initialData.previousCounseling || false,
+    relationshipStyle: initialData.relationshipStyle || '',
     relationshipStyleOther: initialData.relationshipStyleOther || '',
-    currentDynamics: initialData.currentDynamics || '',
-    strengths: initialData.strengths || '',
+    strengths: Array.isArray(initialData.strengths) ? initialData.strengths : [],
     areasNeedingAttention: initialData.areasNeedingAttention || {
       comunicacao: false,
       confianca: false,
       intimidade: false,
       resolucaoConflitos: false,
       apoioEmocional: false,
-      outros: false,
+      outros: false
     },
-    areasNeedingAttentionOther: initialData.areasNeedingAttentionOther || '',
-    recurringProblems: initialData.recurringProblems || '',
-    appGoals: initialData.appGoals || '',
+    recurringProblems: initialData.recurringProblems || [],
+    appGoals: initialData.appGoals || [],
+    mentalHealth: initialData.mentalHealth || {
+      ansiedade: false,
+      depressao: false,
+      outros: false
+    },
+    qualityTime: initialData.qualityTime || false,
+    physicalIntimacy: initialData.physicalIntimacy || false,
+    intimacyImprovements: initialData.intimacyImprovements || [],
+    values: initialData.values || [],
+    goals: initialData.goals || [],
+    challenges: initialData.challenges || [],
+    type: initialData.type || '',
+    currentDynamics: initialData.currentDynamics || '',
+    userEmotionalState: initialData.userEmotionalState || '',
+    partnerEmotionalState: initialData.partnerEmotionalState || '',
     hadSignificantCrises: initialData.hadSignificantCrises || false,
     crisisDescription: initialData.crisisDescription || '',
     attemptedSolutions: initialData.attemptedSolutions || false,
     solutionsDescription: initialData.solutionsDescription || '',
-    userEmotionalState: initialData.userEmotionalState || '',
-    partnerEmotionalState: initialData.partnerEmotionalState || '',
-    timeSpentTogether: initialData.timeSpentTogether || 'menos1h',
-    qualityTime: initialData.qualityTime || false,
-    qualityTimeDescription: initialData.qualityTimeDescription || '',
     routineImpact: initialData.routineImpact || '',
-    physicalIntimacy: initialData.physicalIntimacy || '',
-    intimacyImprovements: initialData.intimacyImprovements || '',
+    relationshipStatus: initialData.relationshipStatus || '',
+    livingArrangement: initialData.livingArrangement || '',
+    communicationStyle: initialData.communicationStyle || '',
+    sharedActivities: initialData.sharedActivities || [],
+    supportSystem: initialData.supportSystem || [],
+    futureExpectations: initialData.futureExpectations || '',
+    challengeAreas: initialData.challengeAreas || [],
+    strengthAreas: initialData.strengthAreas || [],
+    timeSpentTogether: initialData.timeSpentTogether || '',
+    qualityTimeDescription: initialData.qualityTimeDescription || '',
     additionalInfo: initialData.additionalInfo || '',
+    userId,
+    partnerId,
+    majorLifeEvents: initialData.majorLifeEvents || [],
+    attachmentStyle: initialData.attachmentStyle
   });
 
   const [currentStep, setCurrentStep] = useState(0);
+  const [newEvent, setNewEvent] = useState('');
+  const [newStrength, setNewStrength] = useState('');
 
   const handleChange = (field: keyof RelationshipContextFormData) => (
     event: React.ChangeEvent<HTMLInputElement>
@@ -93,15 +116,78 @@ export const RelationshipContextForm: React.FC<Props> = ({ initialValues, onSubm
 
   const renderStep = () => {
     switch (currentStep) {
-      case 0: // Informações Básicas
+      case 0:
         return (
           <>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <FormLabel>Status do Relacionamento</FormLabel>
+                <RadioGroup
+                  value={formData.status}
+                  onChange={handleChange('status')}
+                  row
+                >
+                  <FormControlLabel value="dating" control={<Radio />} label="Namorando" />
+                  <FormControlLabel value="engaged" control={<Radio />} label="Noivos" />
+                  <FormControlLabel value="married" control={<Radio />} label="Casados" />
+                  <FormControlLabel value="other" control={<Radio />} label="Outro" />
+                </RadioGroup>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <FormLabel>Moram Juntos?</FormLabel>
+                <RadioGroup
+                  value={formData.cohabitation.toString()}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    cohabitation: e.target.value === 'true'
+                  }))}
+                  row
+                >
+                  <FormControlLabel value="true" control={<Radio />} label="Sim" />
+                  <FormControlLabel value="false" control={<Radio />} label="Não" />
+                </RadioGroup>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <FormLabel>Têm Filhos?</FormLabel>
+                <RadioGroup
+                  value={formData.children.toString()}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    children: e.target.value === 'true'
+                  }))}
+                  row
+                >
+                  <FormControlLabel value="true" control={<Radio />} label="Sim" />
+                  <FormControlLabel value="false" control={<Radio />} label="Não" />
+                </RadioGroup>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <FormLabel>Já fizeram terapia de casal?</FormLabel>
+                <RadioGroup
+                  value={formData.previousCounseling.toString()}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    previousCounseling: e.target.value === 'true'
+                  }))}
+                  row
+                >
+                  <FormControlLabel value="true" control={<Radio />} label="Sim" />
+                  <FormControlLabel value="false" control={<Radio />} label="Não" />
+                </RadioGroup>
+              </FormControl>
+            </Grid>
             <Grid item xs={12}>
               <TextField
                 fullWidth
                 label="Duração do Relacionamento"
-                value={formData.relationshipDuration}
-                onChange={handleChange('relationshipDuration')}
+                value={formData.duration}
+                onChange={handleChange('duration')}
               />
             </Grid>
 
@@ -136,9 +222,9 @@ export const RelationshipContextForm: React.FC<Props> = ({ initialValues, onSubm
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Especifique o estilo de relacionamento"
-                  value={formData.relationshipStyleOther}
-                  onChange={handleChange('relationshipStyleOther')}
+                  label="Tipo de Relacionamento"
+                  value={formData.type}
+                  onChange={handleChange('type')}
                 />
               </Grid>
             )}
@@ -161,15 +247,46 @@ export const RelationshipContextForm: React.FC<Props> = ({ initialValues, onSubm
             </Grid>
 
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                rows={4}
-                label="Pontos Fortes"
-                value={formData.strengths}
-                onChange={handleChange('strengths')}
-                helperText="Quais são os pontos fortes do seu relacionamento?"
-              />
+              <FormControl fullWidth>
+                <FormLabel>Pontos Fortes</FormLabel>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                  {Array.isArray(formData.strengths) ? formData.strengths.map((strength, index) => (
+                    <Chip
+                      key={index}
+                      label={strength}
+                      onDelete={() => {
+                        setFormData(prev => ({
+                          ...prev,
+                          strengths: Array.isArray(prev.strengths) ? prev.strengths.filter((_, i) => i !== index) : []
+                        }));
+                      }}
+                    />
+                  )) : null}
+                </Box>
+                <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                  <TextField
+                    size="small"
+                    placeholder="Adicionar ponto forte"
+                    value={newStrength}
+                    onChange={(e) => setNewStrength(e.target.value)}
+                    fullWidth
+                  />
+                  <Button
+                    variant="outlined"
+                    onClick={() => {
+                      if (newStrength.trim()) {
+                        setFormData(prev => ({
+                          ...prev,
+                          strengths: Array.isArray(prev.strengths) ? [...prev.strengths, newStrength.trim()] : [newStrength.trim()]
+                        }));
+                        setNewStrength('');
+                      }
+                    }}
+                  >
+                    Adicionar
+                  </Button>
+                </Box>
+              </FormControl>
             </Grid>
           </>
         );
@@ -244,8 +361,8 @@ export const RelationshipContextForm: React.FC<Props> = ({ initialValues, onSubm
                 <TextField
                   fullWidth
                   label="Outras áreas que precisam de atenção"
-                  value={formData.areasNeedingAttentionOther}
-                  onChange={handleChange('areasNeedingAttentionOther')}
+                  value={formData.additionalInfo}
+                  onChange={handleChange('additionalInfo')}
                 />
               </Grid>
             )}
@@ -375,6 +492,121 @@ export const RelationshipContextForm: React.FC<Props> = ({ initialValues, onSubm
               <Button type="submit" variant="contained" color="primary" fullWidth>
                 Salvar Contexto
               </Button>
+            </Grid>
+          </>
+        );
+
+      case 6: // Eventos Importantes da Vida
+        return (
+          <>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <FormLabel>Eventos Importantes da Vida</FormLabel>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                  {formData.majorLifeEvents?.map((event, index) => (
+                    <Chip
+                      key={index}
+                      label={event}
+                      onDelete={() => {
+                        setFormData(prev => ({
+                          ...prev,
+                          majorLifeEvents: prev.majorLifeEvents?.filter((_, i) => i !== index) || []
+                        }));
+                      }}
+                    />
+                  ))}
+                </Box>
+                <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                  <TextField
+                    size="small"
+                    placeholder="Adicionar evento importante"
+                    value={newEvent}
+                    onChange={(e) => setNewEvent(e.target.value)}
+                    fullWidth
+                  />
+                  <Button
+                    variant="outlined"
+                    onClick={() => {
+                      if (newEvent.trim()) {
+                        setFormData(prev => ({
+                          ...prev,
+                          majorLifeEvents: [...(prev.majorLifeEvents || []), newEvent.trim()]
+                        }));
+                        setNewEvent('');
+                      }
+                    }}
+                  >
+                    Adicionar
+                  </Button>
+                </Box>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <FormLabel>Estilo de Comunicação</FormLabel>
+                <RadioGroup
+                  value={formData.communicationStyle}
+                  onChange={handleChange('communicationStyle')}
+                >
+                  <FormControlLabel value="assertivo" control={<Radio />} label="Assertivo" />
+                  <FormControlLabel value="passivo" control={<Radio />} label="Passivo" />
+                  <FormControlLabel value="agressivo" control={<Radio />} label="Agressivo" />
+                  <FormControlLabel value="passivo-agressivo" control={<Radio />} label="Passivo-Agressivo" />
+                </RadioGroup>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <FormLabel>Estilo de Apego</FormLabel>
+                <RadioGroup
+                  value={formData.attachmentStyle || ''}
+                  onChange={handleChange('attachmentStyle')}
+                >
+                  <FormControlLabel value="seguro" control={<Radio />} label="Seguro" />
+                  <FormControlLabel value="ansioso" control={<Radio />} label="Ansioso" />
+                  <FormControlLabel value="evitativo" control={<Radio />} label="Evitativo" />
+                  <FormControlLabel value="desorganizado" control={<Radio />} label="Desorganizado" />
+                </RadioGroup>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <FormLabel>Atividades Compartilhadas</FormLabel>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                  {formData.sharedActivities.map((activity: string, index: number) => (
+                    <Chip
+                      key={index}
+                      label={activity}
+                      onDelete={() => {
+                        setFormData(prev => ({
+                          ...prev,
+                          sharedActivities: prev.sharedActivities.filter((_: string, i: number) => i !== index)
+                        }));
+                      }}
+                    />
+                  ))}
+                </Box>
+                <Box sx={{ mt: 2 }}>
+                  <TextField
+                    fullWidth
+                    label="Nova Atividade"
+                    value={newEvent}
+                    onChange={(e) => setNewEvent(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (newEvent.trim()) {
+                          setFormData(prev => ({
+                            ...prev,
+                            sharedActivities: [...prev.sharedActivities, newEvent.trim()]
+                          }));
+                          setNewEvent('');
+                        }
+                      }
+                    }}
+                  />
+                </Box>
+              </FormControl>
             </Grid>
           </>
         );

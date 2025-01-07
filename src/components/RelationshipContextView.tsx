@@ -25,6 +25,32 @@ interface Props {
 }
 
 export const RelationshipContextView: React.FC<Props> = ({ data, onEdit }) => {
+  // Ensure strengths is always an array
+  const strengths = Array.isArray(data.strengths) ? data.strengths : [];
+
+  const convertAreasNeedingAttention = (areas: string[] | { [key: string]: boolean }) => {
+    if (Array.isArray(areas)) {
+      return {
+        comunicacao: areas.includes('comunicacao'),
+        confianca: areas.includes('confianca'),
+        intimidade: areas.includes('intimidade'),
+        resolucaoConflitos: areas.includes('resolucaoConflitos'),
+        apoioEmocional: areas.includes('apoioEmocional'),
+        outros: areas.includes('outros')
+      };
+    }
+    return areas;
+  };
+
+  const areasNeedingAttention = data.areasNeedingAttention ? convertAreasNeedingAttention(data.areasNeedingAttention) : {
+    comunicacao: false,
+    confianca: false,
+    intimidade: false,
+    resolucaoConflitos: false,
+    apoioEmocional: false,
+    outros: false
+  };
+
   const getTimeLabel = (time: string) => {
     switch (time) {
       case 'menos1h':
@@ -47,7 +73,7 @@ export const RelationshipContextView: React.FC<Props> = ({ data, onEdit }) => {
       case 'poliamoroso':
         return 'Poliamoroso';
       case 'outro':
-        return data.relationshipStyleOther || 'Outro';
+        return data.type || 'Outro';
       default:
         return style;
     }
@@ -72,7 +98,7 @@ export const RelationshipContextView: React.FC<Props> = ({ data, onEdit }) => {
             <Typography variant="h6">Informações Básicas</Typography>
           </Box>
           <Box sx={{ pl: 4 }}>
-            <Typography><strong>Duração:</strong> {data.relationshipDuration}</Typography>
+            <Typography><strong>Duração:</strong> {data.duration}</Typography>
             <Typography><strong>Estilo:</strong> {getStyleLabel(data.relationshipStyle)}</Typography>
           </Box>
         </Grid>
@@ -85,7 +111,14 @@ export const RelationshipContextView: React.FC<Props> = ({ data, onEdit }) => {
           </Box>
           <Box sx={{ pl: 4 }}>
             <Typography paragraph><strong>Dinâmica Atual:</strong> {data.currentDynamics}</Typography>
-            <Typography paragraph><strong>Pontos Fortes:</strong> {data.strengths}</Typography>
+            <Typography paragraph><strong>Pontos Fortes:</strong></Typography>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+              {strengths.length > 0 ? strengths.map((strength, index) => (
+                <Chip key={index} label={strength} color="primary" variant="outlined" />
+              )) : (
+                <Typography variant="body2" color="text.secondary">Nenhum ponto forte registrado</Typography>
+              )}
+            </Box>
           </Box>
         </Grid>
 
@@ -97,7 +130,7 @@ export const RelationshipContextView: React.FC<Props> = ({ data, onEdit }) => {
           </Box>
           <Box sx={{ pl: 4 }}>
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-              {Object.entries(data.areasNeedingAttention).map(([key, value]) => {
+              {Object.entries(areasNeedingAttention).map(([key, value]) => {
                 if (!value) return null;
                 const label = {
                   comunicacao: 'Comunicação',
@@ -111,7 +144,7 @@ export const RelationshipContextView: React.FC<Props> = ({ data, onEdit }) => {
               })}
             </Box>
             {data.areasNeedingAttention.outros && (
-              <Typography paragraph><strong>Outras áreas:</strong> {data.areasNeedingAttentionOther}</Typography>
+              <Typography paragraph><strong>Outras áreas:</strong> {Array.isArray(data.recurringProblems) ? data.recurringProblems.join(', ') : ''}</Typography>
             )}
           </Box>
         </Grid>
@@ -135,7 +168,7 @@ export const RelationshipContextView: React.FC<Props> = ({ data, onEdit }) => {
             <Typography variant="h6">Tempo e Qualidade</Typography>
           </Box>
           <Box sx={{ pl: 4 }}>
-            <Typography><strong>Tempo Médio Juntos:</strong> {getTimeLabel(data.timeSpentTogether)}</Typography>
+            <Typography><strong>Tempo Médio Juntos:</strong> {getTimeLabel(data.timeSpentTogether || '')}</Typography>
             <Typography><strong>Tempo de Qualidade:</strong> {data.qualityTime ? 'Sim' : 'Não'}</Typography>
             {data.qualityTimeDescription && (
               <Typography paragraph><strong>Detalhes:</strong> {data.qualityTimeDescription}</Typography>
@@ -151,8 +184,8 @@ export const RelationshipContextView: React.FC<Props> = ({ data, onEdit }) => {
             <Typography variant="h6">Objetivos e Melhorias</Typography>
           </Box>
           <Box sx={{ pl: 4 }}>
-            <Typography paragraph><strong>Objetivos com o App:</strong> {data.appGoals}</Typography>
-            <Typography paragraph><strong>Melhorias Desejadas:</strong> {data.intimacyImprovements}</Typography>
+            <Typography paragraph><strong>Objetivos com o App:</strong> {Array.isArray(data.appGoals) ? data.appGoals.join(', ') : ''}</Typography>
+            <Typography paragraph><strong>Melhorias Desejadas:</strong> {Array.isArray(data.intimacyImprovements) ? data.intimacyImprovements.join(', ') : ''}</Typography>
           </Box>
         </Grid>
       </Grid>

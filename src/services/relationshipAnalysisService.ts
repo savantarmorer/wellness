@@ -1,18 +1,44 @@
-import { MoodEntry, MoodType, RelationshipAnalysis } from '../types/index';
+import { MoodEntry, MoodType, RelationshipAnalysis, MoodDiscrepancy, RelationshipContext } from '../types/index';
 import { POSITIVE_MOODS, NEGATIVE_MOODS } from './moodService';
+import { v4 as uuidv4 } from 'uuid';
 
 // Constantes baseadas em estudos psicológicos
 const EMOTIONAL_SYNC_THRESHOLD = 0.6; // Gottman's research sobre estabilidade emocional
 const NEGATIVE_AFFECT_THRESHOLD = 0.7; // Baseado em estudos de John Gottman sobre razão de afeto positivo/negativo
+
+const initializeMoodFrequency = (): Record<MoodType, number> => ({
+  feliz: 0,
+  animado: 0,
+  grato: 0,
+  calmo: 0,
+  satisfeito: 0,
+  amado: 0,
+  ansioso: 0,
+  estressado: 0,
+  triste: 0,
+  irritado: 0,
+  frustrado: 0,
+  exausto: 0,
+  confuso: 0,
+  solitário: 0,
+  neutral: 0,
+  content: 0
+});
 
 export const analyzeRelationshipEmotions = (
   userEntries: MoodEntry[],
   partnerEntries: MoodEntry[]
 ): RelationshipAnalysis => {
   const analysis: RelationshipAnalysis = {
+    id: uuidv4(),
+    userId: userEntries[0]?.userId || '',
+    partnerId: partnerEntries[0]?.userId || '',
+    date: new Date().toISOString(),
+    type: 'individual',
     overallHealth: {
       score: 0,
-      trend: 'stable'
+      trend: 'stable',
+      confidence: 0.8
     },
     categories: {},
     strengthsAndChallenges: {
@@ -22,11 +48,13 @@ export const analyzeRelationshipEmotions = (
     communicationSuggestions: [],
     actionItems: [],
     relationshipDynamics: {
-      positivePatterns: [],
-      concerningPatterns: [],
-      growthAreas: []
+      strengths: [],
+      challenges: [],
+      recommendations: []
     },
     emotionalDynamics: {
+      synchronicity: 0.8,
+      stability: 0.7,
       emotionalSecurity: 0,
       intimacyBalance: {
         score: 0,
@@ -40,21 +68,174 @@ export const analyzeRelationshipEmotions = (
       conflictResolution: {
         style: 'collaborative',
         effectiveness: 0,
-        patterns: []
+        patterns: [],
+        confidence: 0.8
+      },
+      patterns: {
+        user: {
+          dominant: 'feliz' as MoodType,
+          frequency: initializeMoodFrequency(),
+          transitions: {}
+        },
+        partner: {
+          dominant: 'feliz' as MoodType,
+          frequency: initializeMoodFrequency(),
+          transitions: {}
+        }
+      },
+      insights: {
+        strengths: [],
+        challenges: [],
+        recommendations: []
       }
     },
     emotionalSync: 0,
     moodDiscrepancies: [],
     insights: [],
     riskFactors: [],
-    recommendations: []
+    recommendations: [],
+    validatedScales: {
+      das: {
+        consenso: 0,
+        satisfacao: 0,
+        coesao: 0,
+        expressaoAfetiva: 0,
+        total: 0
+      },
+      csi: {
+        satisfacaoGlobal: 0,
+        estabilidade: 0,
+        comprometimento: 0,
+        comunicacao: 0,
+        gestaoConflitos: 0,
+        atividadesCompartilhadas: 0,
+        total: 0
+      },
+      gottman: {
+        fourHorsemen: {
+          critica: 0,
+          defensividade: 0,
+          desprezo: 0,
+          stonewalling: 0
+        },
+        bidsForConnection: {
+          tentativas: 0,
+          respostasPositivas: 0,
+          respostasNegativas: 0,
+          respostasNeutras: 0
+        },
+        resolucaoConflitos: 0,
+        significadoCompartilhado: 0,
+        reparacao: 0,
+        influenciaPositiva: 0
+      },
+      attachment: {
+        ecr: {
+          ansiedade: 0,
+          evitacao: 0,
+          anxiety: 0,
+          avoidance: 0
+        },
+        securityLevel: 0,
+        attachmentStyle: {
+          primary: 'secure',
+          description: 'Secure attachment style',
+          recommendations: ['Continue fostering trust and open communication']
+        },
+        padraoApego: {
+          primary: 'secure',
+          description: 'Padrão de apego seguro',
+          recommendations: ['Manter comunicação aberta e confiança']
+        },
+        compatibilidadeApego: 0
+      },
+      consistency: {
+        default: {
+          score: 0,
+          confidence: 0,
+          flags: []
+        }
+      },
+      reliability: 0,
+      completeness: 0,
+      recommendations: [],
+      isValid: true,
+      errors: []
+    },
+    gptAnalysis: {
+      id: uuidv4(),
+      userId: userEntries[0]?.userId || '',
+      partnerId: partnerEntries[0]?.userId || '',
+      date: new Date().toISOString(),
+      type: 'individual',
+      analysis: {
+        moodPatterns: {
+          user: {
+            dominant: 'feliz',
+            frequency: initializeMoodFrequency(),
+            transitions: {}
+          },
+          partner: {
+            dominant: 'feliz',
+            frequency: initializeMoodFrequency(),
+            transitions: {}
+          },
+          overall: {
+            synchronicity: 0,
+            stability: 0,
+            variability: 0
+          }
+        },
+        communicationMetrics: {
+          quality: 0,
+          frequency: 0,
+          depth: 0,
+          patterns: []
+        },
+        relationshipDynamics: {
+          strengths: [],
+          challenges: [],
+          recommendations: []
+        },
+        attachmentInsights: {
+          style: '',
+          behaviors: [],
+          triggers: [],
+          suggestions: []
+        }
+      },
+      timestamp: new Date().toISOString(),
+      version: '1.0',
+      metadata: {
+        assessmentCount: 0,
+        timeSpan: '',
+        confidence: 0
+      }
+    },
+    metadata: {
+      assessmentCount: 0,
+      timeSpan: '',
+      confidence: 0,
+      lastUpdate: new Date().toISOString()
+    }
   };
 
   // Calcular sincronização emocional
   analysis.emotionalSync = calculateEmotionalSync(userEntries, partnerEntries);
 
   // Analisar discrepâncias de humor
-  analysis.moodDiscrepancies = analyzeMoodDiscrepancies(userEntries, partnerEntries);
+  const discrepancies = analyzeMoodDiscrepancies(userEntries, partnerEntries);
+  analysis.moodDiscrepancies = discrepancies.map(d => ({
+    userMood: d.userMood,
+    partnerMood: d.partnerMood,
+    difference: Math.abs(d.impact === 'alto' ? 3 : d.impact === 'médio' ? 2 : 1),
+    pattern: 'divergent',
+    type: 'divergent',
+    description: 'Mood discrepancy detected',
+    severity: d.impact === 'alto' ? 'high' : d.impact === 'médio' ? 'medium' : 'low',
+    impact: d.impact,
+    timestamp: d.timestamp
+  }));
 
   // Gerar insights baseados em pesquisas psicológicas
   generateRelationshipInsights(analysis, userEntries, partnerEntries);
@@ -62,20 +243,19 @@ export const analyzeRelationshipEmotions = (
   return analysis;
 };
 
-const calculateEmotionalSync = (userEntries: MoodEntry[], partnerEntries: MoodEntry[]): number => {
+export const calculateEmotionalSync = (userEntries: MoodEntry[], partnerEntries: MoodEntry[]): number => {
+  if (!userEntries.length || !partnerEntries.length) return 0;
+
   let syncScore = 0;
   let comparisons = 0;
 
-  // Alinhar entradas por timestamp próximo
-  for (const userEntry of userEntries) {
+  userEntries.forEach(userEntry => {
     const matchingEntry = findClosestEntry(userEntry, partnerEntries);
     if (matchingEntry) {
-      // Calcular similaridade de humor
-      const moodSync = calculateMoodSimilarity(userEntry.mood, matchingEntry.mood);
-      syncScore += moodSync;
+      syncScore += calculateMoodSimilarity(userEntry.mood, matchingEntry.mood);
       comparisons++;
     }
-  }
+  });
 
   return comparisons > 0 ? syncScore / comparisons : 0;
 };
@@ -106,22 +286,15 @@ const calculateMoodSimilarity = (mood1: MoodEntry['mood'], mood2: MoodEntry['moo
   // Similaridade de intensidade
   const intensityDiff = Math.abs(mood1.intensity - mood2.intensity) / 5;
 
-  // Consider secondary moods if they exist
-  let secondaryMoodScore = 0;
-  if (mood1.secondary && mood2.secondary) {
-    const commonSecondaryMoods = mood1.secondary.filter(m => mood2.secondary?.includes(m));
-    secondaryMoodScore = commonSecondaryMoods.length / Math.max(mood1.secondary.length, mood2.secondary.length);
-  }
-
-  return sameCategory ? (1 - intensityDiff + secondaryMoodScore * 0.2) : (0.3 - intensityDiff + secondaryMoodScore * 0.1);
+  return sameCategory ? (1 - intensityDiff) : (0.3 - intensityDiff);
 };
 
 const analyzeMoodDiscrepancies = (
   userEntries: MoodEntry[],
   partnerEntries: MoodEntry[]
 ): Array<{
-  userMood: MoodEntry['mood'];
-  partnerMood: MoodEntry['mood'];
+  userMood: MoodType;
+  partnerMood: MoodType;
   impact: 'alto' | 'médio' | 'baixo';
   timestamp: string;
 }> => {
@@ -136,8 +309,8 @@ const analyzeMoodDiscrepancies = (
         const impact: 'alto' | 'médio' | 'baixo' = discrepancyLevel > 0.7 ? 'alto' : discrepancyLevel > 0.5 ? 'médio' : 'baixo';
         discrepancies.push({
           timestamp: userEntry.timestamp,
-          userMood: userEntry.mood,
-          partnerMood: matchingEntry.mood,
+          userMood: userEntry.mood.primary,
+          partnerMood: matchingEntry.mood.primary,
           impact
         });
       }
@@ -156,9 +329,13 @@ const generateRelationshipInsights = (
   if (analysis.emotionalSync && analysis.emotionalSync < EMOTIONAL_SYNC_THRESHOLD) {
     if (analysis.insights) {
       analysis.insights.push({
+        id: uuidv4(),
         type: 'warning',
+        category: 'emotional_sync',
         description: 'Baixa sincronização emocional detectada',
-        recommendation: 'Considere aumentar momentos de conexão e comunicação emocional'
+        confidence: 0.8,
+        impact: 'high',
+        timestamp: new Date().toISOString()
       });
     }
   }
@@ -225,7 +402,7 @@ const generateRecommendations = (analysis: RelationshipAnalysis) => {
     }
   }
 
-  if (analysis.moodDiscrepancies && analysis.moodDiscrepancies.some(d => d.impact === 'alto')) {
+  if (analysis.moodDiscrepancies && analysis.moodDiscrepancies.some(d => d.severity === 'high')) {
     if (analysis.recommendations) {
       analysis.recommendations.push(
         'Desenvolva rituais de reconexão após momentos de discrepância emocional',
@@ -233,4 +410,49 @@ const generateRecommendations = (analysis: RelationshipAnalysis) => {
       );
     }
   }
+};
+
+export const createDefaultRelationshipContext = (): RelationshipContext => ({
+  type: '',
+  duration: '',
+  status: 'dating',
+  relationshipStyle: '',
+  currentDynamics: '',
+  userEmotionalState: '',
+  partnerEmotionalState: '',
+  hadSignificantCrises: false,
+  crisisDescription: '',
+  attemptedSolutions: false,
+  solutionsDescription: '',
+  routineImpact: '',
+  relationshipStatus: '',
+  livingArrangement: '',
+  communicationStyle: '',
+  sharedActivities: [],
+  supportSystem: [],
+  futureExpectations: '',
+  challengeAreas: [],
+  strengthAreas: [],
+  values: [],
+  goals: [],
+  challenges: [],
+  strengths: [],
+  appGoals: [],
+  timeSpentTogether: '',
+  qualityTime: 'no',
+  qualityTimeDescription: '',
+  physicalIntimacy: 'no',
+  intimacyImprovements: [],
+  additionalInfo: '',
+  areasNeedingAttention: []
+});
+
+export const calculateMoodStability = (entries: MoodEntry[]): number => {
+  if (entries.length < 2) return 1;
+  
+  const moodChanges = entries.slice(1).filter((entry, i) => 
+    entry.mood.primary !== entries[i].mood.primary
+  ).length;
+  
+  return 1 - (moodChanges / (entries.length - 1));
 }; 

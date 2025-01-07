@@ -1,53 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { RelationshipOrchestrator } from '../services/relationshipOrchestratorNew';
+import { MoodType, MoodEntry, MoodTrackingForm } from '../types';
 import {
   Box,
   Typography,
-  Paper,
   Grid,
+  Button,
   Slider,
   TextField,
-  Chip,
   IconButton,
   IconButtonProps,
-  Autocomplete,
-  Button,
-  Tooltip
+  styled
 } from '@mui/material';
-import { styled } from '@mui/material/styles';
-import type { MoodEntry, MoodType } from '../types/index';
-import { saveMoodEntry } from '../services/moodService';
-import { useAuth } from '../contexts/AuthContext';
 
-export const MOOD_EMOJIS: Record<MoodType, string> = {
-  'feliz': '😊',
-  'animado': '🤗',
-  'grato': '🙏',
-  'calmo': '😌',
-  'satisfeito': '😃',
-  'ansioso': '😰',
-  'estressado': '😫',
-  'triste': '😢',
-  'irritado': '😠',
-  'frustrado': '😤',
-  'exausto': '😩',
-  'esperançoso': '🤔',
-  'confuso': '😕',
-  'solitário': '😔',
-  'amado': '🥰'
-};
-
-const COMMON_ACTIVITIES = [
-  'Exercício',
-  'Meditação',
-  'Trabalho',
-  'Estudo',
-  'Socialização',
-  'Hobby',
-  'Descanso',
-  'Família',
-  'Lazer',
-  'Terapia'
-];
+interface MoodTrackerProps {
+  currentUser: { uid: string } | null;
+  onClose?: () => void;
+  onMoodUpdate?: (entry: MoodEntry) => void;
+}
 
 interface StyledEmojiButtonProps extends IconButtonProps {
   isSelected?: boolean;
@@ -67,124 +37,156 @@ const StyledEmojiButton = styled(IconButton, {
   transition: 'transform 0.2s',
 }));
 
-interface MoodTrackerProps {
-  onMoodUpdate?: (mood: MoodEntry) => void;
-}
+export const MOOD_EMOJIS: Record<MoodType, string> = {
+  'feliz': '😊',
+  'animado': '🤗',
+  'grato': '🙏',
+  'calmo': '😌',
+  'satisfeito': '😊',
+  'amado': '🥰',
+  'ansioso': '😰',
+  'estressado': '😫',
+  'triste': '😢',
+  'irritado': '😠',
+  'frustrado': '😤',
+  'exausto': '😩',
+  'confuso': '🤔',
+  'solitário': '😔',
+  'neutral': '😐',
+  'content': '😌'
+};
 
-export const MoodTracker: React.FC<MoodTrackerProps> = ({ onMoodUpdate }) => {
-  const { currentUser } = useAuth();
-  const [selectedMood, setSelectedMood] = useState<MoodType | null>(null);
-  const [moodIntensity, setMoodIntensity] = useState<number>(5);
-  const [activities, setActivities] = useState<string[]>([]);
-  const [notes, setNotes] = useState('');
+export const MoodTracker: React.FC<MoodTrackerProps> = ({ currentUser, onClose, onMoodUpdate }) => {
+  const [selectedMood, setSelectedMood] = useState<MoodType>('neutral');
+  const [moodIntensity, setMoodIntensity] = useState(3);
+  const [moodNotes, setMoodNotes] = useState('');
+  const [moodEntries, setMoodEntries] = useState<MoodEntry[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const orchestrator = new RelationshipOrchestrator();
 
   const handleMoodSelect = (mood: MoodType) => {
     setSelectedMood(mood);
   };
 
+  const handleIntensityChange = (_: Event, value: number | number[]) => {
+    setMoodIntensity(Array.isArray(value) ? value[0] : value);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser || !selectedMood) return;
+    if (!currentUser) return;
 
     try {
       setLoading(true);
-      await saveMoodEntry(
+      const formData: MoodTrackingForm = {
+        userId: currentUser.uid,
+        mood: {
+          primary: selectedMood,
+          intensity: moodIntensity,
+          notes: moodNotes
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      const result = await orchestrator.processFormSubmission(
         currentUser.uid,
-        selectedMood,
-        moodIntensity,
-        activities,
-        notes
+        formData,
+        'mood_tracking'
       );
-      if (onMoodUpdate) {
-        onMoodUpdate({
-          id: Date.now().toString(),
-          userId: currentUser.uid,
-          timestamp: new Date().toISOString(),
-          mood: {
-            primary: selectedMood,
-            intensity: moodIntensity
+
+      if (result.success) {
+        setMoodEntries(prevEntries => [
+          {
+            id: `${currentUser.uid}_${new Date().toISOString()}`,
+            userId: currentUser.uid,
+            timestamp: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            mood: {
+              primary: selectedMood,
+              intensity: moodIntensity,
+              notes: moodNotes
+            }
           },
-          context: activities?.length ? { activities } : undefined,
-          notes,
-          createdAt: new Date().toISOString()
-        });
+          ...prevEntries
+        ]);
+        
+        // Reset form
+        setSelectedMood('neutral');
+        setMoodIntensity(3);
+        setMoodNotes('');
+        onClose?.();
+      } else {
+        console.error('Error submitting mood:', result.error);
       }
-      setSuccess('Humor registrado com sucesso!');
-      // Reset form
-      setSelectedMood(null);
-      setMoodIntensity(5);
-      setActivities([]);
-      setNotes('');
     } catch (error) {
-      console.error('Error saving mood:', error);
-      setError('Erro ao salvar o humor. Por favor, tente novamente.');
+      console.error('Error submitting mood:', error);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Box>
-      <Typography variant="h6" gutterBottom>
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h5" gutterBottom>
         Como você está se sentindo?
       </Typography>
+      <Typography variant="body1" gutterBottom>
+        Selecione seu humor atual:
+      </Typography>
       <Box sx={{ mb: 3 }}>
-        <Grid container spacing={2}>
+        <Grid container spacing={1} justifyContent="center">
           {Object.entries(MOOD_EMOJIS).map(([mood, emoji]) => (
             <Grid item key={mood}>
-              <Button
-                variant={selectedMood === mood ? 'contained' : 'outlined'}
+              <StyledEmojiButton
                 onClick={() => handleMoodSelect(mood as MoodType)}
-                sx={{ minWidth: 'auto', p: 1 }}
+                isSelected={selectedMood === mood}
               >
                 {emoji}
-              </Button>
+              </StyledEmojiButton>
             </Grid>
           ))}
         </Grid>
       </Box>
 
-      {selectedMood && (
-        <>
-          <Typography variant="subtitle1" gutterBottom>
-            Intensidade do humor
-          </Typography>
-          <Box sx={{ px: 2, mb: 3 }}>
-            <Slider
-              value={moodIntensity}
-              min={1}
-              max={5}
-              step={1}
-              marks
-              onChange={(_, value) => setMoodIntensity(value as number)}
-              valueLabelDisplay="auto"
-            />
-          </Box>
-
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            label="Notas (opcional)"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            sx={{ mb: 3 }}
+      <Box sx={{ mb: 3 }}>
+        <Typography id="intensity-slider" gutterBottom>
+          Intensidade:
+        </Typography>
+        <Box sx={{ px: 2 }}>
+          <Slider
+            value={moodIntensity}
+            onChange={handleIntensityChange}
+            min={1}
+            max={5}
+            step={1}
+            marks
+            valueLabelDisplay="auto"
+            aria-labelledby="intensity-slider"
           />
+        </Box>
+      </Box>
 
-          <Button
-            variant="contained"
-            color="primary"
-            fullWidth
-            onClick={handleSubmit}
-            disabled={loading}
-          >
-            {loading ? 'Salvando...' : 'Salvar registro de humor'}
-          </Button>
-        </>
-      )}
+      <Box sx={{ mb: 3 }}>
+        <TextField
+          fullWidth
+          multiline
+          rows={4}
+          label="Notas (opcional)"
+          value={moodNotes}
+          onChange={(e) => setMoodNotes(e.target.value)}
+          sx={{ mb: 3 }}
+        />
+      </Box>
+
+      <Button
+        fullWidth
+        variant="contained"
+        color="primary"
+        onClick={handleSubmit}
+        disabled={loading}
+      >
+        {loading ? 'Salvando...' : 'Salvar Humor'}
+      </Button>
     </Box>
   );
 }; 

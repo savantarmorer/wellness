@@ -1,6 +1,7 @@
 import { collection, addDoc, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from './firebase';
 import type { MoodEntry, MoodAnalysis, MoodType, CategoryRatings } from '../types/index';
+import { v4 as uuidv4 } from 'uuid';
 
 // Constants for mood analysis
 export const POSITIVE_MOODS: MoodType[] = ['feliz', 'animado', 'grato', 'calmo', 'satisfeito', 'amado'];
@@ -28,10 +29,12 @@ export const saveMoodEntry = async (
       },
       ...(activities || triggers || location || socialContext ? {
         context: {
-          ...(activities?.length ? { activities } : {}),
-          ...(triggers?.length ? { triggers } : {}),
-          ...(location ? { location } : {}),
-          ...(socialContext?.length ? { socialContext } : {})
+          activities: activities || [],
+          triggers: triggers || [],
+          location: location || '',
+          socialContext: socialContext || [],
+          intensity: intensity || 0,
+          duration: undefined
         }
       } : {}),
       ...(notes ? { notes } : {}),
@@ -99,24 +102,55 @@ export const analyzeMoodPatterns = async (entries: MoodEntry[], timeframe: 'dail
     }
   });
 
-  // Rest of the analysis logic...
+  // Calculate dominant moods
+  const moodFrequencyMap = new Map<MoodType, { count: number, totalIntensity: number }>();
+  entries.forEach(entry => {
+    const mood = entry.mood.primary;
+    const current = moodFrequencyMap.get(mood) || { count: 0, totalIntensity: 0 };
+    moodFrequencyMap.set(mood, {
+      count: current.count + 1,
+      totalIntensity: current.totalIntensity + entry.mood.intensity
+    });
+  });
+
+  const dominantMoods = Array.from(moodFrequencyMap.entries()).map(([mood, stats]) => ({
+    mood,
+    frequency: stats.count,
+    averageIntensity: stats.totalIntensity / stats.count
+  }));
+
+  // Calculate mood transitions
+  const moodTransitions: string[] = [];
+  for (let i = 1; i < entries.length; i++) {
+    const prevMood = entries[i - 1].mood.primary;
+    const currentMood = entries[i].mood.primary;
+    moodTransitions.push(`${prevMood} → ${currentMood}`);
+  }
+
+  // Calculate time patterns
+  const timePatterns: Record<string, any> = {
+    hourly: {},
+    daily: {},
+    weekly: {}
+  };
+
+  // Return the analysis with the correct structure
   return {
-    timeframe,
     patterns: {
-      dominantMoods: [],
-      moodTransitions: [],
-      timePatterns: {}
-    },
-    correlations: {
-      activities: [],
-      categories: []
+      dominantMoods,
+      moodTransitions,
+      timePatterns,
+      daily: [],
+      weekly: [],
+      monthly: []
     },
     insights: [],
+    trends: {},
     metrics: {
-      emotionalVariability: 0,
+      emotionalVariability: calculateEmotionalVariability(entries),
       positiveNegativeRatio: 0,
-      recoveryResilience: 0,
-      moodStability: 0
+      recoveryResilience: calculateRecoveryResilience(entries),
+      moodStability: calculateMoodStability(entries)
     }
   };
 };
@@ -170,10 +204,13 @@ const generateMoodInsights = (entries: MoodEntry[], analysis: MoodAnalysis): Moo
   // Pattern insights
   if (analysis.metrics.emotionalVariability > 0.7) {
     insights.push({
+      id: uuidv4(),
       type: 'pattern',
-      description: 'Alta variabilidade emocional detectada',
+      description: 'Padrão de humor recorrente detectado',
       confidence: 0.8,
-      recommendation: 'Considere práticas de estabilização emocional como meditação ou mindfulness'
+      impact: 'high',
+      category: 'mood_pattern',
+      timestamp: new Date().toISOString()
     });
   }
 
@@ -197,10 +234,13 @@ const generateMoodInsights = (entries: MoodEntry[], analysis: MoodAnalysis): Moo
     
     if (POSITIVE_MOODS.includes(dominantMood)) {
       insights.push({
-        type: 'improvement',
+        id: uuidv4(),
+        type: 'observation',
         description: `A atividade "${activity}" está frequentemente associada a humor positivo`,
         confidence: 0.7,
-        recommendation: `Considere aumentar a frequência de "${activity}" para melhorar seu bem-estar`
+        impact: 'medium',
+        category: 'activities',
+        timestamp: new Date().toISOString()
       });
     }
   });
@@ -208,10 +248,13 @@ const generateMoodInsights = (entries: MoodEntry[], analysis: MoodAnalysis): Moo
   // Recovery patterns
   if (analysis.metrics.recoveryResilience < 0.3) {
     insights.push({
+      id: uuidv4(),
       type: 'warning',
       description: 'Baixa resiliência emocional detectada',
       confidence: 0.75,
-      recommendation: 'Desenvolva estratégias de recuperação emocional e considere suporte profissional'
+      impact: 'high',
+      category: 'resilience',
+      timestamp: new Date().toISOString()
     });
   }
 

@@ -62,6 +62,12 @@ export const AnalysisHistoryList: React.FC<Props> = ({ analyses }) => {
             label: `Saúde: ${analysisContent.analysis.overallHealth.score}%`
           };
         }
+        if (analysisContent.relationshipAnalysis && analysisContent.relationshipAnalysis.overallHealth && typeof analysisContent.relationshipAnalysis.overallHealth.score === 'number') {
+          return {
+            score: analysisContent.relationshipAnalysis.overallHealth.score,
+            label: `Saúde: ${analysisContent.relationshipAnalysis.overallHealth.score}%`
+          };
+        }
       }
       return { score: 0, label: 'Saúde: N/A' };
     } catch (error) {

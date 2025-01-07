@@ -19,6 +19,7 @@ interface UserData {
   partnerEmail?: string;
   partnerName?: string;
   relationshipStartDate?: string;
+  relationshipContext?: RelationshipContext;
   interests?: string[];
   preferences?: {
     notifications: boolean;
@@ -74,34 +75,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               const data = { id: doc.id, ...doc.data() } as UserData;
               setUserData(data);
 
+              if (data.partnerId !== userData?.partnerId && unsubscribePartner) {
+                unsubscribePartner();
+                unsubscribePartner = undefined;
+                setPartnerData({});
+              }
+
               if (data.partnerId && !unsubscribePartner) {
                 console.log('Setting up partner subscriptions:', data.partnerId);
                 
-                const unsubAssessment = subscribeToPartnerAssessments(
-                  data.partnerId,
-                  (assessment) => setPartnerData(prev => ({ ...prev, assessment }))
-                );
+                try {
+                  const unsubAssessment = subscribeToPartnerAssessments(
+                    data.partnerId,
+                    (assessment) => setPartnerData(prev => ({ ...prev, assessment }))
+                  );
 
-                const unsubContext = subscribeToPartnerContext(
-                  data.partnerId,
-                  (context) => setPartnerData(prev => ({ ...prev, context }))
-                );
+                  const unsubContext = subscribeToPartnerContext(
+                    data.partnerId,
+                    (context) => setPartnerData(prev => ({ ...prev, context }))
+                  );
 
-                const unsubAnalysis = subscribeToPartnerAnalysis(
-                  user.uid,
-                  data.partnerId,
-                  (analysis) => setPartnerData(prev => ({ ...prev, analysis }))
-                );
+                  const unsubAnalysis = subscribeToPartnerAnalysis(
+                    user.uid,
+                    data.partnerId,
+                    (analysis) => setPartnerData(prev => ({ ...prev, analysis }))
+                  );
 
-                unsubscribePartner = () => {
-                  unsubAssessment();
-                  unsubContext();
-                  unsubAnalysis();
-                };
+                  unsubscribePartner = () => {
+                    try {
+                      unsubAssessment();
+                      unsubContext();
+                      unsubAnalysis();
+                    } catch (error) {
+                      console.error('Error cleaning up partner subscriptions:', error);
+                    }
+                  };
+                } catch (error) {
+                  console.error('Error setting up partner subscriptions:', error);
+                  setError('Error setting up partner data');
+                }
               }
             } else {
               setUserData(null);
             }
+          }, (error) => {
+            console.error('Error in user snapshot:', error);
+            setError('Error listening to user data changes');
           });
         } else {
           setUserData(null);

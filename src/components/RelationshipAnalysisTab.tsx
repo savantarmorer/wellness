@@ -21,7 +21,7 @@ import {
   CompareArrows,
   Timeline,
 } from '@mui/icons-material';
-import type { RelationshipAnalysis, RelationshipContext, MoodType } from '../types/index';
+import type { RelationshipAnalysis, RelationshipContext, MoodType, Insight, MoodDiscrepancy } from '../types/index';
 import { MOOD_EMOJIS } from './MoodTracker';
 
 const moodEmojis = MOOD_EMOJIS as Record<MoodType, string>;
@@ -29,27 +29,6 @@ const moodEmojis = MOOD_EMOJIS as Record<MoodType, string>;
 interface RelationshipAnalysisTabProps {
   analysis: RelationshipAnalysis;
   relationshipContext: RelationshipContext;
-}
-
-interface MoodDiscrepancy {
-  userMood: {
-    primary: MoodType;
-    intensity: number;
-    secondary?: MoodType[];
-  };
-  partnerMood: {
-    primary: MoodType;
-    intensity: number;
-    secondary?: MoodType[];
-  };
-  impact: 'alto' | 'médio' | 'baixo';
-  timestamp: string;
-}
-
-interface Insight {
-  type: 'warning' | 'improvement' | 'info';
-  description: string;
-  recommendation: string;
 }
 
 export const RelationshipAnalysisTab: React.FC<RelationshipAnalysisTabProps> = ({
@@ -74,7 +53,7 @@ export const RelationshipAnalysisTab: React.FC<RelationshipAnalysisTabProps> = (
   return (
     <Box sx={{ p: 2 }}>
       <Typography variant="h6" gutterBottom>
-        Análise do Relacionamento com {relationshipContext.partnerName ?? 'Parceiro(a)'}
+        Análise do Relacionamento com Parceiro(a)
       </Typography>
 
       {/* Sincronização Emocional */}
@@ -112,21 +91,21 @@ export const RelationshipAnalysisTab: React.FC<RelationshipAnalysisTabProps> = (
               <ListItem>
                 <ListItemIcon>
                   <Timeline color={
-                    discrepancy.impact === 'alto' ? 'error' :
-                    discrepancy.impact === 'médio' ? 'warning' : 'info'
+                    discrepancy.severity === 'high' ? 'error' :
+                    discrepancy.severity === 'medium' ? 'warning' : 'info'
                   } />
                 </ListItemIcon>
                 <ListItemText
                   primary={
                     <Box>
                       <Typography component="span" mr={1}>
-                        Você: {moodEmojis[discrepancy.userMood.primary] ?? '😐'}
+                        Você: {moodEmojis[discrepancy.userMood] ?? '😐'}
                       </Typography>
                       <Typography component="span" mx={1}>
                         vs
                       </Typography>
                       <Typography component="span" ml={1}>
-                        Parceiro: {moodEmojis[discrepancy.partnerMood.primary] ?? '😐'}
+                        Parceiro: {moodEmojis[discrepancy.partnerMood] ?? '😐'}
                       </Typography>
                     </Box>
                   }
@@ -152,17 +131,31 @@ export const RelationshipAnalysisTab: React.FC<RelationshipAnalysisTabProps> = (
                 <ListItem key={index}>
                   <Alert
                     severity={
-                      insight.type === 'warning' ? 'warning' :
-                      insight.type === 'improvement' ? 'success' : 'info'
+                      insight.type === 'pattern' ? 'success' :
+                      insight.type === 'warning' ? 'error' : 'info'
                     }
                     sx={{ width: '100%' }}
                   >
                     <Typography variant="body2" gutterBottom>
                       {insight.description}
+                      {insight.actionItems && insight.actionItems.length > 0 && (
+                        <Box mt={1}>
+                          <Typography variant="body2" color="text.secondary">
+                            {insight.actionItems[0]}
+                          </Typography>
+                        </Box>
+                      )}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {insight.recommendation}
-                    </Typography>
+                    {insight.type === 'recommendation' && (
+                      <Typography variant="body2" color="text.secondary">
+                        {insight.description}
+                      </Typography>
+                    )}
+                    {insight.type === 'warning' && (
+                      <Typography variant="body2" color="error">
+                        {insight.description}
+                      </Typography>
+                    )}
                   </Alert>
                 </ListItem>
               ))}

@@ -22,7 +22,7 @@ import {
 } from '@mui/material';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, query, orderBy, limit, getDocs, where } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import type { DailyAssessment } from '../types';
 import { DateCalendar, DateEvent } from '../components/DateCalendar';
@@ -33,12 +33,15 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import PsychologyIcon from '@mui/icons-material/Psychology';
+import RateReviewIcon from '@mui/icons-material/RateReview';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { currentUser, userData, partnerData } = useAuth();
   const [recentAssessments, setRecentAssessments] = useState<DailyAssessment[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<DateEvent[]>([]);
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [stats, setStats] = useState({
     weeklyAverage: 0,
     completionRate: 0,
@@ -361,6 +364,70 @@ const Dashboard = () => {
     }
   }, [partnerData?.assessment]);
 
+  // Adicionar listener para atualizações em tempo real
+  useEffect(() => {
+    if (!currentUser?.uid || !userData?.partnerId) return;
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const assessmentsRef = collection(db, 'assessments');
+    
+    // Query para avaliações do usuário hoje
+    const userTodayQuery = query(
+      assessmentsRef,
+      where('userId', '==', currentUser.uid),
+      where('date', '>=', todayStart.toISOString()),
+      orderBy('date', 'desc'),
+      limit(1)
+    );
+
+    // Query para avaliações do parceiro hoje
+    const partnerTodayQuery = query(
+      assessmentsRef,
+      where('userId', '==', userData.partnerId),
+      where('date', '>=', todayStart.toISOString()),
+      orderBy('date', 'desc'),
+      limit(1)
+    );
+
+    // Query para análises coletivas hoje
+    const analysisRef = collection(db, 'analysisHistory');
+    const analysisQuery = query(
+      analysisRef,
+      where('userId', '==', currentUser.uid),
+      where('type', '==', 'collective'),
+      where('date', '>=', todayStart.toISOString()),
+      orderBy('date', 'desc'),
+      limit(1)
+    );
+
+    // Listener para avaliações do usuário
+    const userUnsubscribe = onSnapshot(userTodayQuery, (snapshot) => {
+      const userHasSubmitted = !snapshot.empty;
+      setDailyStatus(prev => ({ ...prev, userHasSubmitted }));
+    });
+
+    // Listener para avaliações do parceiro
+    const partnerUnsubscribe = onSnapshot(partnerTodayQuery, (snapshot) => {
+      const partnerHasSubmitted = !snapshot.empty;
+      setDailyStatus(prev => ({ ...prev, partnerHasSubmitted }));
+    });
+
+    // Listener para análises coletivas
+    const analysisUnsubscribe = onSnapshot(analysisQuery, (snapshot) => {
+      const hasCollectiveAnalysis = !snapshot.empty;
+      setDailyStatus(prev => ({ ...prev, hasCollectiveAnalysis }));
+    });
+
+    // Cleanup function
+    return () => {
+      userUnsubscribe();
+      partnerUnsubscribe();
+      analysisUnsubscribe();
+    };
+  }, [currentUser?.uid, userData?.partnerId]);
+
   const handleAddEvent = async (event: Omit<DateEvent, 'id'>) => {
     try {
       await calendarService.addEvent(event);
@@ -404,6 +471,62 @@ const Dashboard = () => {
       console.error('Error clearing history:', error);
     }
   };
+
+  const handlePreviousDay = () => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(selectedDate.getDate() - 1);
+    setSelectedDate(newDate);
+    fetchDailyStatus(newDate);
+  };
+
+  const handleNextDay = () => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(selectedDate.getDate() + 1);
+    if (newDate <= new Date()) {
+      setSelectedDate(newDate);
+      fetchDailyStatus(newDate);
+    }
+  };
+
+  const fetchDailyStatus = async (date: Date) => {
+    if (!currentUser?.uid || !userData) return;
+
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const assessmentsRef = collection(db, 'assessments');
+    
+    const [userSnapshot, partnerSnapshot] = await Promise.all([
+      getDocs(
+        query(
+          assessmentsRef,
+          where('userId', '==', currentUser.uid),
+          where('date', '>=', startOfDay.toISOString()),
+          where('date', '<=', endOfDay.toISOString())
+        )
+      ),
+      getDocs(
+        query(
+          assessmentsRef,
+          where('userId', '==', userData.partnerId),
+          where('date', '>=', startOfDay.toISOString()),
+          where('date', '<=', endOfDay.toISOString())
+        )
+      )
+    ]);
+
+    setDailyStatus({
+      userHasSubmitted: !userSnapshot.empty,
+      partnerHasSubmitted: !partnerSnapshot.empty,
+      hasCollectiveAnalysis: !userSnapshot.empty && !partnerSnapshot.empty
+    });
+  };
+
+  useEffect(() => {
+    fetchDailyStatus(selectedDate);
+  }, [selectedDate, currentUser, userData]);
 
   if (loading) {
     return (
@@ -474,44 +597,71 @@ const Dashboard = () => {
                   Acompanhe seu progresso e fortaleça seu relacionamento com análises diárias e insights personalizados.
                 </Typography>
               </Box>
-              <Box sx={{ 
-                display: 'flex', 
-                gap: 2,
-                flexDirection: { xs: 'column', sm: 'row' },
-                width: { xs: '100%', sm: 'auto' }
-              }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  size="large"
-                  onClick={() => navigate('/assessment')}
-                  sx={{
-                    minWidth: { xs: '100%', sm: 'auto' },
-                    py: { xs: 1.25, sm: 2 },
-                    px: { xs: 2, sm: 4 },
-                    borderRadius: 2,
-                    fontSize: { xs: '0.875rem', sm: '1rem' },
-                    fontWeight: 600,
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                    background: (theme) => `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                    },
-                    transition: 'all 0.2s ease-in-out',
-                  }}
-                  startIcon={<AssessmentIcon />}
-                >
-                  Fazer avaliação diária
-                </Button>
-              </Box>
             </Box>
 
             <Box sx={{ mt: { xs: 2, sm: 3 }, mb: { xs: 2, sm: 4 } }}>
+              <Grid container spacing={3} sx={{ mb: 4 }}>
+                <Grid item xs={12} sm={6} md={4}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="primary"
+                    startIcon={<RateReviewIcon />}
+                    onClick={() => navigate('/assessment')}
+                    sx={{
+                      py: 2,
+                      backgroundColor: theme.palette.primary.main,
+                      '&:hover': {
+                        backgroundColor: alpha(theme.palette.primary.main, 0.9),
+                      },
+                    }}
+                  >
+                    Avaliação Diária
+                  </Button>
+                </Grid>
+                <Grid item xs={12} sm={6} md={4}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    startIcon={<AssessmentIcon />}
+                    onClick={() => navigate('/analysis')}
+                    sx={{
+                      py: 2,
+                      backgroundColor: theme.palette.secondary.main,
+                      '&:hover': {
+                        backgroundColor: alpha(theme.palette.secondary.main, 0.9),
+                      },
+                    }}
+                  >
+                    Análise do Relacionamento
+                  </Button>
+                </Grid>
+                <Grid item xs={12} sm={6} md={4}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    startIcon={<TrendingUpIcon />}
+                    onClick={() => navigate('/statistics')}
+                    sx={{
+                      py: 2,
+                      backgroundColor: theme.palette.info.main,
+                      '&:hover': {
+                        backgroundColor: alpha(theme.palette.info.main, 0.9),
+                      },
+                    }}
+                  >
+                    Estatísticas
+                  </Button>
+                </Grid>
+              </Grid>
               <DailyAnalysisStatus
                 userSubmitted={dailyStatus.userHasSubmitted}
                 partnerSubmitted={dailyStatus.partnerHasSubmitted}
                 onNavigateToAnalysis={() => navigate('/analysis')}
+                currentDate={selectedDate.toLocaleDateString('pt-BR')}
+                onPreviousDay={handlePreviousDay}
+                onNextDay={handleNextDay}
+                hasNextDay={selectedDate < new Date()}
               />
             </Box>
 
@@ -593,7 +743,7 @@ const Dashboard = () => {
                     <Button
                       variant="outlined"
                       size="small"
-                      onClick={() => navigate('/analysis')}
+                      onClick={() => navigate('/analysis-history')}
                       sx={{
                         borderRadius: 2,
                         textTransform: 'none',

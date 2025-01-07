@@ -38,14 +38,14 @@ export const getRelationshipContext = async (userId: string): Promise<Relationsh
 };
 
 export const saveRelationshipContext = async (
+  context: RelationshipContext,
   userId: string,
-  partnerId: string,
-  data: Omit<RelationshipContext, 'id' | 'userId' | 'partnerId' | 'createdAt' | 'updatedAt'>
+  partnerId: string
 ): Promise<RelationshipContext> => {
   try {
     const currentUser = ensureAuthenticated();
     
-    // Verifica se o usuário tem permissão para salvar este contexto
+    // Verify permissions
     if (currentUser.uid !== userId) {
       throw new Error('Insufficient permissions');
     }
@@ -53,10 +53,10 @@ export const saveRelationshipContext = async (
     const docRef = doc(db, 'relationshipContexts', userId);
     const now = new Date().toISOString();
     
-    const contextData = {
+    const contextData: RelationshipContext = {
+      ...context,
       userId,
       partnerId,
-      ...data,
       createdAt: now,
       updatedAt: now,
     };
@@ -64,8 +64,8 @@ export const saveRelationshipContext = async (
     await setDoc(docRef, contextData);
 
     return {
-      id: docRef.id,
       ...contextData,
+      id: docRef.id,
     };
   } catch (error) {
     console.error('Error saving relationship context:', error);

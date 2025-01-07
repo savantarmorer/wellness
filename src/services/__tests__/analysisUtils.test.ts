@@ -8,31 +8,54 @@ import {
   detectConsistentDiscrepancy,
   detectNewInteractionPattern
 } from '../analysisUtils';
-import { DailyAssessment } from '../../types';
+import { DailyAssessment, MoodType } from '../../types';
 
 describe('analysisUtils', () => {
   const createMockAssessment = (scores: Record<string, number>): DailyAssessment => ({
     id: 'test-id',
     userId: 'test-user',
+    partnerId: 'test-partner',
     date: new Date().toISOString(),
     createdAt: new Date().toISOString(),
+    type: 'individual',
+    mood: {
+      primary: 'neutral' as MoodType,
+      intensity: 0,
+      notes: ''
+    },
     ratings: {
-      comunicacao: scores.comunicacao || 3,
-      resolucaoConflitos: scores.resolucaoConflitos || 3,
-      conexaoEmocional: scores.conexaoEmocional || 3,
-      apoioMutuo: scores.apoioMutuo || 3,
-      transparenciaConfianca: scores.transparenciaConfianca || 3,
-      intimidadeFisica: scores.intimidadeFisica || 3,
-      saudeMental: scores.saudeMental || 3,
-      segurancaRelacionamento: scores.segurancaRelacionamento || 3,
-      alinhamentoObjetivos: scores.alinhamentoObjetivos || 3,
-      satisfacaoGeral: scores.satisfacaoGeral || 3,
-      autocuidado: scores.autocuidado || 3,
-      gratidao: scores.gratidao || 3,
-      qualidadeTempo: scores.qualidadeTempo || 3
+      comunicacao: scores.comunicacao || 0,
+      resolucaoConflitos: scores.resolucaoConflitos || 0,
+      conexaoEmocional: scores.conexaoEmocional || 0,
+      apoioMutuo: scores.apoioMutuo || 0,
+      transparenciaConfianca: scores.transparenciaConfianca || 0,
+      intimidadeFisica: scores.intimidadeFisica || 0,
+      saudeMental: scores.saudeMental || 0,
+      segurancaRelacionamento: scores.segurancaRelacionamento || 0,
+      satisfacaoGeral: scores.satisfacaoGeral || 0,
+      alinhamentoObjetivos: scores.alinhamentoObjetivos || 0,
+      qualidadeTempo: scores.qualidadeTempo || 0,
+      intimidade: scores.intimidade || 0,
+      autocuidado: scores.autocuidado || 0,
+      gratidao: scores.gratidao || 0
     },
     comments: '',
-    gratitude: ''
+    gratitude: '',
+    validatedScales: {
+      das: {
+        total: 0,
+        consenso: 0,
+        satisfacao: 0,
+        coesao: 0,
+        expressaoAfetiva: 0
+      }
+    },
+    metadata: {
+      assessmentCount: 1,
+      timeSpan: '1 day',
+      confidence: 0.8,
+      lastUpdate: new Date().toISOString()
+    }
   });
 
   describe('calculateAverageScores', () => {

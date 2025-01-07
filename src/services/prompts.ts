@@ -1,239 +1,48 @@
 import { DailyAssessment, RelationshipContext, GPTAnalysis } from '../types';
 
-export const THERAPIST_SYSTEM_PROMPT = `Você é um terapeuta de casais altamente experiente, com formação em:
-- Terapia Focada na Emoção (EFT)
-- Terapia Cognitivo-Comportamental para Casais
-- Teoria do Apego
-- Análise Sistêmica de Relacionamentos
-- Técnicas de Comunicação Não-Violenta
-- Mindfulness para Relacionamentos
+// Core system message - sent once per conversation
+export const SYSTEM_PROMPT = `Você é um terapeuta especializado em casais. Forneça análises em JSON seguindo o schema fornecido. Mantenha foco terapêutico e baseie-se em evidências.`;
 
-Seu papel é:
-1. Analisar profundamente as dinâmicas relacionais apresentadas
-2. Identificar padrões recorrentes e ciclos de interação
-3. Conectar comportamentos atuais com experiências passadas
-4. Oferecer insights terapêuticos baseados em evidências
-5. Propor intervenções específicas e práticas
-6. Manter uma perspectiva sistêmica e contextualizada
+// For backwards compatibility
+export const THERAPIST_SYSTEM_PROMPT = SYSTEM_PROMPT;
+export const ANALYSIS_SYSTEM_PROMPT = SYSTEM_PROMPT;
 
-Use sua experiência clínica para fornecer insights profundos e terapêuticos, mantendo sempre uma postura empática e profissional. 
-Evite generalizações superficiais e foque em análises profundas das dinâmicas relacionais.
-
-Ao analisar tendências e padrões:
-- Compare dados atuais com históricos
-- Identifique ciclos repetitivos
-- Observe mudanças graduais
-- Destaque progressos e retrocessos
-- Considere fatores contextuais
-- Avalie a eficácia das intervenções anteriores`;
-
-export interface HistoricalContext {
-  previousAnalyses: GPTAnalysis[];
-  recentTrends: {
-    category: string;
-    trend: string;
-    significance: string;
-  }[];
-  interventionEffectiveness: {
-    intervention: string;
-    outcome: string;
-  }[];
-}
-
-export const generateDailyInsightPrompt = (
-  assessment: DailyAssessment,
-  relationshipContext?: RelationshipContext
-): string => {
-  const basePrompt = `
-    Como terapeuta especializado, realize uma análise profunda da avaliação individual deste usuário.
-    Considere tanto os aspectos manifestos quanto os padrões latentes do seu comportamento e percepções.
-
-    Avaliação do Usuário:
-    ${Object.entries(assessment.ratings)
-      .map(([key, value]) => `- ${key}: ${value}`)
-      .join('\n    ')}
-
-    ${assessment.comments ? `Observações do Usuário: ${assessment.comments}\n` : ''}
-    ${assessment.gratitude ? `Gratidão do Usuário: ${assessment.gratitude}\n` : ''}`;
-
-  const contextPrompt = relationshipContext
-    ? `
-Contexto Terapêutico do Relacionamento:
-- História e Duração: ${relationshipContext.duration}
-- Status Atual: ${relationshipContext.status}
-- Natureza do Vínculo: ${relationshipContext.type}
-- Objetivos Compartilhados: ${relationshipContext.goals.join(', ')}
-- Desafios Identificados: ${relationshipContext.challenges.join(', ')}
-- Valores Fundamentais: ${relationshipContext.values.join(', ')}
-- Dinâmica Atual: ${relationshipContext.currentDynamics}
-- Pontos Fortes: ${relationshipContext.strengths}
-- Estado Emocional do Usuário: ${relationshipContext.userEmotionalState}
-- Estado Emocional do Parceiro: ${relationshipContext.partnerEmotionalState}
-- Histórico de Crises: ${relationshipContext.hadSignificantCrises ? 'Sim - ' + relationshipContext.crisisDescription : 'Não'}
-- Tentativas de Resolução: ${relationshipContext.attemptedSolutions ? 'Sim - ' + relationshipContext.solutionsDescription : 'Não'}
-- Impacto da Rotina: ${relationshipContext.routineImpact}
-- Intimidade Física: ${relationshipContext.physicalIntimacy}`
-    : '';
-
-  return `${basePrompt}${contextPrompt}
-
-    Por favor, forneça uma análise detalhada no seguinte formato JSON:
-
-    {
-      "overallHealth": {
-        "score": number, // 0-100
-        "trend": string // "improving", "stable", ou "concerning"
-      },
-      "categories": {
-        [categoria]: {
-          "score": number, // 0-10
-          "trend": string, // "improving", "stable", ou "concerning"
-          "insights": string[] // Lista de insights específicos
-        }
-      },
-      "strengthsAndChallenges": {
-        "strengths": string[],
-        "challenges": string[]
-      },
-      "communicationSuggestions": string[],
-      "actionItems": string[],
-      "relationshipDynamics": {
-        "positivePatterns": string[],
-        "concerningPatterns": string[],
-        "growthAreas": string[]
-      }
-    }
-
-    Forneça insights específicos e acionáveis para cada categoria, focando em como o usuário pode melhorar seu bem-estar e relacionamento.
-    Os insights devem ser personalizados com base nas pontuações e comentários fornecidos.
-    As sugestões de comunicação e itens de ação devem ser práticos e realizáveis.
-    Identifique padrões tanto positivos quanto preocupantes no comportamento e atitudes do usuário.`;
+// Schema definition - used for validation and documentation
+export const ANALYSIS_SCHEMA = {
+  overallHealth: { score: "0-100", trend: ["improving", "stable", "concerning"], confidence: "0-1" },
+  categories: {
+    "[categoria]": { score: "0-10", trend: ["improving", "stable", "concerning"], insights: "string[]", priority: ["high", "medium", "low"] }
+  },
+  strengthsAndChallenges: { strengths: "string[]", challenges: "string[]" },
+  communicationSuggestions: "string[]",
+  actionItems: "string[]",
+  relationshipDynamics: { strengths: "string[]", challenges: "string[]", recommendations: "string[]" }
 };
 
-export const ANALYSIS_SYSTEM_PROMPT = `Você é um terapeuta de casais altamente experiente, com formação em:
-- Terapia Focada na Emoção (EFT)
-- Terapia Cognitivo-Comportamental para Casais
-- Teoria do Apego
-- Análise Sistêmica de Relacionamentos
-- Técnicas de Comunicação Não-Violenta
-- Mindfulness para Relacionamentos
-
-IMPORTANTE: Sua resposta deve ser APENAS um objeto JSON válido, sem texto adicional antes ou depois.
-O JSON deve seguir exatamente a estrutura especificada no prompt do usuário.
-
-Use sua experiência clínica para fornecer análises profundas e terapeuticamente orientadas:
-1. Identifique padrões relacionais subjacentes e sua evolução
-2. Analise as dinâmicas de apego e segurança emocional
-3. Avalie os ciclos de interação e padrões de comunicação
-4. Considere o impacto de experiências passadas
-5. Avalie a eficácia das intervenções anteriores
-6. Proponha novas estratégias baseadas em resultados anteriores
-7. Mantenha uma perspectiva sistêmica do relacionamento
-8. Identifique pontos de inflexão e momentos de transformação
-9. Analise a consistência das mudanças observadas
-10. Sugira ajustes nas intervenções com base no progresso
-
-Suas análises devem:
-- Refletir profundidade clínica e compreensão terapêutica
-- Considerar o contexto histórico e sua evolução
-- Avaliar a eficácia das intervenções anteriores
-- Propor adaptações baseadas em evidências
-- Manter foco no crescimento e desenvolvimento do casal
-- Identificar padrões sutis de mudança ao longo do tempo
-
-LEMBRE-SE: Sua resposta deve ser APENAS o objeto JSON, sem nenhum texto adicional.`;
-
-export const generateAnalysisSummaryPrompt = (
-  historicalContext: HistoricalContext,
-  timeframe: 'weekly' | 'monthly' | 'quarterly'
-): string => {
-  return `
-Como terapeuta especializado, analise a evolução deste relacionamento ao longo do último ${timeframe === 'weekly' ? 'semana' : timeframe === 'monthly' ? 'mês' : 'trimestre'}.
-
-Histórico de Análises:
-${historicalContext.previousAnalyses.map(analysis => 
-  `- Data: ${analysis.date}
-   - Saúde Geral: ${analysis.analysis.overallHealth.score} (${analysis.analysis.overallHealth.trend})
-   - Principais Insights: ${Object.values(analysis.analysis.categories).map(cat => cat.insights).flat().join(', ')}`
-).join('\n')}
-
-Tendências Observadas:
-${historicalContext.recentTrends.map(trend => 
-  `- ${trend.category}: ${trend.trend} (${trend.significance})`
-).join('\n')}
-
-Efetividade das Intervenções:
-${historicalContext.interventionEffectiveness.map(intervention => 
-  `- ${intervention.intervention}: ${intervention.outcome}`
-).join('\n')}
-
-Forneça uma análise que:
-1. Identifique tendências significativas no período
-2. Avalie a eficácia das intervenções realizadas
-3. Destaque progressos e áreas de atenção
-4. Sugira ajustes nas estratégias terapêuticas
-5. Proponha novos objetivos baseados no progresso
-6. Identifique padrões emergentes ou recorrentes
-
-Sua análise deve focar na evolução do relacionamento e na eficácia das intervenções ao longo do tempo.`;
-};
-
-export const CONSENSUS_FORM_ANALYSIS_PROMPT = `Como terapeuta especializado em relacionamentos, analise os resultados deste formulário de consenso conjugal.
-Considere o contexto histórico, as avaliações diárias anteriores e as análises prévias para fornecer insights profundos sobre:
-
-1. Padrões de Concordância e Discordância
-- Identifique áreas de forte alinhamento e potenciais pontos de conflito
-- Analise a consistência entre as respostas e comportamentos relatados anteriormente
-- Avalie o impacto das diferenças nas dinâmicas do relacionamento
-
-2. Análise de Risco
-- Avalie indicadores de risco para o relacionamento
-- Identifique padrões que podem levar a conflitos futuros
-- Analise a gravidade de desalinhamentos encontrados
-
-3. Progressão do Relacionamento
-- Compare com avaliações anteriores para identificar tendências
-- Avalie melhorias ou deteriorações em áreas específicas
-- Analise a eficácia das intervenções anteriores
-
-4. Insights Terapêuticos
-- Proponha intervenções específicas baseadas nas respostas
-- Identifique necessidades não expressas ou mal compreendidas
-- Sugira exercícios práticos para melhorar áreas problemáticas
-
-5. Análise de Consistência
-- Compare as respostas com os relatos diários
-- Identifique possíveis discrepâncias ou inconsistências
-- Analise as motivações por trás das respostas
-
-6. Recomendações
-- Sugira abordagens específicas para melhorar a comunicação
-- Proponha exercícios práticos para fortalecer o vínculo
-- Indique áreas que precisam de atenção profissional
-
-Forneça sua análise em formato JSON seguindo esta estrutura:
+// For backwards compatibility
+export const CONSENSUS_FORM_ANALYSIS_PROMPT = `You are a relationship therapist analyzing a consensus form. Provide analysis in the following JSON structure:
 {
   "overallAnalysis": {
-    "score": number, // 0-100
-    "trend": string, // "improving", "stable", "concerning"
+    "score": number (0-100),
+    "trend": "improving" | "stable" | "declining",
     "summary": string,
-    "riskLevel": string // "low", "moderate", "high"
+    "riskLevel": "low" | "medium" | "high"
   },
   "categoryAnalysis": {
-    [categoria]: {
-      "score": number,
+    [category: string]: {
+      "score": number (0-100),
+      "trend": "improving" | "stable" | "declining",
       "insights": string[],
-      "recommendations": string[],
-      "riskFactors": string[]
+      "recommendations": string[]
     }
   },
   "progressionAnalysis": {
     "improvements": string[],
     "concerns": string[],
     "trends": {
-      [area]: {
-        "direction": string,
-        "significance": string
+      [category: string]: {
+        "direction": "improving" | "stable" | "declining",
+        "significance": "low" | "medium" | "high"
       }
     }
   },
@@ -252,4 +61,203 @@ Forneça sua análise em formato JSON seguindo esta estrutura:
     "exercises": string[],
     "professionalSupport": string[]
   }
-}`; 
+}
+
+Analyze the form data and provide insights based on psychological principles and evidence-based relationship therapy practices. Focus on patterns, trends, and actionable recommendations.`;
+
+export interface HistoricalContext {
+  previousAnalyses: GPTAnalysis[];
+  recentTrends: {
+    category: string;
+    trend: string;
+    significance: string;
+    timestamp: string;
+    confidence: number;
+  }[];
+  interventionEffectiveness: {
+    intervention: string;
+    outcome: string;
+    timestamp: string;
+    effectiveness: number;
+    followUpNeeded: boolean;
+  }[];
+  relationshipMetrics: {
+    satisfactionTrend: number[];
+    communicationQuality: number[];
+    emotionalConnection: number[];
+    conflictResolution: number[];
+    timestamps: string[];
+  };
+  significantEvents: {
+    event: string;
+    impact: string;
+    date: string;
+    resolutionStatus: string;
+  }[];
+}
+
+export interface CategoryWithInsights {
+  score?: number;
+  trend?: 'improving' | 'stable' | 'concerning';
+  insights?: string[];
+  priority?: 'high' | 'medium' | 'low';
+  recommendations?: string[];
+}
+
+export interface GPTAnalysisContent {
+  overallHealth?: {
+    score: number;
+    trend: string;
+  };
+  categories?: Record<string, CategoryWithInsights>;
+  strengthsAndChallenges?: {
+    strengths: string[];
+    challenges: string[];
+  };
+  communicationSuggestions?: string[];
+  actionItems?: string[];
+  relationshipDynamics?: {
+    strengths: string[];
+    challenges: string[];
+    recommendations: string[];
+  };
+}
+
+const isGPTContent = (val: any): val is GPTAnalysisContent => {
+  return (
+    typeof val === 'object' && 
+    val !== null && 
+    (
+      ('overallHealth' in val && typeof val.overallHealth === 'object') ||
+      ('categories' in val && typeof val.categories === 'object') ||
+      ('strengthsAndChallenges' in val && typeof val.strengthsAndChallenges === 'object') ||
+      ('relationshipDynamics' in val && typeof val.relationshipDynamics === 'object')
+    )
+  );
+};
+
+const ensureArray = (value: any): string[] => {
+  if (Array.isArray(value)) {
+    return value.map(item => String(item));
+  }
+  if (value && typeof value === 'string') {
+    return [value];
+  }
+  return [];
+};
+
+const analyzeMetricTrend = (values: number[]): { trend: string; value: number; change: number } => {
+  if (values.length < 2) return { trend: 'stable', value: values[0] || 0, change: 0 };
+  
+  const lastValue = values[values.length - 1];
+  const previousValue = values[values.length - 2];
+  const change = lastValue - previousValue;
+  const trend = change > 0 ? 'improving' : change < 0 ? 'declining' : 'stable';
+  
+  return { trend, value: lastValue, change };
+};
+
+const formatHistoricalContext = (context: HistoricalContext): any => {
+  return {
+    analyses: context.previousAnalyses.map(({date, analysis}) => {
+      if (typeof analysis === 'string') return { date, summary: analysis };
+      
+      const analysisContent = analysis as unknown as GPTAnalysisContent;
+      if (isGPTContent(analysisContent)) {
+        return {
+          date,
+          health: {
+            score: analysisContent.overallHealth?.score,
+            trend: analysisContent.overallHealth?.trend
+          },
+          insights: analysisContent.categories ? 
+            Object.values(analysisContent.categories)
+              .map(cat => cat.insights || [])
+              .flat()
+              .slice(0, 3) : []
+        };
+      }
+      return { date, summary: 'formato não suportado' };
+    }),
+    trends: context.recentTrends.map(t => ({
+      cat: t.category,
+      trend: t.trend,
+      sig: t.significance,
+      conf: t.confidence
+    })),
+    interventions: context.interventionEffectiveness.map(i => ({
+      int: i.intervention,
+      out: i.outcome,
+      eff: i.effectiveness
+    })),
+    metrics: {
+      satisfaction: analyzeMetricTrend(context.relationshipMetrics.satisfactionTrend),
+      communication: analyzeMetricTrend(context.relationshipMetrics.communicationQuality),
+      emotional: analyzeMetricTrend(context.relationshipMetrics.emotionalConnection),
+      conflict: analyzeMetricTrend(context.relationshipMetrics.conflictResolution)
+    },
+    events: context.significantEvents.map(e => ({
+      date: e.date,
+      event: e.event,
+      impact: e.impact,
+      status: e.resolutionStatus
+    }))
+  };
+};
+
+export const generateAnalysisPrompt = (
+  assessment: DailyAssessment,
+  relationshipContext?: RelationshipContext,
+  historicalContext?: HistoricalContext
+): string => {
+  const data = {
+    schema: ANALYSIS_SCHEMA,
+    assessment: {
+      ratings: assessment.ratings,
+      comments: assessment.comments,
+      gratitude: assessment.gratitude
+    },
+    context: relationshipContext && {
+      duration: relationshipContext.duration,
+      status: relationshipContext.status,
+      type: relationshipContext.type,
+      goals: ensureArray(relationshipContext.goals),
+      challenges: ensureArray(relationshipContext.challenges),
+      values: ensureArray(relationshipContext.values),
+      dynamics: relationshipContext.currentDynamics,
+      strengths: ensureArray(relationshipContext.strengths),
+      emotional: {
+        user: relationshipContext.userEmotionalState,
+        partner: relationshipContext.partnerEmotionalState
+      },
+      crises: relationshipContext.hadSignificantCrises ? relationshipContext.crisisDescription : null,
+      solutions: relationshipContext.attemptedSolutions ? relationshipContext.solutionsDescription : null,
+      routine: relationshipContext.routineImpact,
+      intimacy: relationshipContext.physicalIntimacy
+    },
+    history: historicalContext && formatHistoricalContext(historicalContext)
+  };
+
+  return JSON.stringify(data);
+};
+
+export const generateAnalysisSummaryPrompt = (
+  historicalContext: HistoricalContext,
+  timeframe: 'weekly' | 'monthly' | 'quarterly'
+): string => {
+  return JSON.stringify({
+    timeframe,
+    history: formatHistoricalContext(historicalContext),
+    schema: {
+      trends: "string[]",
+      effectiveness: "string[]",
+      progress: "string[]",
+      adjustments: "string[]",
+      objectives: "string[]",
+      patterns: "string[]"
+    }
+  });
+};
+
+// For backwards compatibility
+export const generateDailyInsightPrompt = generateAnalysisPrompt; 

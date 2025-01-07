@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import {
   Box,
   Paper,
@@ -41,7 +41,8 @@ import { saveAnalysis } from '../services/analysisHistoryService';
 import { useAuth } from '../contexts/AuthContext';
 import { analyzeConsensusForm } from '../services/gptService';
 import { getAnalysisHistory } from '../services/analysisHistoryService';
-import { ConsensusFormData } from '../services/gptService';
+import { ConsensusFormData } from '../types';
+import { getAuth } from 'firebase/auth';
 
 interface FormSection {
   title: string;
@@ -189,27 +190,262 @@ const FORM_SECTIONS: FormSection[] = [
   },
 ];
 
+const FORM_CACHE_KEY = 'consensus_form_draft';
+
+interface ValidationResult {
+  isValid: boolean;
+  issues: string[];
+}
+
+const validateAnswers = (answers: Record<string, { rating: number; notes?: string }>): ValidationResult => {
+  const issues: string[] = [];
+  
+  // Check for extreme answers that might need attention
+  const extremeAnswers = Object.entries(answers).filter(
+    ([_, value]) => value.rating === 1 || value.rating === 5
+  );
+  
+  if (extremeAnswers.length > 5) {
+    issues.push('Você tem muitas respostas extremas. Considere revisar suas respostas.');
+  }
+
+  // Check for consistency in satisfaction-related questions
+  const satisfactionAnswers = ['satisfaction', 'regret', 'arguments'].map(
+    id => answers[id]?.rating
+  );
+  
+  if (satisfactionAnswers.every(rating => rating === satisfactionAnswers[0])) {
+    issues.push('Suas respostas parecem muito uniformes. Por favor, considere cada questão individualmente.');
+  }
+
+  // Check for rapid responses
+  const hasAllAnswers = FORM_SECTIONS.every(section =>
+    section.questions.every(q => answers[q.id]?.rating !== undefined)
+  );
+
+  return {
+    isValid: issues.length === 0,
+    issues
+  };
+};
+
+const customIcons: Record<number, React.ReactElement> = {
+  1: <SentimentVeryDissatisfied color="error" />,
+  2: <SentimentDissatisfied color="warning" />,
+  3: <SentimentNeutral color="action" />,
+  4: <SentimentSatisfied color="info" />,
+  5: <SentimentVerySatisfied color="success" />,
+};
+
+const MemoizedQuestion = memo(({ 
+  question, 
+  value, 
+  onChange 
+}: { 
+  question: FormSection['questions'][0];
+  value?: number;
+  onChange: (value: number) => void;
+}) => {
+  const renderFrequencyOptions = useCallback((questionId: string, options: string[]) => (
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
+      {options.map((option, index) => (
+        <Chip
+          key={option}
+          label={option}
+          onClick={() => onChange(index + 1)}
+          color={value === index + 1 ? 'primary' : 'default'}
+          sx={{
+            fontSize: '0.9rem',
+            py: 2.5,
+            transition: 'all 0.2s',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              boxShadow: 1,
+            },
+          }}
+        />
+      ))}
+    </Box>
+  ), [value, onChange]);
+
+  const renderYesNo = useCallback((questionId: string) => (
+    <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+      {['1', '0'].map((option) => (
+        <Button
+          key={option}
+          variant={value === Number(option) ? 'contained' : 'outlined'}
+          onClick={() => onChange(Number(option))}
+          color={value === Number(option) ? 'primary' : 'inherit'}
+          sx={{
+            minWidth: '120px',
+            transition: 'all 0.2s',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+            },
+          }}
+        >
+          {option === '1' ? 'Sim' : 'Não'}
+        </Button>
+      ))}
+    </Box>
+  ), [value, onChange]);
+
+  const renderQuestion = useCallback(() => {
+    switch (question.type) {
+      case 'likert':
+        return (
+          <Box 
+            sx={{ width: '100%', mt: 2 }}
+            role="radiogroup"
+            aria-label={`Escala de 1 a 5 para ${question.question}`}
+          >
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  {Object.entries(customIcons).map(([score, icon]) => (
+                    <Box
+                      key={score}
+                      onClick={() => onChange(Number(score))}
+                      onKeyPress={(e: React.KeyboardEvent) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          onChange(Number(score));
+                        }
+                      }}
+                      role="radio"
+                      aria-checked={value === Number(score)}
+                      tabIndex={0}
+                      sx={{
+                        cursor: 'pointer',
+                        transform: value === Number(score) ? 'scale(1.2)' : 'scale(1)',
+                        transition: 'transform 0.2s',
+                        '&:hover': { transform: 'scale(1.2)' },
+                      }}
+                    >
+                      {icon}
+                    </Box>
+                  ))}
+                </Box>
+                <Slider
+                  value={value || 0}
+                  onChange={(_, newValue) => onChange(Number(newValue))}
+                  min={1}
+                  max={5}
+                  step={1}
+                  marks
+                  aria-label={question.question}
+                  sx={{
+                    '& .MuiSlider-mark': {
+                      height: '10px',
+                    },
+                    '& .MuiSlider-thumb': {
+                      width: '20px',
+                      height: '20px',
+                    },
+                  }}
+                />
+              </Grid>
+            </Grid>
+          </Box>
+        );
+      case 'frequency':
+        return renderFrequencyOptions(question.id, question.options || []);
+      case 'yesno':
+        return renderYesNo(question.id);
+      default:
+        return null;
+    }
+  }, [question, value, onChange, renderFrequencyOptions, renderYesNo]);
+
+  return (
+    <Box
+      sx={{
+        mb: { xs: 2, sm: 4 },
+        p: { xs: 2, sm: 3 },
+        borderRadius: { xs: 1, sm: 2 },
+        backgroundColor: 'background.paper',
+        boxShadow: 1,
+        '&:hover': {
+          boxShadow: 2,
+        },
+        transition: 'box-shadow 0.3s',
+      }}
+    >
+      <Typography 
+        variant="h6" 
+        sx={{ 
+          mb: { xs: 1.5, sm: 2 },
+          color: 'text.primary',
+          fontSize: { xs: '1rem', sm: '1.1rem' },
+          lineHeight: 1.4
+        }}
+      >
+        {question.question}
+      </Typography>
+      {renderQuestion()}
+    </Box>
+  );
+});
+
+MemoizedQuestion.displayName = 'MemoizedQuestion';
+
 const RelationshipConsensusForm: React.FC = () => {
   const theme = useTheme();
   const { currentUser } = useAuth();
   const [activeStep, setActiveStep] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, { rating: number; notes?: string }>>({});
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [analysis, setAnalysis] = useState<any>(null);
+  const [unsavedChanges, setUnsavedChanges] = useState(false);
 
-  const handleAnswer = (questionId: string, value: string) => {
+  // Load cached form data
+  useEffect(() => {
+    const cached = localStorage.getItem(FORM_CACHE_KEY);
+    if (cached) {
+      try {
+        const parsedCache = JSON.parse(cached);
+        setAnswers(parsedCache);
+        setUnsavedChanges(true);
+      } catch (e) {
+        console.error('Error loading cached form:', e);
+      }
+    }
+  }, []);
+
+  // Save form data to cache when it changes
+  useEffect(() => {
+    if (Object.keys(answers).length > 0) {
+      localStorage.setItem(FORM_CACHE_KEY, JSON.stringify(answers));
+      setUnsavedChanges(true);
+    }
+  }, [answers]);
+
+  // Unsaved changes warning
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (unsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [unsavedChanges]);
+
+  const handleAnswer = useCallback((questionId: string, value: string | number) => {
     setAnswers((prev) => ({
       ...prev,
-      [questionId]: value,
+      [questionId]: { rating: Number(value) },
     }));
-  };
+    setUnsavedChanges(true);
+  }, []);
 
   const isStepComplete = (stepIndex: number) => {
     const currentSection = FORM_SECTIONS[stepIndex];
-    return currentSection.questions.every((q) => answers[q.id]);
+    return currentSection.questions.every((q) => answers[q.id]?.rating !== undefined);
   };
 
   const handleNext = () => {
@@ -232,13 +468,30 @@ const RelationshipConsensusForm: React.FC = () => {
       return;
     }
 
-    if (Object.keys(answers).length < FORM_SECTIONS.reduce((total, section) => total + section.questions.length, 0)) {
-      setError('Por favor, responda todas as perguntas antes de enviar.');
+    const validation = validateAnswers(answers);
+    if (!validation.isValid) {
+      setError(validation.issues.join('\n'));
       return;
     }
 
     setIsSubmitting(true);
     try {
+      // Verify authentication state
+      const auth = getAuth();
+      if (!auth.currentUser) {
+        setError('Sessão expirada. Por favor, faça login novamente.');
+        return;
+      }
+
+      // Ensure we have a valid token before proceeding
+      try {
+        await auth.currentUser.getIdToken(true);
+      } catch (tokenError) {
+        console.error('Failed to get authentication token:', tokenError);
+        setError('Erro de autenticação. Por favor, faça login novamente.');
+        return;
+      }
+
       // Get historical data
       const history = await getAnalysisHistory(currentUser.uid);
       const previousForms = history
@@ -249,7 +502,7 @@ const RelationshipConsensusForm: React.FC = () => {
         )
         .map(record => record.analysis) as ConsensusFormData[];
 
-      const dailyAssessments = history
+      const assessments = history
         .filter(record => typeof record.analysis === 'string')
         .map(record => ({
           date: record.date,
@@ -269,31 +522,72 @@ const RelationshipConsensusForm: React.FC = () => {
       // Get partner's form if available
       const partnerForm = previousForms.find(form => 
         form.date === new Date().toISOString().split('T')[0] &&
-        form.answers !== answers
+        JSON.stringify(form.responses) !== JSON.stringify(answers)
       );
 
       // Prepare form data
       const formData: ConsensusFormData = {
         type: 'consensus_form',
-        answers,
+        userId: currentUser.uid,
+        partnerId: currentUser.uid, // TODO: Update with actual partner ID
+        responses: Object.entries(answers).reduce((acc, [key, value]) => ({
+          ...acc,
+          [key]: { rating: Number(value) }
+        }), {}),
         date: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       };
 
       // Analyze form data
       let formAnalysis;
       try {
+        // Filter out any invalid previous forms
+        const validPreviousForms = previousForms.filter(form => 
+          form && form.responses && Object.keys(form.responses).length > 0
+        );
+
+        // Filter out any invalid assessments
+        const validAssessments = assessments.filter(assessment => 
+          assessment && assessment.date && assessment.analysis
+        );
+
+        // Filter out any invalid analyses
+        const validPreviousAnalyses = previousAnalyses.filter(analysis => 
+          analysis && analysis.date && analysis.analysis
+        );
+
         formAnalysis = await analyzeConsensusForm(
           formData,
           partnerForm,
           {
-            previousForms: previousForms.slice(-5), // Last 5 forms
-            dailyAssessments: dailyAssessments.slice(-30), // Last 30 days
-            previousAnalyses: previousAnalyses.slice(-10), // Last 10 analyses
+            previousForms: validPreviousForms.slice(-5), // Last 5 forms
+            assessments: validAssessments.slice(-30), // Last 30 days
+            previousAnalyses: validPreviousAnalyses.slice(-10), // Last 10 analyses
           }
         );
       } catch (analysisError) {
         console.error('Error analyzing form:', analysisError);
-        setError('Erro ao analisar o formulário. Por favor, tente novamente.');
+        let errorMessage = 'Erro ao analisar o formulário. Por favor, tente novamente.';
+        
+        if (analysisError instanceof Error) {
+          switch (analysisError.message) {
+            case 'Failed to get response from analysis service':
+              errorMessage = 'Erro de conexão com o serviço de análise. Por favor, verifique sua conexão e tente novamente.';
+              break;
+            case 'Invalid response from analysis service':
+            case 'Invalid response format from analysis service':
+              errorMessage = 'Erro no processamento da análise. Nossa equipe foi notificada e está trabalhando na solução.';
+              break;
+            case 'Incomplete analysis response':
+              errorMessage = 'A análise não pôde ser completada. Por favor, tente novamente.';
+              break;
+            case 'Failed to parse analysis response':
+              errorMessage = 'Erro ao processar a resposta da análise. Por favor, tente novamente.';
+              break;
+          }
+        }
+        
+        setError(errorMessage);
         return;
       }
 
@@ -302,13 +596,16 @@ const RelationshipConsensusForm: React.FC = () => {
         await saveAnalysis(currentUser.uid, 'individual', {
           ...formData,
           analysis: formAnalysis,
-        });
+        } as ConsensusFormData & { analysis: any });
       } catch (saveError) {
         console.error('Error saving form:', saveError);
         setError('Erro ao salvar o formulário. Por favor, tente novamente.');
         return;
       }
 
+      setUnsavedChanges(false);
+      localStorage.removeItem(FORM_CACHE_KEY);
+      
       setAnalysis(formAnalysis);
       setShowAnalysis(true);
       setSuccess('Formulário enviado com sucesso! Suas respostas foram salvas.');
@@ -321,113 +618,6 @@ const RelationshipConsensusForm: React.FC = () => {
       setError(err instanceof Error ? err.message : 'Erro ao processar o formulário. Por favor, tente novamente.');
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const customIcons = {
-    1: <SentimentVeryDissatisfied color="error" />,
-    2: <SentimentDissatisfied color="warning" />,
-    3: <SentimentNeutral color="action" />,
-    4: <SentimentSatisfied color="info" />,
-    5: <SentimentVerySatisfied color="success" />,
-  };
-
-  const renderLikertScale = (questionId: string, value: string) => (
-    <Box sx={{ width: '100%', mt: 2 }}>
-      <Grid container spacing={2} alignItems="center">
-        <Grid item xs={12}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-            {Object.entries(customIcons).map(([score, icon]) => (
-              <Box
-                key={score}
-                onClick={() => handleAnswer(questionId, score)}
-                sx={{
-                  cursor: 'pointer',
-                  transform: value === score ? 'scale(1.2)' : 'scale(1)',
-                  transition: 'transform 0.2s',
-                  '&:hover': { transform: 'scale(1.2)' },
-                }}
-              >
-                {icon}
-              </Box>
-            ))}
-          </Box>
-          <Slider
-            value={Number(value) || 0}
-            onChange={(_, newValue) => handleAnswer(questionId, newValue.toString())}
-            min={1}
-            max={5}
-            step={1}
-            marks
-            sx={{
-              '& .MuiSlider-mark': {
-                height: '10px',
-              },
-              '& .MuiSlider-thumb': {
-                width: '20px',
-                height: '20px',
-              },
-            }}
-          />
-        </Grid>
-      </Grid>
-    </Box>
-  );
-
-  const renderFrequencyOptions = (questionId: string, options: string[]) => (
-    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
-      {options.map((option) => (
-        <Chip
-          key={option}
-          label={option}
-          onClick={() => handleAnswer(questionId, option)}
-          color={answers[questionId] === option ? 'primary' : 'default'}
-          variant={answers[questionId] === option ? 'filled' : 'outlined'}
-          sx={{
-            fontSize: '0.9rem',
-            py: 2.5,
-            transition: 'all 0.2s',
-            '&:hover': {
-              transform: 'translateY(-2px)',
-              boxShadow: 1,
-            },
-          }}
-        />
-      ))}
-    </Box>
-  );
-
-  const renderYesNo = (questionId: string) => (
-    <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-      {['Sim', 'Não'].map((option) => (
-        <Button
-          key={option}
-          variant={answers[questionId] === option ? 'contained' : 'outlined'}
-          onClick={() => handleAnswer(questionId, option)}
-          sx={{
-            minWidth: '120px',
-            transition: 'all 0.2s',
-            '&:hover': {
-              transform: 'translateY(-2px)',
-            },
-          }}
-        >
-          {option}
-        </Button>
-      ))}
-    </Box>
-  );
-
-  const renderQuestion = (question: FormSection['questions'][0]) => {
-    switch (question.type) {
-      case 'likert':
-        return renderLikertScale(question.id, answers[question.id] || '');
-      case 'frequency':
-        return renderFrequencyOptions(question.id, question.options || []);
-      case 'yesno':
-        return renderYesNo(question.id);
-      default:
-        return null;
     }
   };
 
@@ -584,7 +774,11 @@ const RelationshipConsensusForm: React.FC = () => {
   };
 
   return (
-    <Box sx={{ width: '100%', mb: 4 }}>
+    <Box 
+      sx={{ width: '100%', mb: 4 }}
+      role="form"
+      aria-label="Formulário de Consenso do Relacionamento"
+    >
       <Stepper 
         activeStep={activeStep} 
         orientation={window.innerWidth < 600 ? 'vertical' : 'horizontal'}
@@ -675,34 +869,13 @@ const RelationshipConsensusForm: React.FC = () => {
             </Alert>
           )}
 
-          {FORM_SECTIONS[activeStep].questions.map((question, index) => (
-            <Box
+          {FORM_SECTIONS[activeStep].questions.map((question) => (
+            <MemoizedQuestion
               key={question.id}
-              sx={{
-                mb: { xs: 2, sm: 4 },
-                p: { xs: 2, sm: 3 },
-                borderRadius: { xs: 1, sm: 2 },
-                backgroundColor: theme.palette.background.paper,
-                boxShadow: 1,
-                '&:hover': {
-                  boxShadow: 2,
-                },
-                transition: 'box-shadow 0.3s',
-              }}
-            >
-              <Typography 
-                variant="h6" 
-                sx={{ 
-                  mb: { xs: 1.5, sm: 2 },
-                  color: theme.palette.text.primary,
-                  fontSize: { xs: '1rem', sm: '1.1rem' },
-                  lineHeight: 1.4
-                }}
-              >
-                {`${index + 1}. ${question.question}`}
-              </Typography>
-              {renderQuestion(question)}
-            </Box>
+              question={question}
+              value={answers[question.id]?.rating}
+              onChange={(value) => handleAnswer(question.id, value)}
+            />
           ))}
 
           <Box sx={{ 
@@ -762,4 +935,4 @@ const RelationshipConsensusForm: React.FC = () => {
   );
 };
 
-export default RelationshipConsensusForm; 
+export default memo(RelationshipConsensusForm); 

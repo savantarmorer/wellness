@@ -8,7 +8,7 @@ import {
   Tooltip,
   useTheme,
 } from '@mui/material';
-import type { RelationshipAnalysis } from '../services/gptService';
+import type { RelationshipAnalysis } from '../types';
 
 interface DiscrepancyAnalysisProps {
   analysis: RelationshipAnalysis;
@@ -19,9 +19,9 @@ export const DiscrepancyAnalysis: React.FC<DiscrepancyAnalysisProps> = ({ analys
   const theme = useTheme();
 
   const calculateDiscrepancy = (category: string) => {
-    const userScore = analysis.categories[category]?.score || 0;
-    const partnerScore = analysis.categories[category]?.partnerScore || 0;
-    return Math.abs(userScore - partnerScore);
+    const score = analysis.categories[category]?.score || 0;
+    // For now, using a fixed difference since partner score isn't available
+    return Math.min(Math.abs(score - 5), 5); // Scale from 0-5
   };
 
   const getDiscrepancyColor = (discrepancy: number) => {
@@ -152,35 +152,35 @@ export const DiscrepancyAnalysis: React.FC<DiscrepancyAnalysisProps> = ({ analys
         })}
       </Grid>
 
-      {analysis.relationshipDynamics?.discrepancyInsights && (
-        <Box sx={{ mt: 4 }}>
-          <Typography 
-            variant="h6" 
-            gutterBottom
-            sx={{ 
-              fontSize: { xs: '1.125rem', sm: '1.25rem' },
-              mb: { xs: 2, sm: 3 }
-            }}
-          >
-            Insights sobre Discrepâncias
+      {analysis.relationshipDynamics?.strengths && (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Pontos Fortes
           </Typography>
-          <Typography 
-            variant="body1"
-            color="text.secondary"
-            sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
-          >
-            {analysis.relationshipDynamics.discrepancyInsights}
+          <Typography>
+            {analysis.relationshipDynamics.strengths.join(', ')}
           </Typography>
         </Box>
       )}
 
-      {analysis.relationshipDynamics?.positivePatterns && (
+      {analysis.relationshipDynamics?.challenges && (
         <Box sx={{ mb: 3 }}>
           <Typography variant="h6" gutterBottom>
-            Padrões Positivos
+            Desafios
           </Typography>
           <Typography>
-            {analysis.relationshipDynamics.positivePatterns.join(', ')}
+            {analysis.relationshipDynamics.challenges.join(', ')}
+          </Typography>
+        </Box>
+      )}
+
+      {analysis.relationshipDynamics?.recommendations && (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Recomendações
+          </Typography>
+          <Typography>
+            {analysis.relationshipDynamics.recommendations.join(', ')}
           </Typography>
         </Box>
       )}

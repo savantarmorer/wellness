@@ -29,6 +29,11 @@ self.addEventListener('install', event => {
 
 // Cache and return requests
 self.addEventListener('fetch', event => {
+  // Skip Firestore requests
+  if (event.request.url.includes('firestore.googleapis.com')) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then(response => {

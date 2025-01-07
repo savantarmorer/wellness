@@ -25,7 +25,7 @@ export const RelationshipContextProgress: React.FC<Props> = ({
     {
       label: 'Informações Básicas',
       description: 'Duração e estilo do relacionamento',
-      isComplete: () => Boolean(data.relationshipDuration && data.relationshipStyle),
+      isComplete: () => Boolean(data.duration && data.relationshipStyle),
     },
     {
       label: 'Dinâmica do Relacionamento',

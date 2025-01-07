@@ -2,7 +2,7 @@ import { DailyAssessment, CategoryRatings, RelationshipContext, CommunicationRec
 import { ConsensusFormData } from './gptService';
 
 // Weights based on meta-analysis of relationship satisfaction predictors
-const CATEGORY_WEIGHTS = {
+export const CATEGORY_WEIGHTS = {
   // Core Relationship Factors (65% total)
   consensus: 0.15,     // Agreement on major issues
   affection: 0.20,     // Emotional and physical intimacy
@@ -628,46 +628,96 @@ export const analyzeTemporalPatterns = async (
   userHistory: DailyAssessment[],
   partnerHistory: DailyAssessment[]
 ): Promise<TemporalAnalysis> => {
-  const trends: TemporalAnalysis['trends'] = {};
-  const allCategories = Object.keys(CATEGORY_WEIGHTS);
+  const trends: Record<string, any> = {};
+  const categories = Object.keys(userHistory[0]?.ratings || {});
 
-  // Analisa tendências por categoria
-  allCategories.forEach(category => {
+  categories.forEach(category => {
     const userScores = userHistory.map(h => h.ratings[category as keyof CategoryRatings]);
     const partnerScores = partnerHistory.map(h => h.ratings[category as keyof CategoryRatings]);
 
-    const userTrend = calculateTrend(userScores);
-    const partnerTrend = calculateTrend(partnerScores);
-    const convergence = analyzeConvergence(userScores, partnerScores);
-    const volatility = calculateVolatility([...userScores, ...partnerScores]);
+    const userTrendResult = calculateTrend(userScores);
+    const partnerTrendResult = calculateTrend(partnerScores);
+    const convergenceResult = analyzeConvergence(userScores, partnerScores);
+    const volatilityResult = calculateVolatility([...userScores, ...partnerScores]);
 
     trends[category] = {
-      userTrend,
-      partnerTrend,
-      convergence,
-      volatility
+      userTrend: {
+        slope: calculateSlope(userScores),
+        rSquared: calculateRSquared(userScores),
+        trend: userTrendResult
+      },
+      partnerTrend: {
+        slope: calculateSlope(partnerScores),
+        rSquared: calculateRSquared(partnerScores),
+        trend: partnerTrendResult
+      },
+      convergence: convergenceResult === 'converging' ? 1 : convergenceResult === 'diverging' ? -1 : 0,
+      volatility: volatilityResult
     };
   });
 
-  // Identifica padrões
-  const patterns = {
-    cyclical: identifyCyclicalPatterns(userHistory, partnerHistory),
-    persistent: identifyPersistentPatterns(userHistory, partnerHistory),
-    emerging: identifyEmergingPatterns(userHistory, partnerHistory)
+  return {
+    correlation: calculateCorrelation(userHistory, partnerHistory),
+    trends,
+    patterns: {
+      cyclical: identifyCyclicalPatterns(userHistory, partnerHistory),
+      persistent: identifyPersistentPatterns(userHistory, partnerHistory),
+      emerging: identifyEmergingPatterns(userHistory, partnerHistory)
+    },
+    timeframes: {
+      daily: await generateTimeframeSummary(userHistory, partnerHistory, 1),
+      weekly: await generateTimeframeSummary(userHistory, partnerHistory, 7),
+      monthly: await generateTimeframeSummary(userHistory, partnerHistory, 30)
+    },
+    seasonality: calculateSeasonality(userHistory, partnerHistory),
+    volatility: calculateOverallVolatility(userHistory, partnerHistory),
+    confidence: calculateConfidenceLevel(userHistory.length + partnerHistory.length, true),
+    analysisDate: new Date().toISOString()
   };
+};
 
-  // Análise por períodos
-  const timeframes = {
-    daily: await generateTimeframeSummary(userHistory, partnerHistory, 1),
-    weekly: await generateTimeframeSummary(userHistory, partnerHistory, 7),
-    monthly: await generateTimeframeSummary(userHistory, partnerHistory, 30)
-  };
+const calculateSlope = (scores: number[]): number => {
+  if (scores.length < 2) return 0;
+  const xValues = Array.from({ length: scores.length }, (_, i) => i);
+  const xMean = average(xValues);
+  const yMean = average(scores);
+  
+  const numerator = xValues.reduce((sum, x, i) => sum + (x - xMean) * (scores[i] - yMean), 0);
+  const denominator = xValues.reduce((sum, x) => sum + Math.pow(x - xMean, 2), 0);
+  
+  return denominator === 0 ? 0 : numerator / denominator;
+};
 
-  return { trends, patterns, timeframes };
+const calculateRSquared = (scores: number[]): number => {
+  if (scores.length < 2) return 0;
+  const slope = calculateSlope(scores);
+  const xValues = Array.from({ length: scores.length }, (_, i) => i);
+  const yMean = average(scores);
+  
+  const predicted = xValues.map(x => slope * x + yMean);
+  const residualSS = scores.reduce((sum, y, i) => sum + Math.pow(y - predicted[i], 2), 0);
+  const totalSS = scores.reduce((sum, y) => sum + Math.pow(y - yMean, 2), 0);
+  
+  return totalSS === 0 ? 0 : 1 - (residualSS / totalSS);
+};
+
+const calculateCorrelation = (userHistory: DailyAssessment[], partnerHistory: DailyAssessment[]): number => {
+  // Implementation for correlation calculation
+  return 0.5; // Placeholder
+};
+
+const calculateSeasonality = (userHistory: DailyAssessment[], partnerHistory: DailyAssessment[]): number => {
+  // Implementation for seasonality calculation
+  return 0.3; // Placeholder
+};
+
+const calculateOverallVolatility = (userHistory: DailyAssessment[], partnerHistory: DailyAssessment[]): number => {
+  // Implementation for overall volatility calculation
+  return 0.4; // Placeholder
 };
 
 export const crossValidateAssessments = (
-  dailyAssessments: DailyAssessment[],
+  assessments: DailyAssessment[],
   consensusForm: ConsensusFormData,
   relationshipContext: RelationshipContext
 ): ValidationResult => {
@@ -676,7 +726,7 @@ export const crossValidateAssessments = (
 
   // Analisa consistência por categoria
   allCategories.forEach(category => {
-    const dailyScores = dailyAssessments
+    const dailyScores = assessments
       .map(a => a.ratings[category as keyof CategoryRatings])
       .filter(Boolean);
     
@@ -692,14 +742,14 @@ export const crossValidateAssessments = (
 
   // Calcula métricas gerais
   const reliability = calculateOverallReliability(consistency);
-  const completeness = calculateDataCompleteness(dailyAssessments, consensusForm);
+  const completeness = calculateDataCompleteness(assessments, consensusForm);
 
   return {
     consistency,
     reliability,
     completeness,
     recommendations: generateValidationRecommendations(consistency, reliability, completeness)
-  };
+  } as ValidationResult;
 };
 
 export const analyzeCommunicationQuality = (
@@ -857,15 +907,15 @@ export const calculateOverallReliability = (consistency: ValidationResult['consi
 };
 
 export const calculateDataCompleteness = (
-  dailyAssessments: DailyAssessment[],
+  assessments: DailyAssessment[],
   consensusForm: ConsensusFormData
 ): number => {
   // Verifica completude dos dados diários
-  const dailyCompleteness = dailyAssessments.reduce((sum, assessment) => {
+  const dailyCompleteness = assessments.reduce((sum, assessment) => {
     const filledCategories = Object.values(assessment.ratings).filter(Boolean).length;
     const totalCategories = Object.keys(CATEGORY_WEIGHTS).length;
     return sum + (filledCategories / totalCategories);
-  }, 0) / Math.max(dailyAssessments.length, 1);
+  }, 0) / Math.max(assessments.length, 1);
 
   // Verifica completude do formulário de consenso
   const consensusCompleteness = consensusForm.scores

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
     "preview": "vite preview",
     "test": "jest",
     "deploy": "firebase deploy",
@@ -14,7 +15,8 @@
     "cap:build": "npm run build && cap sync",
     "cap:android": "cap open android",
     "cap:ios": "cap open ios",
-    "cap:serve": "vite --host"
+    "cap:serve": "vite --host",
+    "analyze": "cross-env NODE_OPTIONS=--loader=ts-node/esm ts-node --esm --project scripts/tsconfig.json scripts/analyzeCode.ts"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.0",
@@ -37,6 +39,7 @@
     "@types/react-dom": "^19.0.2",
     "@types/react-router-dom": "^5.3.3",
     "@types/recharts": "^1.8.29",
+    "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "axios": "^1.7.9",
     "chart.js": "^4.4.7",
@@ -50,14 +53,25 @@
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.1.1",
-    "recharts": "^2.15.0"
+    "recharts": "^2.15.0",
+    "uuid": "^11.0.4"
   },
   "devDependencies": {
+    "@eslint/js": "^9.17.0",
     "@types/google.maps": "^3.58.1",
     "@types/jest": "^29.5.14",
     "@types/react-big-calendar": "^1.16.0",
+    "@typescript-eslint/eslint-plugin": "^8.19.0",
+    "@typescript-eslint/parser": "^8.19.0",
+    "cross-env": "^7.0.3",
+    "eslint": "^9.17.0",
+    "eslint-plugin-functional": "^7.2.0",
+    "eslint-plugin-react": "^7.37.3",
+    "eslint-plugin-react-hooks": "^5.1.0",
     "jest": "^29.7.0",
     "ts-jest": "^29.2.5",
+    "ts-morph": "^25.0.0",
+    "ts-node": "^10.9.2",
     "typescript": "~5.6.2",
     "vite": "^6.0.5",
     "vite-plugin-pwa": "^0.21.1",

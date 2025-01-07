@@ -31,10 +31,10 @@ const AnalysisHistory: React.FC<Props> = ({ analyses }) => {
   const getHealthScore = (analysis: any): { score: number; label: string } => {
     try {
       if (typeof analysis === 'object' && analysis !== null) {
-        if (analysis.overallHealth && typeof analysis.overallHealth.score === 'number') {
+        if (analysis.relationshipAnalysis && analysis.relationshipAnalysis.overallHealth && typeof analysis.relationshipAnalysis.overallHealth.score === 'number') {
           return {
-            score: analysis.overallHealth.score,
-            label: `Saúde: ${analysis.overallHealth.score}%`
+            score: analysis.relationshipAnalysis.overallHealth.score,
+            label: `Saúde: ${analysis.relationshipAnalysis.overallHealth.score}%`
           };
         }
         // Try to find health score in nested analysis object
@@ -52,6 +52,16 @@ const AnalysisHistory: React.FC<Props> = ({ analyses }) => {
     }
   };
 
+  const ensureArray = (value: any): string[] => {
+    if (Array.isArray(value)) {
+      return value.map(item => String(item));
+    }
+    if (value && typeof value === 'string') {
+      return [value];
+    }
+    return [];
+  };
+
   const getAnalysisDetails = (analysis: any): { 
     strengths: string[],
     challenges: string[],
@@ -67,24 +77,23 @@ const AnalysisHistory: React.FC<Props> = ({ analyses }) => {
       if (typeof analysis === 'object' && analysis !== null) {
         // Try to get data from direct properties
         if (analysis.strengthsAndChallenges) {
-          details.strengths = Array.isArray(analysis.strengthsAndChallenges.strengths) 
-            ? analysis.strengthsAndChallenges.strengths 
-            : [];
-          details.challenges = Array.isArray(analysis.strengthsAndChallenges.challenges) 
-            ? analysis.strengthsAndChallenges.challenges 
-            : [];
+          details.strengths = ensureArray(analysis.strengthsAndChallenges.strengths);
+          details.challenges = ensureArray(analysis.strengthsAndChallenges.challenges);
+        } else if (analysis.relationshipDynamics) {
+          details.strengths = ensureArray(analysis.relationshipDynamics.strengths);
+          details.challenges = ensureArray(analysis.relationshipDynamics.challenges);
         } else {
-          details.strengths = Array.isArray(analysis.strengths) ? analysis.strengths : [];
-          details.challenges = Array.isArray(analysis.challenges) ? analysis.challenges : [];
+          details.strengths = ensureArray(analysis.strengths);
+          details.challenges = ensureArray(analysis.challenges);
         }
 
         // Try different properties for recommendations
         if (Array.isArray(analysis.communicationSuggestions)) {
-          details.recommendations = analysis.communicationSuggestions;
+          details.recommendations = ensureArray(analysis.communicationSuggestions);
         } else if (Array.isArray(analysis.recommendations)) {
-          details.recommendations = analysis.recommendations;
+          details.recommendations = ensureArray(analysis.recommendations);
         } else if (Array.isArray(analysis.actionItems)) {
-          details.recommendations = analysis.actionItems;
+          details.recommendations = ensureArray(analysis.actionItems);
         }
 
         // If no data found, try nested analysis object
@@ -93,20 +102,19 @@ const AnalysisHistory: React.FC<Props> = ({ analyses }) => {
             const nestedAnalysis = analysis.analysis;
             
             if (nestedAnalysis.strengthsAndChallenges) {
-              details.strengths = Array.isArray(nestedAnalysis.strengthsAndChallenges.strengths) 
-                ? nestedAnalysis.strengthsAndChallenges.strengths 
-                : [];
-              details.challenges = Array.isArray(nestedAnalysis.strengthsAndChallenges.challenges) 
-                ? nestedAnalysis.strengthsAndChallenges.challenges 
-                : [];
+              details.strengths = ensureArray(nestedAnalysis.strengthsAndChallenges.strengths);
+              details.challenges = ensureArray(nestedAnalysis.strengthsAndChallenges.challenges);
+            } else if (nestedAnalysis.relationshipDynamics) {
+              details.strengths = ensureArray(nestedAnalysis.relationshipDynamics.strengths);
+              details.challenges = ensureArray(nestedAnalysis.relationshipDynamics.challenges);
             }
 
             if (Array.isArray(nestedAnalysis.communicationSuggestions)) {
-              details.recommendations = nestedAnalysis.communicationSuggestions;
+              details.recommendations = ensureArray(nestedAnalysis.communicationSuggestions);
             } else if (Array.isArray(nestedAnalysis.recommendations)) {
-              details.recommendations = nestedAnalysis.recommendations;
+              details.recommendations = ensureArray(nestedAnalysis.recommendations);
             } else if (Array.isArray(nestedAnalysis.actionItems)) {
-              details.recommendations = nestedAnalysis.actionItems;
+              details.recommendations = ensureArray(nestedAnalysis.actionItems);
             }
           }
         }

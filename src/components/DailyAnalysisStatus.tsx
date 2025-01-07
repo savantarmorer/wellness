@@ -10,19 +10,28 @@ import {
   useMediaQuery,
   alpha,
   Tooltip,
+  IconButton,
 } from '@mui/material';
-import { Check, Close, ArrowForward } from '@mui/icons-material';
+import { Check, Close, ArrowForward, ArrowBack, ArrowForwardIos } from '@mui/icons-material';
 
 interface Props {
   userSubmitted: boolean;
   partnerSubmitted: boolean;
   onNavigateToAnalysis: () => void;
+  currentDate: string;
+  onPreviousDay: () => void;
+  onNextDay: () => void;
+  hasNextDay: boolean;
 }
 
 export const DailyAnalysisStatus: React.FC<Props> = ({
   userSubmitted,
   partnerSubmitted,
   onNavigateToAnalysis,
+  currentDate,
+  onPreviousDay,
+  onNextDay,
+  hasNextDay,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -37,17 +46,53 @@ export const DailyAnalysisStatus: React.FC<Props> = ({
       }}
     >
       <Stack spacing={2}>
-        <Typography
-          variant="h6"
-          gutterBottom
-          sx={{
-            fontSize: { xs: '1.125rem', sm: '1.25rem' },
-            fontWeight: 600,
-            textAlign: 'center',
-          }}
+        <Stack
+          direction="row"
+          spacing={2}
+          alignItems="center"
+          justifyContent="center"
         >
-          Status da Análise Diária
-        </Typography>
+          <IconButton
+            onClick={onPreviousDay}
+            size="small"
+            sx={{ 
+              backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.1),
+              '&:hover': {
+                backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.2),
+              }
+            }}
+          >
+            <ArrowBack />
+          </IconButton>
+          
+          <Typography
+            variant="h6"
+            sx={{
+              fontSize: { xs: '1.125rem', sm: '1.25rem' },
+              fontWeight: 600,
+              textAlign: 'center',
+            }}
+          >
+            Análise do Dia {currentDate}
+          </Typography>
+
+          <IconButton
+            onClick={onNextDay}
+            disabled={!hasNextDay}
+            size="small"
+            sx={{ 
+              backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.1),
+              '&:hover': {
+                backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.2),
+              },
+              '&.Mui-disabled': {
+                backgroundColor: (theme) => alpha(theme.palette.action.disabled, 0.1),
+              }
+            }}
+          >
+            <ArrowForwardIos />
+          </IconButton>
+        </Stack>
 
         <Stack
           direction={{ xs: 'column', sm: 'row' }}

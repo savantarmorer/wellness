@@ -1,6 +1,6 @@
 import { db } from './firebase';
 import { collection, doc, setDoc, getDocs, query, where } from 'firebase/firestore';
-import { GPTAnalysis } from '../types';
+import { GPTAnalysis, RelationshipAnalysis as RelationshipAnalysisType, MoodType } from '../types';
 
 export const recreateAnalysisHistory = async (userId: string) => {
   try {
@@ -27,13 +27,20 @@ export const recreateAnalysisHistory = async (userId: string) => {
           date: data.date,
           type: data.type,
           analysis: typeof data.analysis === 'string' 
-            ? JSON.parse(data.analysis)
+            ? JSON.parse(data.analysis) as RelationshipAnalysisType
             : data.analysis,
-          createdAt: data.createdAt
+          createdAt: data.createdAt,
+          timestamp: new Date().toISOString(),
+          version: '1.0',
+          metadata: {
+            assessmentCount: 1,
+            timeSpan: '1 day',
+            confidence: 0.8
+          }
         };
 
         // Ensure the analysis has the correct structure
-        if (!analysisData.analysis.emotionalDynamics) {
+        if (typeof analysisData.analysis === 'object' && !analysisData.analysis.emotionalDynamics) {
           analysisData.analysis.emotionalDynamics = {
             emotionalSecurity: 0,
             intimacyBalance: {
@@ -48,7 +55,61 @@ export const recreateAnalysisHistory = async (userId: string) => {
             conflictResolution: {
               style: 'collaborative',
               effectiveness: 0,
-              patterns: []
+              patterns: [],
+              confidence: 0.8
+            },
+            synchronicity: 0.8,
+            stability: 0.7,
+            patterns: {
+              user: {
+                dominant: 'feliz' as MoodType,
+                frequency: {
+                  feliz: 0,
+                  animado: 0,
+                  grato: 0,
+                  calmo: 0,
+                  satisfeito: 0,
+                  amado: 0,
+                  ansioso: 0,
+                  estressado: 0,
+                  triste: 0,
+                  irritado: 0,
+                  frustrado: 0,
+                  exausto: 0,
+                  confuso: 0,
+                  solitário: 0,
+                  neutral: 0,
+                  content: 0
+                },
+                transitions: {}
+              },
+              partner: {
+                dominant: 'feliz' as MoodType,
+                frequency: {
+                  feliz: 0,
+                  animado: 0,
+                  grato: 0,
+                  calmo: 0,
+                  satisfeito: 0,
+                  amado: 0,
+                  ansioso: 0,
+                  estressado: 0,
+                  triste: 0,
+                  irritado: 0,
+                  frustrado: 0,
+                  exausto: 0,
+                  confuso: 0,
+                  solitário: 0,
+                  neutral: 0,
+                  content: 0
+                },
+                transitions: {}
+              }
+            },
+            insights: {
+              strengths: [],
+              challenges: [],
+              recommendations: []
             }
           };
         }

@@ -8,9 +8,11 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import DailyAssessment from './pages/DailyAssessment';
 import Statistics from './pages/Statistics';
+import Analysis from './pages/Analysis';
 import AnalysisHistory from './pages/AnalysisHistory';
 import Profile from './pages/Profile';
 import RelationshipContext from './pages/RelationshipContext';
+import AttachmentAssessment from './pages/AttachmentAssessment';
 import ReloadPrompt from './components/ReloadPrompt';
 import { useEffect } from 'react';
 import { initializeScheduledTasks } from './services/scheduledTasks';
@@ -64,6 +66,14 @@ function App() {
             }
           />
           <Route
+            path="/attachment-assessment"
+            element={
+              <PrivateRoute>
+                <AttachmentAssessment />
+              </PrivateRoute>
+            }
+          />
+          <Route
             path="/statistics"
             element={
               <PrivateRoute>
@@ -73,6 +83,14 @@ function App() {
           />
           <Route
             path="/analysis"
+            element={
+              <PrivateRoute>
+                <Analysis />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/analysis-history"
             element={
               <PrivateRoute>
                 <AnalysisHistory />

@@ -22,7 +22,7 @@ import {
   Error,
   CheckCircle,
 } from '@mui/icons-material';
-import type { RelationshipAnalysis } from '../types/index';
+import type { RelationshipAnalysis } from '../services/gptService';
 
 interface GPTAnalysisTabProps {
   analysis: RelationshipAnalysis;
@@ -101,7 +101,7 @@ export const GPTAnalysisTab: React.FC<GPTAnalysisTabProps> = ({ analysis }) => {
               Padrões Positivos
             </Typography>
             <List>
-              {analysis.relationshipDynamics.positivePatterns.map((pattern: string, index: number) => (
+              {analysis.relationshipDynamics.strengths.map((pattern: string, index: number) => (
                 <ListItem key={index}>
                   <Alert severity="success" sx={{ width: '100%' }}>
                     {pattern}
@@ -115,7 +115,7 @@ export const GPTAnalysisTab: React.FC<GPTAnalysisTabProps> = ({ analysis }) => {
               Padrões Preocupantes
             </Typography>
             <List>
-              {analysis.relationshipDynamics.concerningPatterns.map((pattern: string, index: number) => (
+              {analysis.relationshipDynamics.challenges.map((pattern: string, index: number) => (
                 <ListItem key={index}>
                   <Alert severity="error" sx={{ width: '100%' }}>
                     {pattern}

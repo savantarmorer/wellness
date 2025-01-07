@@ -1,4 +1,11 @@
-import { DailyAssessment } from '../types';
+import { 
+  DailyAssessment, 
+  CommunicationPatterns, 
+  DyadicAdjustmentScale, 
+  GottmanMetrics,
+  AttachmentStyle as AttachmentStyleType,
+  MoodType
+} from '../types';
 import { CategoryAverages, DiscrepancyResult } from './analysisUtils';
 
 interface AttachmentStyle {
@@ -29,74 +36,294 @@ export interface EmotionalDynamics {
     style: string;
     effectiveness: number;
     patterns: string[];
+    confidence: number;
+  };
+  synchronicity: number;
+  stability: number;
+  patterns: {
+    user: {
+      dominant: MoodType;
+      frequency: Record<MoodType, number>;
+      transitions: Record<string, number>;
+    };
+    partner: {
+      dominant: MoodType;
+      frequency: Record<MoodType, number>;
+      transitions: Record<string, number>;
+    };
+  };
+  insights: {
+    strengths: string[];
+    challenges: string[];
+    recommendations: string[];
   };
 }
 
-interface RelationshipStage {
+export interface RelationshipStage {
   current: string;
   challenges: string[];
   opportunities: string[];
   nextStage: string;
 }
 
-export const analyzeAttachmentStyle = (
-  averages: CategoryAverages,
-  discrepancies: DiscrepancyResult[]
-): AttachmentStyle => {
-  const securityScore = averages.satisfaction * 0.3 + 
-                     averages.consensus * 0.2 + 
-                     averages.affection * 0.3 + 
-                     averages.cohesion * 0.2;
+interface DASAnalysis {
+  overallHealth: number;
+  componentAnalysis: {
+    consenso: ComponentAnalysis;
+    satisfacao: ComponentAnalysis;
+    coesao: ComponentAnalysis;
+    expressaoAfetiva: ComponentAnalysis;
+  };
+}
 
-  const highDiscrepancies = discrepancies.filter(d => d.significance === 'high');
+interface ComponentAnalysis {
+  score: number;
+  level: 'concerning' | 'moderate' | 'healthy';
+  recommendations: string[];
+}
+
+interface GottmanAnalysis {
+  fourHorsemenRisk: {
+    total: number;
+    breakdown: {
+      critica: number;
+      defensividade: number;
+      desprezo: number;
+      stonewalling: number;
+    };
+    riskLevel: 'low' | 'moderate' | 'high';
+  };
+  bidsEffectiveness: {
+    responseRatio: number;
+    effectiveness: 'poor' | 'fair' | 'good';
+    recommendations: string[];
+  };
+  overallHealth: {
+    score: number;
+    strengths: string[];
+    concerns: string[];
+  };
+}
+
+interface AttachmentAnalysis {
+  style: AttachmentStyle['primary'];
+  description: string;
+  compatibility: {
+    score: number;
+    insights: string[];
+  };
+  recommendations: string[];
+}
+
+export const SCALE_RANGES = {
+  das: {
+    consenso: { concerning: { min: 0, max: 20 }, moderate: { min: 21, max: 40 }, healthy: { min: 41, max: 65 } },
+    satisfacao: { concerning: { min: 0, max: 15 }, moderate: { min: 16, max: 30 }, healthy: { min: 31, max: 50 } },
+    coesao: { concerning: { min: 0, max: 8 }, moderate: { min: 9, max: 16 }, healthy: { min: 17, max: 24 } },
+    expressaoAfetiva: { concerning: { min: 0, max: 4 }, moderate: { min: 5, max: 8 }, healthy: { min: 9, max: 12 } }
+  },
+  gottman: {
+    fourHorsemen: { concerning: { min: 7, max: 10 }, moderate: { min: 4, max: 6 }, healthy: { min: 0, max: 3 } },
+    bidsRatio: { concerning: { min: 0, max: 0.3 }, moderate: { min: 0.31, max: 0.6 }, healthy: { min: 0.61, max: 1 } }
+  }
+};
+
+const analyzeComponent = (score: number, range: typeof SCALE_RANGES.das[keyof typeof SCALE_RANGES.das]): ComponentAnalysis => {
+  let level: ComponentAnalysis['level'];
+  let recommendations: string[] = [];
+
+  if (score <= range.concerning.max) {
+    level = 'concerning';
+    recommendations = ['Considere buscar ajuda profissional', 'Foque em melhorar a comunicação'];
+  } else if (score <= range.moderate.max) {
+    level = 'moderate';
+    recommendations = ['Continue trabalhando no fortalecimento', 'Mantenha o diálogo aberto'];
+  } else {
+    level = 'healthy';
+    recommendations = ['Mantenha as práticas positivas', 'Celebre os sucessos'];
+  }
+
+  return { score, level, recommendations };
+};
+
+export const analyzeDAS = (das: DyadicAdjustmentScale): DASAnalysis => {
+  const componentAnalysis = {
+    consenso: analyzeComponent(das.consenso, SCALE_RANGES.das.consenso),
+    satisfacao: analyzeComponent(das.satisfacao, SCALE_RANGES.das.satisfacao),
+    coesao: analyzeComponent(das.coesao, SCALE_RANGES.das.coesao),
+    expressaoAfetiva: analyzeComponent(das.expressaoAfetiva, SCALE_RANGES.das.expressaoAfetiva)
+  };
+
+  // Calculate overall health as a weighted average
+  const overallHealth = (
+    (das.consenso / 65) * 0.3 +
+    (das.satisfacao / 50) * 0.3 +
+    (das.coesao / 24) * 0.2 +
+    (das.expressaoAfetiva / 12) * 0.2
+  ) * 100;
+
+  return {
+    overallHealth,
+    componentAnalysis
+  };
+};
+
+export const analyzeGottmanMetrics = (metrics: GottmanMetrics): GottmanAnalysis => {
+  // Analyze Four Horsemen
+  const fourHorsemenTotal = 
+    metrics.fourHorsemen.critica +
+    metrics.fourHorsemen.defensividade +
+    metrics.fourHorsemen.desprezo +
+    metrics.fourHorsemen.stonewalling;
+
+  let riskLevel: GottmanAnalysis['fourHorsemenRisk']['riskLevel'];
+  if (fourHorsemenTotal >= SCALE_RANGES.gottman.fourHorsemen.concerning.min) {
+    riskLevel = 'high';
+  } else if (fourHorsemenTotal >= SCALE_RANGES.gottman.fourHorsemen.moderate.min) {
+    riskLevel = 'moderate';
+  } else {
+    riskLevel = 'low';
+  }
+
+  // Analyze Bids for Connection
+  const totalResponses = 
+    metrics.bidsForConnection.respostasPositivas +
+    metrics.bidsForConnection.respostasNegativas +
+    metrics.bidsForConnection.respostasNeutras;
+
+  const responseRatio = totalResponses > 0 
+    ? metrics.bidsForConnection.respostasPositivas / totalResponses 
+    : 0;
+
+  let effectiveness: GottmanAnalysis['bidsEffectiveness']['effectiveness'];
+  let recommendations: string[] = [];
+
+  if (responseRatio <= SCALE_RANGES.gottman.bidsRatio.concerning.max) {
+    effectiveness = 'poor';
+    recommendations = [
+      'Preste mais atenção às tentativas de conexão do parceiro',
+      'Pratique respostas positivas mesmo em momentos de estresse'
+    ];
+  } else if (responseRatio <= SCALE_RANGES.gottman.bidsRatio.moderate.max) {
+    effectiveness = 'fair';
+    recommendations = [
+      'Continue melhorando o reconhecimento de tentativas de conexão',
+      'Trabalhe em responder mais positivamente'
+    ];
+  } else {
+    effectiveness = 'good';
+    recommendations = [
+      'Mantenha o alto nível de responsividade',
+      'Continue cultivando momentos de conexão'
+    ];
+  }
+
+  // Calculate overall health
+  const overallHealth = {
+    score: Math.max(0, 100 - (fourHorsemenTotal * 10)) * (responseRatio + metrics.influenciaPositiva / 10) / 2,
+    strengths: [] as string[],
+    concerns: [] as string[]
+  };
+
+  if (responseRatio > 0.6) {
+    overallHealth.strengths.push('Alta taxa de resposta positiva às tentativas de conexão');
+  }
+  if (fourHorsemenTotal < 4) {
+    overallHealth.strengths.push('Baixa presença dos quatro cavaleiros');
+  }
+  if (metrics.influenciaPositiva > 7) {
+    overallHealth.strengths.push('Forte influência positiva no relacionamento');
+  }
+
+  if (fourHorsemenTotal > 6) {
+    overallHealth.concerns.push('Alta presença dos quatro cavaleiros');
+  }
+  if (responseRatio < 0.4) {
+    overallHealth.concerns.push('Baixa taxa de resposta positiva às tentativas de conexão');
+  }
+  if (metrics.influenciaPositiva < 5) {
+    overallHealth.concerns.push('Influência positiva abaixo do ideal');
+  }
+
+  return {
+    fourHorsemenRisk: {
+      total: fourHorsemenTotal,
+      breakdown: metrics.fourHorsemen,
+      riskLevel
+    },
+    bidsEffectiveness: {
+      responseRatio,
+      effectiveness,
+      recommendations
+    },
+    overallHealth
+  };
+};
+
+export const analyzeAttachmentStyle = (
+  userAssessment: DailyAssessment,
+  partnerAssessment: DailyAssessment
+): AttachmentStyle => {
+  const securityScore = userAssessment.ratings.satisfacaoGeral * 0.3 + 
+                     userAssessment.ratings.alinhamentoObjetivos * 0.2 + 
+                     userAssessment.ratings.conexaoEmocional * 0.3 + 
+                     userAssessment.ratings.apoioMutuo * 0.2;
+  
+  const hasHighDiscrepancies = Math.abs(
+    userAssessment.ratings.satisfacaoGeral - partnerAssessment.ratings.satisfacaoGeral
+  ) > 1;
   
   let style: AttachmentStyle['primary'] = 'secure';
   let description = '';
   let recommendations: string[] = [];
 
-  if (highDiscrepancies.length >= 3) {
-    style = 'anxious';
-    description = 'Demonstra padrões ansiosos de apego, com preocupação elevada sobre o relacionamento.';
+  if (securityScore > 4 && !hasHighDiscrepancies) {
+    style = 'secure';
+    description = 'Demonstra um estilo de apego seguro, com boa capacidade de intimidade e autonomia.';
     recommendations = [
-      'Trabalhe no desenvolvimento da autoconfiança',
-      'Pratique comunicação assertiva de necessidades',
+      'Continue cultivando a comunicação aberta',
+      'Mantenha o equilíbrio entre proximidade e independência',
+      'Celebre as conquistas do relacionamento'
+    ];
+  } else if (securityScore < 3 && hasHighDiscrepancies) {
+    style = 'anxious';
+    description = 'Apresenta características de apego ansioso, com preocupação excessiva com o relacionamento.';
+    recommendations = [
+      'Trabalhe no desenvolvimento da autoestima',
+      'Pratique autorregulação emocional',
       'Desenvolva atividades independentes'
     ];
-  } else if (averages.affection < 3 && averages.cohesion < 3) {
+  } else if (userAssessment.ratings.conexaoEmocional < 3 && userAssessment.ratings.apoioMutuo < 3) {
     style = 'avoidant';
     description = 'Mostra tendências evitativas, com dificuldade em manter proximidade emocional.';
     recommendations = [
-      'Explore gradualmente maior intimidade emocional',
-      'Identifique medos e resistências específicos',
-      'Estabeleça pequenos objetivos de conexão diária'
-    ];
-  } else if (securityScore >= 4) {
-    style = 'secure';
-    description = 'Demonstra padrões seguros de apego, com boa capacidade de intimidade e autonomia.';
-    recommendations = [
-      'Continue fortalecendo a comunicação aberta',
-      'Mantenha o equilíbrio entre intimidade e independência',
-      'Celebre as conquistas do relacionamento'
+      'Explore gradualmente a expressão emocional',
+      'Identifique padrões de distanciamento',
+      'Busque equilíbrio entre espaço pessoal e intimidade'
     ];
   } else {
     style = 'disorganized';
-    description = 'Apresenta padrões mistos de apego, com variações significativas no comportamento.';
+    description = 'Apresenta padrões mistos de apego, alternando entre diferentes estilos.';
     recommendations = [
-      'Busque consistência nas interações diárias',
-      'Desenvolva rotinas de conexão previsíveis',
-      'Considere apoio terapêutico para explorar padrões'
+      'Busque consistência nas interações',
+      'Desenvolva estratégias de autorregulação',
+      'Considere terapia individual ou de casal'
     ];
   }
 
-  return { primary: style, description, recommendations };
+  return {
+    primary: style,
+    description,
+    recommendations
+  };
 };
 
 export const analyzeCommunicationPatterns = (
-  assessment1: DailyAssessment,
-  assessment2: DailyAssessment
-): CommunicationPattern => {
-  const communicationScore = (assessment1.ratings.comunicacao + assessment2.ratings.comunicacao) / 2;
-  const conflictScore = (assessment1.ratings.resolucaoConflitos + assessment2.ratings.resolucaoConflitos) / 2;
+  userAssessment: DailyAssessment,
+  partnerAssessment: DailyAssessment
+): CommunicationPatterns => {
+  const communicationScore = (userAssessment.ratings.comunicacao + partnerAssessment.ratings.comunicacao) / 2;
+  const conflictScore = (userAssessment.ratings.resolucaoConflitos + partnerAssessment.ratings.resolucaoConflitos) / 2;
 
   let style: CommunicationPattern['style'];
   let strengths: string[] = [];
@@ -125,7 +352,12 @@ export const analyzeCommunicationPatterns = (
     recommendations = ['Desenvolver assertividade', 'Praticar comunicação direta'];
   }
 
-  return { style, strengths, challenges, recommendations };
+  return {
+    style: style,
+    effectiveness: conflictScore,
+    patterns: strengths.concat(challenges),
+    confidence: 0.8
+  };
 };
 
 export const calculateEmotionalSecurity = (averages: CategoryAverages): number => {
@@ -160,7 +392,8 @@ export const analyzeConflictStyle = (
            conflictScore > 3 ? 'compromising' : 
            conflictScore > 2 ? 'avoiding' : 'confrontational',
     effectiveness: conflictScore,
-    patterns: determineConflictPatterns(assessment1, assessment2)
+    patterns: determineConflictPatterns(assessment1, assessment2),
+    confidence: 0.8
   };
 };
 
@@ -218,7 +451,7 @@ export const determineRelationshipStage = (
   return stage;
 };
 
-export const identifyGrowthAreas = (
+export const identifyrecommendations = (
   averages: CategoryAverages,
   discrepancies: DiscrepancyResult[]
 ): string[] => {
@@ -256,6 +489,105 @@ export const analyzeEmotionalDynamics = (
   return {
     emotionalSecurity: calculateEmotionalSecurity(averages),
     intimacyBalance: analyzeIntimacyBalance(averages),
-    conflictResolution: analyzeConflictStyle(assessment1, assessment2)
+    conflictResolution: analyzeConflictStyle(assessment1, assessment2),
+    synchronicity: 0.8,
+    stability: 0.7,
+    patterns: {
+      user: {
+        dominant: 'feliz' as MoodType,
+        frequency: {
+          feliz: 0,
+          animado: 0,
+          grato: 0,
+          calmo: 0,
+          satisfeito: 0,
+          amado: 0,
+          ansioso: 0,
+          estressado: 0,
+          triste: 0,
+          irritado: 0,
+          frustrado: 0,
+          exausto: 0,
+          confuso: 0,
+          solitário: 0,
+          neutral: 0,
+          content: 0
+        },
+        transitions: {}
+      },
+      partner: {
+        dominant: 'feliz' as MoodType,
+        frequency: {
+          feliz: 0,
+          animado: 0,
+          grato: 0,
+          calmo: 0,
+          satisfeito: 0,
+          amado: 0,
+          ansioso: 0,
+          estressado: 0,
+          triste: 0,
+          irritado: 0,
+          frustrado: 0,
+          exausto: 0,
+          confuso: 0,
+          solitário: 0,
+          neutral: 0,
+          content: 0
+        },
+        transitions: {}
+      }
+    },
+    insights: {
+      strengths: [],
+      challenges: [],
+      recommendations: []
+    }
+  };
+};
+
+export const calculateAttachmentCompatibility = (
+  userStyle: AttachmentStyle['primary'],
+  partnerStyle: AttachmentStyle['primary']
+): { score: number; insights: string[] } => {
+  const compatibilityMap: Record<AttachmentStyle['primary'], Record<AttachmentStyle['primary'], number>> = {
+    secure: { secure: 0.9, anxious: 0.7, avoidant: 0.6, disorganized: 0.5 },
+    anxious: { secure: 0.7, anxious: 0.4, avoidant: 0.3, disorganized: 0.2 },
+    avoidant: { secure: 0.6, anxious: 0.3, avoidant: 0.5, disorganized: 0.3 },
+    disorganized: { secure: 0.5, anxious: 0.2, avoidant: 0.3, disorganized: 0.2 }
+  };
+
+  const score = compatibilityMap[userStyle][partnerStyle];
+  const insights: string[] = [];
+
+  if (userStyle === 'secure' && partnerStyle === 'secure') {
+    insights.push('Alta compatibilidade com base segura mútua');
+  } else if (userStyle === 'secure' || partnerStyle === 'secure') {
+    insights.push('Potencial para crescimento com apoio do parceiro seguro');
+  } else if (userStyle === partnerStyle) {
+    insights.push('Desafios similares podem dificultar o crescimento mútuo');
+  } else {
+    insights.push('Diferenças nos estilos requerem atenção e trabalho conjunto');
+  }
+
+  return { score, insights };
+};
+
+export const analyzeAttachmentDynamics = (
+  userAssessment: DailyAssessment,
+  partnerAssessment: DailyAssessment
+): { user: AttachmentStyle; partner: AttachmentStyle; compatibility: { score: number; insights: string[] } } => {
+  const userStyle = analyzeAttachmentStyle(userAssessment, partnerAssessment);
+  const partnerStyle = analyzeAttachmentStyle(partnerAssessment, userAssessment);
+  
+  const compatibility = calculateAttachmentCompatibility(
+    userStyle.primary,
+    partnerStyle.primary
+  );
+
+  return {
+    user: userStyle,
+    partner: partnerStyle,
+    compatibility
   };
 }; 

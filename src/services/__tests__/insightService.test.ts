@@ -30,35 +30,37 @@ jest.mock('../../config', () => ({
 describe('insightService', () => {
   describe('analyzeDiscrepancies', () => {
     const mockUserRatings: CategoryRatings = {
-      comunicacao: 4,
-      resolucaoConflitos: 5,
-      conexaoEmocional: 4,
-      apoioMutuo: 4,
-      transparenciaConfianca: 4,
-      intimidadeFisica: 4,
-      saudeMental: 4,
-      segurancaRelacionamento: 4,
-      alinhamentoObjetivos: 4,
-      satisfacaoGeral: 4,
-      autocuidado: 4,
-      gratidao: 4,
-      qualidadeTempo: 4
+      comunicacao: 7,
+      resolucaoConflitos: 6,
+      conexaoEmocional: 8,
+      apoioMutuo: 7,
+      transparenciaConfianca: 8,
+      intimidadeFisica: 7,
+      saudeMental: 6,
+      segurancaRelacionamento: 7,
+      satisfacaoGeral: 8,
+      alinhamentoObjetivos: 7,
+      qualidadeTempo: 6,
+      intimidade: 7,
+      autocuidado: 7,
+      gratidao: 8
     };
 
     const mockPartnerRatings: CategoryRatings = {
-      comunicacao: 2,
-      resolucaoConflitos: 2,
-      conexaoEmocional: 4,
-      apoioMutuo: 4,
-      transparenciaConfianca: 4,
-      intimidadeFisica: 4,
-      saudeMental: 4,
-      segurancaRelacionamento: 4,
-      alinhamentoObjetivos: 4,
-      satisfacaoGeral: 4,
-      autocuidado: 4,
-      gratidao: 4,
-      qualidadeTempo: 4
+      comunicacao: 6,
+      resolucaoConflitos: 7,
+      conexaoEmocional: 7,
+      apoioMutuo: 8,
+      transparenciaConfianca: 7,
+      intimidadeFisica: 8,
+      saudeMental: 7,
+      segurancaRelacionamento: 8,
+      satisfacaoGeral: 7,
+      alinhamentoObjetivos: 8,
+      qualidadeTempo: 7,
+      intimidade: 8,
+      autocuidado: 8,
+      gratidao: 7
     };
 
     test('should identify high discrepancies correctly', async () => {
