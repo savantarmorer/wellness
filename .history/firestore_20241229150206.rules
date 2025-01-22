@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isPartner(userId) {
+      let userDoc = get(/databases/$(database)/documents/users/$(userId));
+      return userDoc.data.partnerId == request.auth.uid;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Notifications collection
+    match /notifications/{notificationId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow write: if request.auth != null;
+    }
+
+    // Assessments collection
+    match /assessments/{assessmentId} {
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid || 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.partnerId == resource.data.userId
+      );
+      allow write: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+
+    // Relationship contexts collection
+    match /relationshipContexts/{contextId} {
+      allow read: if request.auth != null && (
+        contextId == request.auth.uid ||
+        get(/databases/$(database)/documents/relationshipContexts/$(contextId)).data.partnerId == request.auth.uid
+      );
+      allow write: if request.auth != null && request.auth.uid == contextId;
+    }
+
+    // Analysis history collection
+    match /analysisHistory/{analysisId} {
+      allow read: if isAuthenticated() && (
+        isOwner(resource.data.userId) ||
+        isPartner(resource.data.userId)
+      );
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update: if isAuthenticated() && isOwner(resource.data.userId);
+      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+
+    // GPT analyses collection
+    match /gptAnalysis/{analysisId} {
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.partnerId == request.auth.uid ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.partnerId in [resource.data.userId, resource.data.partnerId]
+      );
+      allow create: if request.auth != null && (
+        request.resource.data.userId == request.auth.uid || 
+        request.resource.data.partnerId == request.auth.uid
+      );
+      allow write: if request.auth != null && (
+        request.resource.data.userId == request.auth.uid || 
+        request.resource.data.partnerId == request.auth.uid
+      );
+    }
+  }
+} 
