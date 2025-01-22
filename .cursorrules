@@ -1,0 +1,118 @@
+# Cursor Rules for Wellness Application
+
+## Code Style & Standards
+- Follow TypeScript strict mode guidelines
+- Use functional components with React hooks
+- Maintain consistent naming: PascalCase for components, camelCase for functions/variables
+- Enforce proper type definitions for all props and state
+- Keep components focused and single-responsibility
+- Use async/await for asynchronous operations
+- Implement proper error handling for API calls
+- Use type assertions only when necessary and document why
+- Handle undefined values with nullish coalescing operator (??)
+- Cast string types to enums/literal types when working with strict type systems
+- Prefer optional chaining (?.) for potentially undefined nested properties
+
+## Code Organization & Spacing
+- Add 2-3 blank lines between interface/type definitions
+- Use clear section headers as comments (e.g. "// === Form Interfaces ===")
+- Group related interfaces together in clearly marked sections
+- Add index comments for easier navigation in large files
+- When editing, provide sufficient context lines around changes
+- Keep related functionality close together
+- Use descriptive comments to mark section boundaries
+- Maintain consistent indentation within sections
+
+## Code Preservation & Modification Rules
+- Never rename existing functions unless explicitly requested
+- Before creating new functions, verify if similar functionality exists elsewhere
+- Check for and maintain existing imports/exports when modifying files
+- When deleting code, verify all dependencies and impacts first
+- Preserve existing variable names and parameter signatures
+- Maintain backwards compatibility when modifying public APIs
+- Document any breaking changes
+
+## Architecture Guidelines
+- Maintain separation of concerns between components, services, and pages
+- Keep business logic in services directory
+- Place reusable components in components directory
+- Store page components in pages directory
+- Use proper data fetching patterns (React Query preferred)
+- Implement proper state management practices
+- Verify module connectivity and dependencies before changes
+- Ensure new components integrate properly with existing systems
+
+## Module Integration
+- Check existing implementations before creating new solutions
+- Verify all import/export relationships
+- Maintain existing module interfaces
+- Document module dependencies
+- Test integration points thoroughly
+- Ensure proper error propagation between modules
+- Validate data flow between components
+
+## Performance
+- Optimize component re-renders
+- Implement proper code splitting
+- Use React.memo for expensive computations
+- Keep bundle size minimal
+- Implement proper loading states
+
+## Testing
+- Write unit tests for critical business logic
+- Implement integration tests for key user flows
+- Test error handling scenarios
+- Ensure accessibility testing
+- Maintain test coverage above 80%
+
+## Documentation
+- Document complex psychological assessment algorithms
+- Maintain clear component documentation
+- Add JSDoc comments for complex functions
+- Keep README up to date
+- Document API integrations
+
+## Accessibility
+- Maintain WCAG 2.1 compliance
+- Use semantic HTML elements
+- Implement proper ARIA labels
+- Ensure keyboard navigation
+- Support screen readers
+
+## Error Handling
+- Implement user-friendly error messages
+- Log errors appropriately
+- Handle edge cases in psychological assessments
+- Provide fallback UI for error states
+- Implement proper form validation
+
+## State Management
+- Use React Context for global state
+- Implement proper loading states
+- Handle form state efficiently
+- Maintain clean data flow
+- Implement proper cache management
+
+## Code Generation Rules
+- Generate complete, working components
+- Include necessary imports
+- Add proper type definitions
+- Include error handling
+- Add necessary unit tests
+
+## Relationship Context Fields
+- Maintain comprehensive relationship context data
+- Include all relevant psychological assessment fields:
+  - Previous counseling experience
+  - Attachment styles
+  - Communication patterns
+  - Major life events
+  - Relationship dynamics
+  - Emotional states
+  - Crisis history
+- Never remove relationship context fields without thorough impact analysis
+- Document the purpose and importance of each context field
+- Ensure proper validation of relationship context data
+- Maintain backwards compatibility when modifying context fields
+- Consider the psychological impact of each field
+- Implement proper data migration strategies for context changes 

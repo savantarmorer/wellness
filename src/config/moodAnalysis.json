@@ -1,0 +1,75 @@
+{
+  "moodCategories": {
+    "feliz": { "valence": 0.8, "category": "positive_active", "baseIntensity": 0.7 },
+    "animado": { "valence": 0.7, "category": "positive_active", "baseIntensity": 0.8 },
+    "grato": { "valence": 0.6, "category": "positive_calm", "baseIntensity": 0.5 },
+    "calmo": { "valence": 0.4, "category": "positive_calm", "baseIntensity": 0.3 },
+    "satisfeito": { "valence": 0.5, "category": "positive_calm", "baseIntensity": 0.4 },
+    "amado": { "valence": 0.9, "category": "positive_warm", "baseIntensity": 0.8 },
+    "triste": { "valence": -0.7, "category": "negative_low", "baseIntensity": 0.6 },
+    "ansioso": { "valence": -0.5, "category": "negative_active", "baseIntensity": 0.7 },
+    "irritado": { "valence": -0.8, "category": "negative_active", "baseIntensity": 0.8 },
+    "frustrado": { "valence": -0.6, "category": "negative_active", "baseIntensity": 0.6 },
+    "preocupado": { "valence": -0.4, "category": "negative_low", "baseIntensity": 0.5 },
+    "culpado": { "valence": -0.6, "category": "negative_low", "baseIntensity": 0.5 }
+  },
+  "categorySimilarity": {
+    "positive_active": {
+      "positive_active": 1.0,
+      "positive_calm": 0.7,
+      "positive_warm": 0.8,
+      "negative_active": 0.2,
+      "negative_low": 0.1
+    },
+    "positive_calm": {
+      "positive_active": 0.7,
+      "positive_calm": 1.0,
+      "positive_warm": 0.7,
+      "negative_active": 0.1,
+      "negative_low": 0.2
+    },
+    "positive_warm": {
+      "positive_active": 0.8,
+      "positive_calm": 0.7,
+      "positive_warm": 1.0,
+      "negative_active": 0.1,
+      "negative_low": 0.1
+    },
+    "negative_active": {
+      "positive_active": 0.2,
+      "positive_calm": 0.1,
+      "positive_warm": 0.1,
+      "negative_active": 1.0,
+      "negative_low": 0.6
+    },
+    "negative_low": {
+      "positive_active": 0.1,
+      "positive_calm": 0.2,
+      "positive_warm": 0.1,
+      "negative_active": 0.6,
+      "negative_low": 1.0
+    }
+  },
+  "analysis": {
+    "valence": {
+      "alpha": 2.0,
+      "minSimilarity": 0.1
+    },
+    "intensity": {
+      "minValue": 0.05,
+      "maxValue": 0.95
+    },
+    "direction": {
+      "veryNegativeThreshold": -0.5,
+      "veryNegativeAdjustment": 0.8,
+      "negativeAdjustment": 0.9,
+      "positiveAdjustment": 1.05
+    },
+    "timeWindow": {
+      "defaultHours": 24,
+      "minHours": 3,
+      "maxHours": 48,
+      "decayFactor": 0.1
+    }
+  }
+} 
